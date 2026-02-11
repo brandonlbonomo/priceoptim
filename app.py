@@ -1659,14 +1659,19 @@ def login():
     try:
         with get_db() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT id,username,password_hash,full_name,portfolio_name,ticker,accent_color,mfa_enabled FROM users WHERE username=%s OR email=%s", (d['username'], d['username']))
+            # Try with mfa_enabled first, fall back if column doesn't exist
+            try:
+                cur.execute("SELECT id,username,password_hash,full_name,portfolio_name,ticker,accent_color,mfa_enabled FROM users WHERE username=%s OR email=%s", (d['username'], d['username']))
+            except Exception:
+                conn.rollback()
+                cur.execute("SELECT id,username,password_hash,full_name,portfolio_name,ticker,accent_color FROM users WHERE username=%s OR email=%s", (d['username'], d['username']))
             u = cur.fetchone(); cur.close()
             if not u or not verify_password(d['password'], u['password_hash']):
                 return jsonify({'error': 'Invalid username or password'}), 401
             ud = dict(u)
             del ud['password_hash']
             # Check if MFA is enabled
-            if u.get('mfa_enabled'):
+            if ud.get('mfa_enabled'):
                 session['mfa_pending_user_id'] = u['id']
                 return jsonify({'mfa_required': True})
             session['user_id'] = u['id']
