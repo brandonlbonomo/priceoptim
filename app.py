@@ -305,8 +305,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--gray-900)
 .field textarea{resize:vertical;min-height:70px;}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 /* MODAL */
-.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
-.modal{background:var(--white);border-radius:18px 18px 0 0;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;padding:26px 22px;}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px 26px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
 .mtitle{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:20px;}
 .mfoot{display:flex;gap:8px;margin-top:20px;}
 .mfoot button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;}
@@ -890,16 +890,34 @@ function AddPropModal({userId,onClose,onSave}) {
   const [f,setF]=useState({name:'',location:'',purchase_price:0,down_payment:0,mortgage:0,insurance:0,hoa:0,property_tax:0,monthly_revenue:0,zestimate:0,zpid:''});
   const [saving,setSaving]=useState(false);
 
-  // Debounced Zillow search
+  // Debounced Zillow search - direct from browser to bypass server blocks
   useEffect(()=>{
     if(query.length<5){setSuggestions([]);return;}
     const t=setTimeout(async()=>{
       setSearching(true);
       try{
-        const r=await fetch('/api/zillow/search?address='+encodeURIComponent(query),{credentials:'include'});
-        const d=await r.json();
-        setSuggestions(d.results||[]);
-      }catch(e){}
+        // Try direct Zillow autocomplete from browser
+        const encoded=encodeURIComponent(query);
+        const r=await fetch(`https://www.zillowstatic.com/autocomplete/v3/suggestions?q=${encoded}&abKey=&clientId=homepage-render`,{
+          headers:{'Accept':'application/json'}
+        });
+        if(r.ok){
+          const d=await r.json();
+          setSuggestions((d.results||[]).slice(0,6).map(i=>({display:i.display||'',zpid:i.zpid||'',type:i.resultType||''})));
+        } else {
+          // Fallback to server proxy
+          const r2=await fetch('/api/zillow/search?address='+encoded,{credentials:'include'});
+          const d2=await r2.json();
+          setSuggestions(d2.results||[]);
+        }
+      }catch(e){
+        // Final fallback to server
+        try{
+          const r3=await fetch('/api/zillow/search?address='+encodeURIComponent(query),{credentials:'include'});
+          const d3=await r3.json();
+          setSuggestions(d3.results||[]);
+        }catch(e2){}
+      }
       setSearching(false);
     },500);
     return()=>clearTimeout(t);
@@ -908,22 +926,29 @@ function AddPropModal({userId,onClose,onSave}) {
   const selectAddress=async item=>{
     setSuggestions([]);
     setQuery(item.display);
-    setSearching(true);
-    try{
-      const r=await fetch('/api/zillow/property?zpid='+item.zpid+'&address='+encodeURIComponent(item.display),{credentials:'include'});
-      const d=await r.json();
-      setZData(d);
-      setF(prev=>({...prev,
-        name: item.display.split(',')[0],
-        location: item.display,
-        purchase_price: d.zestimate||0,
-        zestimate: d.zestimate||0,
-        property_tax: d.monthlyTax||0,
-        zpid: item.zpid||''
-      }));
-      setStep('confirm');
-    }catch(e){setStep('manual');}
-    setSearching(false);
+    setF(prev=>({...prev,
+      name: item.display.split(',')[0],
+      location: item.display,
+      zpid: item.zpid||''
+    }));
+    if(item.zpid){
+      setSearching(true);
+      try{
+        const r=await fetch('/api/zillow/property?zpid='+item.zpid+'&address='+encodeURIComponent(item.display),{credentials:'include'});
+        const d=await r.json();
+        setZData(d);
+        setF(prev=>({...prev,
+          name: item.display.split(',')[0],
+          location: item.display,
+          purchase_price: d.zestimate||0,
+          zestimate: d.zestimate||0,
+          property_tax: d.monthlyTax||0,
+          zpid: item.zpid||''
+        }));
+      }catch(e){}
+      setSearching(false);
+    }
+    setStep('confirm');
   };
 
   const submit=async e=>{
@@ -1351,13 +1376,23 @@ def zillow_search():
     if not address: return jsonify({'results': []})
     try:
         encoded = urllib.parse.quote(address)
-        url = f'https://www.zillowstatic.com/autocomplete/v3/suggestions?q={encoded}&abKey=&clientId=homepage-render'
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://www.zillow.com/'
-        })
-        resp = urllib.request.urlopen(req, timeout=6)
+        # Try multiple Zillow autocomplete endpoints
+        urls = [
+            f'https://www.zillowstatic.com/autocomplete/v3/suggestions?q={encoded}&abKey=&clientId=homepage-render',
+            f'https://www.zillow.com/search/GetSearchPageState.htm?searchQueryState=%7B%22usersSearchTerm%22%3A%22{encoded}%22%7D',
+        ]
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.zillow.com/',
+            'Origin': 'https://www.zillow.com',
+            'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+        }
+        req = urllib.request.Request(urls[0], headers=headers)
+        resp = urllib.request.urlopen(req, timeout=8)
         data = json.loads(resp.read())
         results = []
         for item in (data.get('results') or [])[:6]:
@@ -1368,7 +1403,28 @@ def zillow_search():
             })
         return jsonify({'results': results})
     except Exception as e:
-        return jsonify({'results': [], 'error': str(e)})
+        # Fallback: use Census geocoder to at least validate address
+        try:
+            encoded2 = urllib.parse.quote(address)
+            census_url = f'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address={encoded2}&benchmark=2020&format=json'
+            req2 = urllib.request.Request(census_url, headers={'User-Agent': 'PropertyPigeon/1.0'})
+            resp2 = urllib.request.urlopen(req2, timeout=5)
+            cdata = json.loads(resp2.read())
+            matches = cdata.get('result',{}).get('addressMatches',[])
+            results = []
+            for m in matches[:3]:
+                addr = m.get('matchedAddress','')
+                coords = m.get('coordinates',{})
+                results.append({
+                    'display': addr,
+                    'zpid': '',
+                    'type': 'address',
+                    'lat': coords.get('y'),
+                    'lon': coords.get('x')
+                })
+            return jsonify({'results': results})
+        except Exception as e2:
+            return jsonify({'results': [], 'error': str(e)+' | '+str(e2)})
 
 @app.route('/api/zillow/property')
 def zillow_property():
