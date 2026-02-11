@@ -183,6 +183,7 @@ HTML = r"""<!DOCTYPE html>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <style>
 :root {
   --blue:#1a56db; --blue-light:#e8f0fe; --green:#0a9162; --green-light:#e6f4f1;
@@ -373,7 +374,16 @@ function App() {
 function AuthScreen({onLogin}) {
   const [mode,setMode]=useState('login');
   const [err,setErr]=useState('');
-  const [f,setF]=useState({username:'',email:'',password:'',full_name:'',portfolio_name:''});
+  const [f,setF]=useState({username:'',email:'',password:'',full_name:'',portfolio_name:'',ticker:''});
+  const [tickerStatus,setTickerStatus]=useState('');
+  useEffect(()=>{
+    if(f.ticker.length!==4){setTickerStatus('');return;}
+    const t=setTimeout(async()=>{
+      try{const r=await fetch('/api/ticker/check/'+f.ticker);const d=await r.json();setTickerStatus(d.available?'available':'taken');}
+      catch(e){}
+    },400);
+    return()=>clearTimeout(t);
+  },[f.ticker]);
   const submit=async e=>{
     e.preventDefault(); setErr('');
     try {
@@ -400,6 +410,7 @@ function AuthScreen({onLogin}) {
             {mode==='signup'&&<>
               <div className="field"><label>Full name</label><input value={f.full_name} onChange={e=>setF({...f,full_name:e.target.value})} placeholder="Brandon Bonomo" required/></div>
               <div className="field"><label>Portfolio name</label><input value={f.portfolio_name} onChange={e=>setF({...f,portfolio_name:e.target.value})} placeholder="Brandon's Empire" required/></div>
+              <div className="field"><label>Ticker symbol <span style={{color:'#9ca3af',fontWeight:400}}>(4 letters, e.g. BEMP)</span></label><div style={{display:'flex',gap:8,alignItems:'center'}}><span style={{fontFamily:'DM Mono,monospace',fontSize:16,fontWeight:700,color:'#1a56db'}}>$</span><input value={f.ticker} onChange={e=>setF({...f,ticker:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)})} placeholder="BEMP" maxLength={4} style={{fontFamily:'DM Mono,monospace',fontWeight:700,letterSpacing:2}} required/><span style={{fontSize:12,color:tickerStatus==='available'?'#059669':tickerStatus==='taken'?'#d92d20':'#9ca3af',fontWeight:600,whiteSpace:'nowrap'}}>{tickerStatus==='available'?'Available':tickerStatus==='taken'?'Already taken':f.ticker.length===4?'Checking...':''}</span></div></div>
             </>}
             <div className="field"><label>{mode==='login'?'Username or email':'Username'}</label><input value={f.username} onChange={e=>setF({...f,username:e.target.value})} placeholder="brandonb" required/></div>
             {mode==='signup'&&<div className="field"><label>Email</label><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="brandon@email.com" required/></div>}
@@ -800,7 +811,8 @@ def signup():
             cur=conn.cursor(cursor_factory=RealDictCursor)
             cur.execute("SELECT id FROM users WHERE username=%s OR email=%s",(d['username'],d['email']))
             if cur.fetchone(): return jsonify({'error':'Username or email already exists'}),400
-            ticker=generate_ticker(d['portfolio_name'])
+            chosen_ticker = (d.get('ticker') or '').upper().strip()[:4]
+            ticker = chosen_ticker if chosen_ticker else generate_ticker(d['portfolio_name'])
             cur.execute("INSERT INTO users(username,email,password_hash,full_name,portfolio_name,ticker) VALUES(%s,%s,%s,%s,%s,%s) RETURNING id,username,full_name,portfolio_name,ticker",
                 (d['username'],d['email'],hash_password(d['password']),d.get('full_name',''),d['portfolio_name'],ticker))
             u=dict(cur.fetchone()); conn.commit(); cur.close()
@@ -981,8 +993,19 @@ def plaid_exchange():
         return jsonify({'success':True})
     except Exception as e: return jsonify({'error':str(e)}),500
 
+@app.route('/api/ticker/check/<ticker>')
+def check_ticker(ticker):
+    ticker = ticker.upper().strip()[:4]
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM users WHERE ticker=%s", (ticker,))
+            taken = cur.fetchone() is not None
+            cur.close()
+            return jsonify({'available': not taken, 'ticker': ticker})
+    except Exception as e:
+        return jsonify({'available': False, 'error': str(e)})
+
 if __name__=='__main__':
     port=int(os.environ.get('PORT',10000))
     app.run(host='0.0.0.0',port=port)
-
-
