@@ -1387,83 +1387,56 @@ function SettingsModal({user,onClose,onSave}) {
   );
 }
 
-// ── ADD PROPERTY MODAL (with Zillow search) ───────────────────────────────────
+// ── ADD PROPERTY MODAL (OpenStreetMap address autocomplete) ──────────────────
 function AddPropModal({userId,onClose,onSave}) {
-  const [step,setStep]=useState('search'); // search | manual | confirm
   const [query,setQuery]=useState('');
   const [suggestions,setSuggestions]=useState([]);
   const [searching,setSearching]=useState(false);
-  const [zData,setZData]=useState(null);
-  const [f,setF]=useState({name:'',location:'',purchase_price:0,down_payment:0,mortgage:0,insurance:0,hoa:0,property_tax:0,monthly_revenue:0,zestimate:0,zpid:''});
+  const [confirmed,setConfirmed]=useState(false);
+  const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',zestimate:0,zpid:''});
   const [saving,setSaving]=useState(false);
+  const [err,setErr]=useState('');
 
-  // Debounced Zillow search - direct from browser to bypass server blocks
+  // Address autocomplete via OpenStreetMap Nominatim (free, no API key, no CORS)
   useEffect(()=>{
-    if(query.length<5){setSuggestions([]);return;}
+    if(query.length<4||confirmed){setSuggestions([]);return;}
     const t=setTimeout(async()=>{
       setSearching(true);
       try{
-        // Try direct Zillow autocomplete from browser
         const encoded=encodeURIComponent(query);
-        const r=await fetch(`https://www.zillowstatic.com/autocomplete/v3/suggestions?q=${encoded}&abKey=&clientId=homepage-render`,{
-          headers:{'Accept':'application/json'}
-        });
-        if(r.ok){
-          const d=await r.json();
-          setSuggestions((d.results||[]).slice(0,6).map(i=>({display:i.display||'',zpid:i.zpid||'',type:i.resultType||''})));
-        } else {
-          // Fallback to server proxy
-          const r2=await fetch('/api/zillow/search?address='+encoded,{credentials:'include'});
-          const d2=await r2.json();
-          setSuggestions(d2.results||[]);
-        }
-      }catch(e){
-        // Final fallback to server
-        try{
-          const r3=await fetch('/api/zillow/search?address='+encodeURIComponent(query),{credentials:'include'});
-          const d3=await r3.json();
-          setSuggestions(d3.results||[]);
-        }catch(e2){}
-      }
+        const r=await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=6&addressdetails=1&countrycodes=us`,
+          {headers:{'Accept-Language':'en-US,en','User-Agent':'PropertyPigeon/1.0'}}
+        );
+        const results=await r.json();
+        setSuggestions(results.filter(r=>r.type==='house'||r.class==='building'||r.addresstype==='house'||r.display_name.match(/^\d+/)).slice(0,5));
+      }catch(e){setSuggestions([]);}
       setSearching(false);
-    },500);
+    },600);
     return()=>clearTimeout(t);
-  },[query]);
+  },[query,confirmed]);
 
-  const selectAddress=async item=>{
+  const selectAddress=item=>{
+    const addr=item.display_name;
+    const parts=addr.split(',');
+    const streetName=parts[0]?.trim()||addr;
+    setQuery(addr);
+    setConfirmed(true);
     setSuggestions([]);
-    setQuery(item.display);
-    setF(prev=>({...prev,
-      name: item.display.split(',')[0],
-      location: item.display,
-      zpid: item.zpid||''
-    }));
-    if(item.zpid){
-      setSearching(true);
-      try{
-        const r=await fetch('/api/zillow/property?zpid='+item.zpid+'&address='+encodeURIComponent(item.display),{credentials:'include'});
-        const d=await r.json();
-        setZData(d);
-        setF(prev=>({...prev,
-          name: item.display.split(',')[0],
-          location: item.display,
-          purchase_price: d.zestimate||0,
-          zestimate: d.zestimate||0,
-          property_tax: d.monthlyTax||0,
-          zpid: item.zpid||''
-        }));
-      }catch(e){}
-      setSearching(false);
-    }
-    setStep('confirm');
+    setF(prev=>({...prev,name:streetName,location:addr}));
   };
 
   const submit=async e=>{
-    e.preventDefault();setSaving(true);
+    e.preventDefault();
+    if(!f.name){setErr('Property name is required');return;}
+    setSaving(true);setErr('');
     try{
-      await fetch('/api/properties/'+userId,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(f)});
+      const payload={...f};
+      // Convert strings to numbers
+      ['purchase_price','down_payment','mortgage','insurance','hoa','property_tax','monthly_revenue','zestimate'].forEach(k=>{payload[k]=parseFloat(payload[k])||0;});
+      await fetch('/api/properties/'+userId,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload)});
       onSave();
-    }catch(e){}
+    }catch(e){setErr('Failed to save. Try again.');}
     setSaving(false);
   };
 
@@ -1471,93 +1444,67 @@ function AddPropModal({userId,onClose,onSave}) {
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
         <div className="mtitle">Add Property</div>
+        {err&&<div className="err-box">{err}</div>}
 
-        {/* Step 1: Zillow search */}
-        {(step==='search'||step==='confirm')&&<>
-          <div className="field">
-            <label>Search Zillow</label>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="123 Main St, Houston, TX" autoFocus/>
-            {searching&&<div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>Searching...</div>}
-          </div>
+        {/* Address Search */}
+        <div className="field" style={{position:'relative'}}>
+          <label>Search address</label>
+          <input
+            value={query}
+            onChange={e=>{setQuery(e.target.value);setConfirmed(false);}}
+            placeholder="102 S Lockwood Drive, Houston TX"
+            autoFocus
+          />
+          {searching&&<div style={{fontSize:11,color:'#9ca3af',marginTop:3}}>Searching addresses...</div>}
+          {confirmed&&<div style={{fontSize:11,color:'#059669',marginTop:3}}>✓ Address confirmed</div>}
           {suggestions.length>0&&(
-            <div className="zsuggest">
+            <div className="zsuggest" style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50}}>
               {suggestions.map((s,i)=>(
                 <div key={i} className="zitem" onClick={()=>selectAddress(s)}>
-                  <div style={{fontWeight:500}}>{s.display}</div>
-                  <div style={{fontSize:11,color:'#9ca3af',marginTop:1}}>{s.type}</div>
+                  <div style={{fontWeight:500,fontSize:13}}>{s.display_name.split(',').slice(0,3).join(',')}</div>
+                  <div style={{fontSize:11,color:'#9ca3af',marginTop:1}}>{s.display_name.split(',').slice(3).join(',').trim()}</div>
                 </div>
               ))}
             </div>
           )}
-        </>}
+        </div>
 
-        {/* Zillow data preview */}
-        {step==='confirm'&&zData&&(
-          <div className="zprop-card">
-            <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:'#065f46'}}>Data from Zillow</div>
-            <div className="zprop-row"><span className="zprop-label">Zestimate</span><span className="zprop-val">{zData.zestimate?fmt$(zData.zestimate):'Not available'}</span></div>
-            <div className="zprop-row"><span className="zprop-label">Est. Monthly Tax</span><span className="zprop-val">{zData.monthlyTax?fmt$(zData.monthlyTax)+'/mo':'Not available'}</span></div>
-            <div className="zprop-row"><span className="zprop-label">Tax Assessed Value</span><span className="zprop-val">{zData.taxAssessedValue?fmt$(zData.taxAssessedValue):'Not available'}</span></div>
+        <form onSubmit={submit}>
+          {/* Name override */}
+          <div className="field">
+            <label>Property nickname <span style={{fontWeight:400,color:'#9ca3af',textTransform:'none'}}>(e.g. "Houston Rental")</span></label>
+            <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="My Houston Property" required/>
           </div>
-        )}
 
-        {/* Property form */}
-        {(step==='confirm'||step==='manual')&&(
-          <form onSubmit={submit}>
-            <div className="frow">
-              <div className="field"><label>Property name</label><input value={f.name} onChange={e=>setF({...f,name:e.target.value})} required/></div>
-              <div className="field"><label>Location</label><input value={f.location} onChange={e=>setF({...f,location:e.target.value})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Purchase / List Price</label><input type="number" value={f.purchase_price} onChange={e=>setF({...f,purchase_price:+e.target.value||0})}/></div>
-              <div className="field"><label>Down Payment</label><input type="number" value={f.down_payment} onChange={e=>setF({...f,down_payment:+e.target.value||0})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Monthly Mortgage</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:+e.target.value||0})}/></div>
-              <div className="field"><label>Monthly Revenue</label><input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:+e.target.value||0})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Insurance /mo</label><input type="number" value={f.insurance} onChange={e=>setF({...f,insurance:+e.target.value||0})}/></div>
-              <div className="field"><label>Property Tax /mo</label><input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:+e.target.value||0})}/></div>
-            </div>
-            {f.zestimate>0&&<div className="info-box">Zestimate of {fmt$(f.zestimate)} will be used for equity calculation. Update purchase price to override.</div>}
-            <div className="mfoot">
-              <button type="button" style={{background:'var(--gray-100)',color:'var(--gray-700)'}} onClick={()=>setStep('search')}>Back</button>
-              <button type="submit" style={{background:'var(--blue)',color:'#fff'}} disabled={saving}>{saving?'Saving...':'Add Property'}</button>
-            </div>
-          </form>
-        )}
-
-        {/* Manual entry link */}
-        {step==='search'&&!searching&&(
-          <div style={{textAlign:'center',marginTop:16}}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setStep('manual')}>Enter manually instead</button>
+          {/* Purchase info */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,marginTop:4,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Purchase Details</div>
+          <div className="frow">
+            <div className="field"><label>Purchase price</label><input type="number" value={f.purchase_price} onChange={e=>setF({...f,purchase_price:e.target.value})} placeholder="450000"/></div>
+            <div className="field"><label>Down payment</label><input type="number" value={f.down_payment} onChange={e=>setF({...f,down_payment:e.target.value})} placeholder="90000"/></div>
           </div>
-        )}
-        {step==='manual'&&(
-          <form onSubmit={submit}>
-            <div className="frow">
-              <div className="field"><label>Property name</label><input value={f.name} onChange={e=>setF({...f,name:e.target.value})} required/></div>
-              <div className="field"><label>Location</label><input value={f.location} onChange={e=>setF({...f,location:e.target.value})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Purchase Price</label><input type="number" value={f.purchase_price} onChange={e=>setF({...f,purchase_price:+e.target.value||0})}/></div>
-              <div className="field"><label>Down Payment</label><input type="number" value={f.down_payment} onChange={e=>setF({...f,down_payment:+e.target.value||0})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Monthly Mortgage</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:+e.target.value||0})}/></div>
-              <div className="field"><label>Monthly Revenue</label><input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:+e.target.value||0})}/></div>
-            </div>
-            <div className="frow">
-              <div className="field"><label>Insurance /mo</label><input type="number" value={f.insurance} onChange={e=>setF({...f,insurance:+e.target.value||0})}/></div>
-              <div className="field"><label>Property Tax /mo</label><input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:+e.target.value||0})}/></div>
-            </div>
-            <div className="mfoot">
-              <button type="button" style={{background:'var(--gray-100)',color:'var(--gray-700)'}} onClick={onClose}>Cancel</button>
-              <button type="submit" style={{background:'var(--blue)',color:'#fff'}} disabled={saving}>{saving?'Saving...':'Add Property'}</button>
-            </div>
-          </form>
-        )}
+          <div className="field"><label>Current estimated value <span style={{fontWeight:400,color:'#9ca3af',textTransform:'none'}}>(check Zillow/Redfin)</span></label>
+            <input type="number" value={f.zestimate} onChange={e=>setF({...f,zestimate:e.target.value})} placeholder="500000"/>
+          </div>
+
+          {/* Monthly income/expenses */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,marginTop:16,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Monthly Financials</div>
+          <div className="frow">
+            <div className="field"><label>Rental income</label><input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:e.target.value})} placeholder="2500"/></div>
+            <div className="field"><label>Mortgage payment</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:e.target.value})} placeholder="1800"/></div>
+          </div>
+          <div className="frow">
+            <div className="field"><label>Property tax /mo</label><input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:e.target.value})} placeholder="400"/></div>
+            <div className="field"><label>Insurance /mo</label><input type="number" value={f.insurance} onChange={e=>setF({...f,insurance:e.target.value})} placeholder="150"/></div>
+          </div>
+          <div className="field"><label>HOA /mo <span style={{fontWeight:400,color:'#9ca3af',textTransform:'none'}}>(if applicable)</span></label>
+            <input type="number" value={f.hoa} onChange={e=>setF({...f,hoa:e.target.value})} placeholder="0"/>
+          </div>
+
+          <div className="mfoot">
+            <button type="button" style={{background:'var(--gray-100)',color:'var(--gray-700)'}} onClick={onClose}>Cancel</button>
+            <button type="submit" style={{background:'var(--blue)',color:'#fff'}} disabled={saving}>{saving?'Saving...':'Add Property'}</button>
+          </div>
+        </form>
       </div>
     </div>
   );
