@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, session
 from flask_cors import CORS
-import os, hashlib, secrets, json, re, urllib.request, urllib.parse
+import os, hashlib, secrets, json, re, urllib.request, urllib.parse, time
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -1838,7 +1838,8 @@ ReactDOM.render(<App/>,document.getElementById('root'));
 # ── AUTH ROUTES ───────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
-    return HTML
+    from flask import Response
+    return Response(HTML, mimetype='text/html')
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
@@ -2379,18 +2380,18 @@ def plaid_exchange():
 
 @app.route('/privacy')
 def privacy():
-    return PRIVACY_HTML
+    from flask import Response
+    return Response(PRIVACY_HTML, mimetype='text/html')
 
 @app.route('/security')
 def security():
-    return SECURITY_HTML
+    from flask import Response
+    return Response(SECURITY_HTML, mimetype='text/html')
 
 @app.route('/data-deletion')
 def data_deletion():
-    uid = session.get('user_id')
-    if not uid:
-        return DELETION_HTML
-    return DELETION_HTML
+    from flask import Response
+    return Response(DELETION_HTML, mimetype='text/html')
 
 @app.route('/api/user/delete', methods=['POST'])
 def delete_account():
