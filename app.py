@@ -965,6 +965,7 @@ function MainApp({user,setUser,onLogout}) {
   const navItems=[
     {id:'portfolio',label:'Portfolio',path:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
     {id:'cashflow',label:'Cash flow',path:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
+    {id:'performance',label:'Performance',path:'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z'},
     {id:'discover',label:'Discover',path:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
     {id:'feed',label:'Feed',path:'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z'},
     {id:'profile',label:'Profile',path:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'},
@@ -1003,6 +1004,7 @@ function MainApp({user,setUser,onLogout}) {
         {tab==='portfolio'&&<PortfolioTab portfolio={portfolio} properties={properties} accent={accent} onAddProp={()=>setShowAddProp(true)} onConnectBank={()=>setShowPlaid(true)} onRefresh={loadAll} onEditProp={p=>setEditProp(p)}/>}
       {tab==='performance'&&<PerformanceTab user={user} properties={properties} accent={accent}/>}
         {tab==='cashflow'&&<CashflowTab portfolio={portfolio} properties={properties}/>}
+        {tab==='performance'&&<PerformanceTab user={user} properties={properties} accent={accent}/>}
         {tab==='discover'&&<DiscoverTab users={users} following={following} accent={accent} onRefresh={loadAll}/>}
         {tab==='feed'&&<FeedTab feed={feed}/>}
         {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} accent={accent} onEdit={()=>setShowSettings(true)}/>}
@@ -1500,7 +1502,7 @@ function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRef
           <div key={p.id} className="prow" style={{cursor:'pointer'}} onClick={()=>onEditProp(p)}>
             <div className="picon"><svg width="18" height="18" fill="none" stroke="#6b7280" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></div>
             <div style={{flex:1}}>
-              <div className="pname">{p.name}</div>
+              <div className="pname">{p.name&&p.name.length>5?p.name:(p.location?p.location.split(',').slice(0,2).join(','):p.name)}</div>
               <div className="ploc">{p.location}</div>
               <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>
                 {[p.bedrooms&&p.bedrooms+'bd',p.bathrooms&&p.bathrooms+'ba',p.sqft&&p.sqft.toLocaleString()+'sqft'].filter(Boolean).join(' · ')}
@@ -2060,10 +2062,16 @@ function AddPropModal({userId,onClose,onSave}) {
 
   const selectAddress=async item=>{
     const addr=item.display_name;
-    const parts=addr.split(',');
-    const streetName=parts[0]?.trim()||addr;
-    // Build a clean address string
-    const cleanAddr=[parts[0],parts[1],parts[2]].filter(Boolean).join(',').trim();
+    const parts=addr.split(',').map(s=>s.trim());
+    const a=item.address||{};
+    // Build clean address from structured OSM data
+    const num=a.house_number||parts[0]||'';
+    const street=a.road||a.street||parts[1]||'';
+    const city=a.city||a.town||a.village||a.county||'';
+    const state=a.state||'';
+    const zip=a.postcode||'';
+    const cleanAddr=[num&&street?num+' '+street:parts[0],city,state+(zip?' '+zip:'')].filter(Boolean).join(', ');
+    const streetName=num&&street?num+' '+street:(parts[0]||addr);
     setQuery(cleanAddr);
     setConfirmed(true);
     setSuggestions([]);
