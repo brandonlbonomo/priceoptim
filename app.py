@@ -776,8 +776,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--gray-900)
 .field textarea{resize:vertical;min-height:70px;}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 /* MODAL */
-.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
-.modal{background:var(--white);border-radius:16px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px 26px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,20,50,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:rgba(255,255,255,0.88);backdrop-filter:blur(40px) saturate(200%);-webkit-backdrop-filter:blur(40px) saturate(200%);border:1px solid rgba(255,255,255,0.92);border-radius:24px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;padding:28px 26px;box-shadow:0 32px 80px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,0.9);}
 .mtitle{font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:20px;}
 .mfoot{display:flex;gap:8px;margin-top:20px;}
 .mfoot button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;}
@@ -1199,7 +1199,7 @@ function PerformanceTab({user, properties, accent}) {
       </div>
 
       {/* Monthly P&L breakdown */}
-      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+      <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,marginBottom:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
         <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>Monthly P&L Breakdown</div>
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           <div style={{display:'flex',justifyContent:'space-between',padding:'10px 14px',background:'#f0fdf4',borderRadius:8}}>
@@ -1255,24 +1255,24 @@ function PerformanceTab({user, properties, accent}) {
 
           {/* Charts row */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
-            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+            <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
               <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Monthly Cash Flow</div>
               <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Net income after all expenses</div>
               <MiniBarChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.net_cashflow)}))} color={accent} height={120}/>
             </div>
-            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+            <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
               <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Portfolio Value</div>
               <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Total estimated value over time</div>
               <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_value)}))} color="#7c3aed" height={120}/>
             </div>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
-            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+            <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
               <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Equity Growth</div>
               <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Total equity across all properties</div>
               <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_equity)}))} color="#059669" height={120}/>
             </div>
-            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+            <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
               <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Revenue vs Expenses</div>
               <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Monthly income vs total costs</div>
               <MiniDualBar data={snaps.map(s=>({label:fmtMo(s.snapshot_month),revenue:parseFloat(s.gross_revenue),expenses:parseFloat(s.total_expenses)}))} height={120}/>
@@ -1280,7 +1280,7 @@ function PerformanceTab({user, properties, accent}) {
           </div>
 
           {/* MoM table */}
-          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+          <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,overflow:'hidden',boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
             <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:15}}>Month-by-Month History</div>
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -1462,7 +1462,7 @@ function ProjectionsTab({properties, accent}) {
       </div>
 
       {/* Assumption sliders */}
-      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+      <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,marginBottom:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
         <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>Assumptions</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:20}}>
           {[
@@ -1514,7 +1514,7 @@ function ProjectionsTab({properties, accent}) {
       </div>
 
       {/* Full table */}
-      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+      <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,overflow:'hidden',boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
         <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:15}}>Year-by-Year Breakdown</div>
         <div style={{overflowX:'auto',maxHeight:420,overflowY:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -1611,7 +1611,7 @@ function NetWorthTab(props) {
 
       {/* Asset breakdown */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
-        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+        <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:16,color:'#059669'}}>Assets</div>
           {/* Real estate */}
           <div style={{padding:'10px 12px',background:'#f0fdf4',borderRadius:8,marginBottom:8}}>
@@ -1642,7 +1642,7 @@ function NetWorthTab(props) {
           <button onClick={()=>addRow(setAssets,assets,'asset')} style={{fontSize:12,color:accent,background:'none',border:'1px dashed '+accent,borderRadius:6,padding:'5px 12px',cursor:'pointer',marginTop:4}}>+ Add Asset</button>
         </div>
 
-        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+        <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:16,color:'#d92d20'}}>Liabilities</div>
           {/* Mortgages */}
           <div style={{padding:'10px 12px',background:'#fef2f2',borderRadius:8,marginBottom:8}}>
@@ -1666,7 +1666,7 @@ function NetWorthTab(props) {
       </div>
 
       {/* Composition bar */}
-      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+      <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
         <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Asset Composition</div>
         <div style={{display:'flex',borderRadius:8,overflow:'hidden',height:24,marginBottom:10}}>
           {[
@@ -1786,7 +1786,7 @@ function StocksTab({accent, user, onValueChange}) {
 
       {/* Add form */}
       {adding && (
-        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,padding:20,marginBottom:20,boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Add Holding</div>
           {err&&<div style={{color:'#d92d20',fontSize:12,marginBottom:10}}>{err}</div>}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10,marginBottom:12}}>
@@ -1828,7 +1828,7 @@ function StocksTab({accent, user, onValueChange}) {
           <button onClick={()=>setAdding(true)} style={{padding:'9px 22px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,cursor:'pointer'}}>Add First Holding</button>
         </div>
       ) : (
-        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+        <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:16,overflow:'hidden',boxShadow:'0 4px 20px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead>
               <tr style={{background:'#f9fafb'}}>
@@ -2470,6 +2470,23 @@ function AddPropModal({userId,onClose,onSave}) {
   const [propData,setPropData]=useState(null);
   const [plaidIncome,setPlaidIncome]=useState(null);
   const [scanning,setScanning]=useState(false);
+  const [zillowUrl,setZillowUrl]=useState('');
+  const [fetchingZillow,setFetchingZillow]=useState(false);
+  const [zillowErr,setZillowErr]=useState('');
+
+  const fetchZillow=async()=>{
+    if(!zillowUrl) return;
+    setFetchingZillow(true);setZillowErr('');
+    try{
+      const r=await fetch('/api/zillow/zestimate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url:zillowUrl})});
+      const d=await r.json();
+      if(d.zestimate){
+        setF(prev=>({...prev,zestimate:d.zestimate,property_tax:d.monthly_tax||prev.property_tax,bedrooms:d.bedrooms||prev.bedrooms,bathrooms:d.bathrooms||prev.bathrooms,sqft:d.sqft||prev.sqft,year_built:d.year_built||prev.year_built}));
+        setPropData({...d,estimated_value:d.zestimate,source:'Zillow'});
+      } else {setZillowErr(d.error||'Could not fetch Zestimate');}
+    }catch(e){setZillowErr('Request failed');}
+    setFetchingZillow(false);
+  };
 
   // Address autocomplete via OpenStreetMap Nominatim (free, no API key, no CORS)
   useEffect(()=>{
@@ -2617,8 +2634,16 @@ function AddPropModal({userId,onClose,onSave}) {
             </div>
           )}
           {propData&&propData.source==='manual'&&(
-            <div className="warn-box" style={{marginBottom:12}}>
-              No property API key configured. Fields pre-filled where possible — add ATTOM_API_KEY to Render for full auto-population.
+            <div style={{background:'rgba(255,255,255,0.7)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:10,padding:'12px 14px',marginBottom:12,backdropFilter:'blur(12px)'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8}}>Add Zillow URL for Zestimate</div>
+              <div style={{display:'flex',gap:8}}>
+                <input value={zillowUrl} onChange={e=>setZillowUrl(e.target.value)} placeholder="Paste zillow.com/homedetails/... URL"
+                  style={{flex:1,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:12}}/>
+                <button type="button" className="btn btn-outline btn-sm" onClick={fetchZillow} disabled={fetchingZillow}>
+                  {fetchingZillow?'Fetching...':'Get Zestimate'}
+                </button>
+              </div>
+              {zillowErr&&<div style={{fontSize:11,color:'#d92d20',marginTop:4}}>{zillowErr}</div>}
             </div>
           )}
 
@@ -3696,6 +3721,75 @@ def stock_quote():
         return jsonify({'ticker': ticker, 'price': price, 'change_pct': change, 'prev_close': prev_close})
     except Exception as e:
         return jsonify({'error': str(e), 'price': None})
+
+
+@app.route('/api/zillow/zestimate', methods=['POST'])
+def scrape_zestimate():
+    """Scrape Zestimate from a user-provided Zillow URL - same approach as Copilot"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    url = (request.json or {}).get('url', '').strip()
+    if not url: return jsonify({'error': 'URL required'}), 400
+    if 'zillow.com' not in url: return jsonify({'error': 'Must be a Zillow URL'}), 400
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        }
+        req = urllib.request.Request(url, headers=headers)
+        resp = urllib.request.urlopen(req, timeout=10)
+        import gzip
+        raw = resp.read()
+        try: html = gzip.decompress(raw).decode('utf-8', errors='ignore')
+        except: html = raw.decode('utf-8', errors='ignore')
+
+        import re
+        result = {'url': url, 'zestimate': None, 'address': None, 'bedrooms': None, 'bathrooms': None, 'sqft': None, 'year_built': None, 'tax_annual': None}
+
+        # Zestimate - multiple patterns
+        for pat in [
+            r'"zestimate"\s*:\s*\{"value"\s*:\s*(\d+)',
+            r'"price"\s*:\s*(\d{5,8})',
+            r'Zestimate[^$]*\$([0-9,]+)',
+            r'"homeValue"\s*:\s*(\d+)',
+        ]:
+            m = re.search(pat, html)
+            if m:
+                val = m.group(1).replace(',','')
+                if val.isdigit() and int(val) > 50000:
+                    result['zestimate'] = int(val)
+                    break
+
+        # Address
+        m = re.search(r'"streetAddress"\s*:\s*"([^"]+)"', html)
+        if m: result['address'] = m.group(1)
+
+        # Property details
+        for key, pats in [
+            ('bedrooms', [r'"bedrooms"\s*:\s*(\d+)', r'(\d+)\s*(?:bed|bd)']),
+            ('bathrooms', [r'"bathrooms"\s*:\s*([\d.]+)', r'([\d.]+)\s*ba']),
+            ('sqft', [r'"livingArea"\s*:\s*(\d+)', r'"sqftFinished"\s*:\s*(\d+)']),
+            ('year_built', [r'"yearBuilt"\s*:\s*(\d{4})', r'"built"\s*:\s*(\d{4})']),
+            ('tax_annual', [r'"taxAnnualAmount"\s*:\s*(\d+)', r'"annualTaxes"\s*:\s*(\d+)']),
+        ]:
+            for pat in pats:
+                m = re.search(pat, html)
+                if m:
+                    result[key] = m.group(1)
+                    break
+
+        if result['tax_annual']:
+            result['monthly_tax'] = round(int(result['tax_annual']) / 12)
+
+        if not result['zestimate']:
+            result["error"] = "Could not find Zestimate on this page. Make sure it is a property listing URL."
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e), 'zestimate': None})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
