@@ -946,11 +946,19 @@ input[type=range]:hover { accent-color: #0a3fa0; }
 @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(26,86,219,.2)} 50%{box-shadow:0 0 0 8px rgba(26,86,219,0)} }
 
 </style>
+<!-- React + Babel -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Plaid Link -->
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState,useEffect,useRef,useCallback}=React;
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 const initials=n=>(n||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';
@@ -1332,7 +1340,7 @@ function ProfileTab({user,portfolio,accent,onEdit}) {
       <div className="ph">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div className="pt">Profile</div>
-          <button className="btn btn-outline btn-sm" onClick={onEdit}>Edit Profile & Settings</button>
+          <button className="btn btn-outline btn-sm" onClick={onEdit}>Edit Profile &amp; Settings</button>
         </div>
       </div>
       <div className="pcard">
@@ -1695,7 +1703,7 @@ function PerformanceTab({user, properties, accent}) {
   return(
     <div className="tab-content">
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
-        <div><h2 style={{fontSize:22,fontWeight:700,margin:0}}>Performance</h2><p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Portfolio analytics & historical tracking</p></div>
+        <div><h2 style={{fontSize:22,fontWeight:700,margin:0}}>Performance</h2><p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Portfolio analytics &amp; historical tracking</p></div>
         <button onClick={saveSnapshot} disabled={snapping} style={{padding:'8px 16px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,fontSize:13,cursor:'pointer'}}>
           {snapping?'Saving...':'Save Snapshot'}
         </button>
@@ -1714,7 +1722,7 @@ function PerformanceTab({user, properties, accent}) {
 
       {/* Monthly P&L */}
       <div style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.8)',borderRadius:14,padding:20,marginBottom:20}}>
-        <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Monthly P&L Breakdown</div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Monthly P&amp;L Breakdown</div>
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {[
             {l:'Rental Income',v:totalRev,color:'#059669',sign:'+'},
@@ -1841,7 +1849,7 @@ function ProjectionsTab({properties, accent}) {
 
       {/* Milestone cards */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:24}}>
-        {milestones.map(([y,d,c])=>d&&(
+        {milestones.map(([y,d,c])=>d?(
           <div key={y} style={{background:'rgba(255,255,255,0.72)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',border:'2px solid '+c+'30',borderRadius:16,padding:20,boxShadow:'0 4px 20px '+c+'12',transition:'all .2s ease'}}>
             <div style={{fontSize:11,fontWeight:800,color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:14}}>Year {y}</div>
             {[
@@ -1860,7 +1868,7 @@ function ProjectionsTab({properties, accent}) {
               </div>
             ))}
           </div>
-        ))}
+        ):null)}
       </div>
 
       {/* Full table */}
@@ -2170,7 +2178,7 @@ function PlaidModal({onClose}) {
   );
 }
 
-ReactDOM.render(<App/>,document.getElementById('root'));
+const _root = ReactDOM.createRoot(document.getElementById('root')); _root.render(<App/>);
 </script>
 </body>
 </html>
