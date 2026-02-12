@@ -132,6 +132,46 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Monthly snapshots table - core of performance tracking
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS monthly_snapshots (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                snapshot_month DATE NOT NULL,
+                total_value DECIMAL(14,2) DEFAULT 0,
+                total_equity DECIMAL(14,2) DEFAULT 0,
+                total_debt DECIMAL(14,2) DEFAULT 0,
+                gross_revenue DECIMAL(10,2) DEFAULT 0,
+                total_expenses DECIMAL(10,2) DEFAULT 0,
+                net_cashflow DECIMAL(10,2) DEFAULT 0,
+                noi DECIMAL(10,2) DEFAULT 0,
+                property_count INTEGER DEFAULT 0,
+                avg_cap_rate DECIMAL(6,4) DEFAULT 0,
+                avg_cash_on_cash DECIMAL(6,4) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, snapshot_month)
+            )
+        """)
+        # Property monthly snapshots - per-property tracking
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS property_snapshots (
+                id SERIAL PRIMARY KEY,
+                property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                snapshot_month DATE NOT NULL,
+                estimated_value DECIMAL(12,2) DEFAULT 0,
+                equity DECIMAL(12,2) DEFAULT 0,
+                revenue DECIMAL(10,2) DEFAULT 0,
+                expenses DECIMAL(10,2) DEFAULT 0,
+                net_cashflow DECIMAL(10,2) DEFAULT 0,
+                noi DECIMAL(10,2) DEFAULT 0,
+                cap_rate DECIMAL(6,4) DEFAULT 0,
+                cash_on_cash DECIMAL(6,4) DEFAULT 0,
+                occupancy_rate DECIMAL(5,2) DEFAULT 100,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(property_id, snapshot_month)
+            )
+        """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS portfolio_metrics (
                 user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -957,6 +997,7 @@ function MainApp({user,setUser,onLogout}) {
       </div>
       <div className="content">
         {tab==='portfolio'&&<PortfolioTab portfolio={portfolio} properties={properties} accent={accent} onAddProp={()=>setShowAddProp(true)} onConnectBank={()=>setShowPlaid(true)} onRefresh={loadAll} onEditProp={p=>setEditProp(p)}/>}
+      {tab==='performance'&&<PerformanceTab user={user} properties={properties} accent={accent}/>}
         {tab==='cashflow'&&<CashflowTab portfolio={portfolio} properties={properties}/>}
         {tab==='discover'&&<DiscoverTab users={users} following={following} accent={accent} onRefresh={loadAll}/>}
         {tab==='feed'&&<FeedTab feed={feed}/>}
@@ -966,6 +1007,418 @@ function MainApp({user,setUser,onLogout}) {
       {editProp&&<EditPropModal prop={editProp} onClose={()=>setEditProp(null)} onSave={()=>{setEditProp(null);loadAll();}}/>}
       {showPlaid&&<PlaidModal onClose={()=>setShowPlaid(false)}/>}
       {showSettings&&<SettingsModal user={user} onClose={()=>setShowSettings(false)} onSave={u=>{setUser(u);setShowSettings(false);}}/>}
+    </div>
+  );
+}
+
+
+// ── PERFORMANCE TAB ───────────────────────────────────────────────────────────
+function PerformanceTab({user, properties, accent}) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState(12); // months
+  const [view, setView] = useState('portfolio'); // portfolio | property
+  const [selProp, setSelProp] = useState(null);
+  const [propData, setPropData] = useState(null);
+  const [snapping, setSnapping] = useState(false);
+
+  const fmt$ = n => {
+    const abs = Math.abs(n||0);
+    const sign = n < 0 ? '-' : '';
+    if(abs >= 1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
+    if(abs >= 1000) return sign+'$'+(abs/1000).toFixed(1)+'K';
+    return sign+'$'+Math.round(abs).toLocaleString();
+  };
+  const fmtPct = n => (n >= 0 ? '+' : '') + (n||0).toFixed(2) + '%';
+  const fmtMo = iso => { if(!iso) return ''; const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}); };
+
+  useEffect(() => { loadPortfolio(); }, [range]);
+  useEffect(() => { if(selProp) loadProperty(selProp.id); }, [selProp]);
+
+  const loadPortfolio = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/performance/portfolio/'+user.id+'?months='+range, {credentials:'include'});
+      const d = await r.json();
+      setData(d);
+    } catch(e) {}
+    setLoading(false);
+  };
+
+  const loadProperty = async (pid) => {
+    try {
+      const r = await fetch('/api/performance/property/'+pid+'?months='+range, {credentials:'include'});
+      const d = await r.json();
+      setPropData(d);
+    } catch(e) {}
+  };
+
+  const takeSnapshot = async () => {
+    setSnapping(true);
+    await fetch('/api/performance/snapshot', {method:'POST', credentials:'include'});
+    await loadPortfolio();
+    setSnapping(false);
+  };
+
+  // Draw sparkline SVG
+  const Sparkline = ({values, color='#1a56db', height=40, width=120}) => {
+    if(!values || values.length < 2) return null;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const pts = values.map((v,i) => {
+      const x = (i/(values.length-1))*width;
+      const y = height - ((v-min)/range)*height;
+      return `${x},${y}`;
+    }).join(' ');
+    return (
+      <svg width={width} height={height} style={{overflow:'visible'}}>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+      </svg>
+    );
+  };
+
+  const snaps = data?.snapshots || [];
+  const summary = data?.summary || {};
+  const latest = snaps[snaps.length-1];
+  const prev = snaps[snaps.length-2];
+
+  // Chart data
+  const cashflowVals = snaps.map(s => parseFloat(s.net_cashflow));
+  const valueVals = snaps.map(s => parseFloat(s.total_value));
+  const equityVals = snaps.map(s => parseFloat(s.total_equity));
+  const noMonths = snaps.length === 0;
+
+  return (
+    <div className="tab-content">
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+        <div>
+          <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Performance</h2>
+          <p style={{fontSize:13,color:'#6b7280',margin:0,marginTop:2}}>Portfolio analytics & trends</p>
+        </div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {/* Range selector */}
+          <div style={{display:'flex',background:'#f3f4f6',borderRadius:8,padding:2}}>
+            {[6,12,24].map(m=>(
+              <button key={m} onClick={()=>setRange(m)} style={{
+                padding:'4px 10px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,
+                background:range===m?'#fff':'transparent',
+                color:range===m?'#111827':'#6b7280',
+                boxShadow:range===m?'0 1px 3px rgba(0,0,0,.1)':''
+              }}>{m}M</button>
+            ))}
+          </div>
+          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'6px 12px',background:accent,color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+            {snapping?'Saving...':'Snapshot'}
+          </button>
+        </div>
+      </div>
+
+      {/* View toggle */}
+      <div style={{display:'flex',gap:4,marginBottom:20,background:'#f3f4f6',borderRadius:8,padding:2,width:'fit-content'}}>
+        <button onClick={()=>{setView('portfolio');setSelProp(null);}} style={{padding:'6px 16px',borderRadius:6,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,background:view==='portfolio'?'#fff':'transparent',color:view==='portfolio'?'#111827':'#6b7280'}}>Portfolio</button>
+        {properties.map(p=>(
+          <button key={p.id} onClick={()=>{setView('property');setSelProp(p);}} style={{padding:'6px 16px',borderRadius:6,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,background:(view==='property'&&selProp?.id===p.id)?'#fff':'transparent',color:(view==='property'&&selProp?.id===p.id)?'#111827':'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {p.name?.split(' ')[0]||'Property'}
+          </button>
+        ))}
+      </div>
+
+      {loading && <div style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Loading performance data...</div>}
+
+      {!loading && noMonths && (
+        <div style={{textAlign:'center',padding:60,background:'#f9fafb',borderRadius:12,border:'1px dashed #e5e7eb'}}>
+          <div style={{fontSize:32,marginBottom:8}}>📈</div>
+          <div style={{fontWeight:600,marginBottom:4}}>No history yet</div>
+          <p style={{fontSize:13,color:'#6b7280',marginBottom:16}}>Click "Snapshot" to record your first data point. The app will automatically save a snapshot each time you add or update a property.</p>
+          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'8px 20px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,cursor:'pointer'}}>
+            {snapping?'Saving...':'Record First Snapshot'}
+          </button>
+        </div>
+      )}
+
+      {!loading && !noMonths && view==='portfolio' && (
+        <>
+          {/* KPI Cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
+            {[
+              {label:'Portfolio Value', val:fmt$(latest?.total_value), sub:latest?.yoy_value_pct!=null?fmtPct(latest.yoy_value_pct)+' YoY':null, color: latest?.yoy_value_pct>=0?'#059669':'#d92d20'},
+              {label:'Total Equity', val:fmt$(latest?.total_equity), sub:prev?fmt$(parseFloat(latest.total_equity)-parseFloat(prev.total_equity))+' MoM':null, color:'#1a56db'},
+              {label:'Monthly Cash Flow', val:fmt$(latest?.net_cashflow), sub:latest?.mom_cashflow?fmt$(latest.mom_cashflow)+' vs last mo':null, color:parseFloat(latest?.net_cashflow||0)>=0?'#059669':'#d92d20'},
+              {label:'Monthly NOI', val:fmt$(latest?.noi), sub:'Before debt service', color:'#374151'},
+              {label:'Cap Rate', val:((parseFloat(latest?.avg_cap_rate||0))*100).toFixed(2)+'%', sub:'Net / Value', color:'#7c3aed'},
+              {label:'Cash-on-Cash', val:((parseFloat(latest?.avg_cash_on_cash||0))*100).toFixed(2)+'%', sub:'Annual / Invested', color:'#0891b2'},
+              {label:'Total Appreciation', val:fmt$(summary.total_appreciation), sub:snaps.length+' months tracked', color:summary.total_appreciation>=0?'#059669':'#d92d20'},
+              {label:'Total Return', val:fmt$(summary.total_return), sub:'Appreciation + Cash flow', color:'#111827'},
+            ].map((k,i)=>(
+              <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:4}}>{k.label}</div>
+                <div style={{fontSize:22,fontWeight:700,color:k.color,lineHeight:1.1}}>{k.val}</div>
+                {k.sub&&<div style={{fontSize:11,color:'#6b7280',marginTop:3}}>{k.sub}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Charts */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+            {/* Cash Flow Chart */}
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Monthly Cash Flow</div>
+              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Net income after all expenses</div>
+              <MiniBarChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.net_cashflow)}))} color={accent} height={120}/>
+            </div>
+            {/* Portfolio Value Chart */}
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Portfolio Value</div>
+              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Total estimated value over time</div>
+              <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_value)}))} color="#7c3aed" height={120}/>
+            </div>
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+            {/* Equity Chart */}
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Equity Growth</div>
+              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Your ownership stake growing over time</div>
+              <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_equity)}))} color="#059669" height={120}/>
+            </div>
+            {/* Revenue vs Expenses */}
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Revenue vs Expenses</div>
+              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Income and cost breakdown</div>
+              <MiniDualBar
+                data={snaps.map(s=>({label:fmtMo(s.snapshot_month),revenue:parseFloat(s.gross_revenue),expenses:parseFloat(s.total_expenses)}))}
+                height={120}
+              />
+            </div>
+          </div>
+
+          {/* Month by Month Table */}
+          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden',marginBottom:20}}>
+            <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:14}}>Month-by-Month Detail</div>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                <thead>
+                  <tr style={{background:'#f9fafb'}}>
+                    {['Month','Portfolio Value','Equity','Cash Flow','NOI','Cap Rate','CoC','MoM Value','YoY Value'].map(h=>(
+                      <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px',whiteSpace:'nowrap'}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...snaps].reverse().map((s,i)=>(
+                    <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
+                      <td style={{padding:'10px 14px',fontWeight:600}}>{fmtMo(s.snapshot_month)}</td>
+                      <td style={{padding:'10px 14px'}}>{fmt$(s.total_value)}</td>
+                      <td style={{padding:'10px 14px'}}>{fmt$(s.total_equity)}</td>
+                      <td style={{padding:'10px 14px',color:parseFloat(s.net_cashflow)>=0?'#059669':'#d92d20',fontWeight:600}}>{fmt$(s.net_cashflow)}</td>
+                      <td style={{padding:'10px 14px'}}>{fmt$(s.noi)}</td>
+                      <td style={{padding:'10px 14px'}}>{(parseFloat(s.avg_cap_rate)*100).toFixed(2)}%</td>
+                      <td style={{padding:'10px 14px'}}>{(parseFloat(s.avg_cash_on_cash)*100).toFixed(2)}%</td>
+                      <td style={{padding:'10px 14px',color:s.mom_value>=0?'#059669':'#d92d20'}}>{s.mom_value!==0?fmt$(s.mom_value):'—'}</td>
+                      <td style={{padding:'10px 14px',color:s.yoy_value!=null?(s.yoy_value>=0?'#059669':'#d92d20'):'#9ca3af'}}>
+                        {s.yoy_value!=null?fmt$(s.yoy_value):'—'}
+                        {s.yoy_value_pct!=null&&<span style={{fontSize:11,marginLeft:4}}>({fmtPct(s.yoy_value_pct)})</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Property comparison */}
+          {properties.length > 1 && (
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+              <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:14}}>Property Comparison</div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                  <thead>
+                    <tr style={{background:'#f9fafb'}}>
+                      {['Property','Est. Value','Equity','Monthly CF','NOI/yr','Cap Rate','CoC Return','Cash Invested'].map(h=>(
+                        <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px',whiteSpace:'nowrap'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {properties.map((p,i)=>{
+                      const val = parseFloat(p.zestimate||p.purchase_price||0);
+                      const rev = parseFloat(p.monthly_revenue||0);
+                      const exp = parseFloat(p.monthly_expenses||0);
+                      const cf = rev - exp;
+                      const noi = rev - parseFloat(p.property_tax||0) - parseFloat(p.insurance||0) - parseFloat(p.hoa||0);
+                      const cap = val > 0 ? (noi*12/val*100) : 0;
+                      const down = parseFloat(p.down_payment||0);
+                      const coc = down > 0 ? (cf*12/down*100) : 0;
+                      return (
+                        <tr key={i} style={{borderTop:'1px solid #f3f4f6',cursor:'pointer'}} onClick={()=>{setView('property');setSelProp(p);}}>
+                          <td style={{padding:'10px 14px',fontWeight:600}}>{p.name}</td>
+                          <td style={{padding:'10px 14px'}}>{fmt$(val)}</td>
+                          <td style={{padding:'10px 14px'}}>{fmt$(p.equity)}</td>
+                          <td style={{padding:'10px 14px',color:cf>=0?'#059669':'#d92d20',fontWeight:600}}>{fmt$(cf)}</td>
+                          <td style={{padding:'10px 14px'}}>{fmt$(noi*12)}</td>
+                          <td style={{padding:'10px 14px'}}>{cap.toFixed(2)}%</td>
+                          <td style={{padding:'10px 14px',color:coc>=0?'#059669':'#d92d20'}}>{coc.toFixed(2)}%</td>
+                          <td style={{padding:'10px 14px'}}>{fmt$(down)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Property drill-down view */}
+      {!loading && !noMonths && view==='property' && selProp && (
+        <PropertyPerformanceView prop={selProp} snapshots={propData?.snapshots||[]} fmt$={fmt$} fmtMo={fmtMo} fmtPct={fmtPct} accent={accent}/>
+      )}
+    </div>
+  );
+}
+
+// ── PROPERTY PERFORMANCE DRILL-DOWN ──────────────────────────────────────────
+function PropertyPerformanceView({prop, snapshots, fmt$, fmtMo, fmtPct, accent}) {
+  const val = parseFloat(prop.zestimate||prop.purchase_price||0);
+  const rev = parseFloat(prop.monthly_revenue||0);
+  const exp = parseFloat(prop.monthly_expenses||0);
+  const cf = rev - exp;
+  const noi = rev - parseFloat(prop.property_tax||0) - parseFloat(prop.insurance||0) - parseFloat(prop.hoa||0);
+  const cap = val > 0 ? (noi*12/val*100) : 0;
+  const down = parseFloat(prop.down_payment||0);
+  const coc = down > 0 ? (cf*12/down*100) : 0;
+  const equity = parseFloat(prop.equity||0);
+  const debt = val - equity;
+  const ltv = val > 0 ? (debt/val*100) : 0;
+
+  return (
+    <div>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:16}}>{prop.name}</div>
+      {/* Property KPIs */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginBottom:20}}>
+        {[
+          {label:'Est. Value', val:fmt$(val), color:'#111827'},
+          {label:'Equity', val:fmt$(equity), sub:ltv.toFixed(1)+'% LTV', color:'#1a56db'},
+          {label:'Monthly CF', val:fmt$(cf), color:cf>=0?'#059669':'#d92d20'},
+          {label:'Annual NOI', val:fmt$(noi*12), color:'#374151'},
+          {label:'Cap Rate', val:cap.toFixed(2)+'%', color:'#7c3aed'},
+          {label:'Cash-on-Cash', val:coc.toFixed(2)+'%', color:'#0891b2'},
+          {label:'Cash Invested', val:fmt$(down), color:'#374151'},
+          {label:'Annual Revenue', val:fmt$(rev*12), color:'#059669'},
+        ].map((k,i)=>(
+          <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:4}}>{k.label}</div>
+            <div style={{fontSize:20,fontWeight:700,color:k.color}}>{k.val}</div>
+            {k.sub&&<div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{k.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Monthly breakdown */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Monthly P&L Breakdown</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {[
+            {label:'Rental Income', val:rev, color:'#059669'},
+            {label:'Mortgage', val:-parseFloat(prop.mortgage||0), color:'#d92d20'},
+            {label:'Property Tax', val:-parseFloat(prop.property_tax||0), color:'#d92d20'},
+            {label:'Insurance', val:-parseFloat(prop.insurance||0), color:'#d92d20'},
+            {label:'HOA', val:-parseFloat(prop.hoa||0), color:'#d92d20'},
+          ].filter(r=>r.val!==0).map((r,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'#f9fafb',borderRadius:6}}>
+              <span style={{fontSize:13,color:'#374151'}}>{r.label}</span>
+              <span style={{fontSize:13,fontWeight:600,color:r.color}}>{r.val>=0?'+':''}{fmt$(r.val)}</span>
+            </div>
+          ))}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:cf>=0?'#f0fdf4':'#fef2f2',borderRadius:6,borderTop:'2px solid '+(cf>=0?'#bbf7d0':'#fecaca')}}>
+            <span style={{fontSize:13,fontWeight:700}}>Net Cash Flow</span>
+            <span style={{fontSize:15,fontWeight:700,color:cf>=0?'#059669':'#d92d20'}}>{cf>=0?'+':''}{fmt$(cf)}/mo</span>
+          </div>
+        </div>
+      </div>
+
+      {snapshots.length > 0 && (
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Historical Performance</div>
+          <MiniLineChart data={snapshots.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.net_cashflow)}))} color={accent} height={100}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CHART COMPONENTS ──────────────────────────────────────────────────────────
+function MiniBarChart({data, color='#1a56db', height=120}) {
+  if(!data||data.length===0) return null;
+  const vals = data.map(d=>d.value);
+  const max = Math.max(...vals.map(Math.abs)) || 1;
+  const barW = Math.max(4, Math.floor(280/data.length)-2);
+  return (
+    <div style={{display:'flex',alignItems:'flex-end',gap:2,height:height,position:'relative'}}>
+      <div style={{position:'absolute',top:'50%',left:0,right:0,height:1,background:'#e5e7eb'}}/>
+      {data.map((d,i)=>{
+        const isPos = d.value >= 0;
+        const h = Math.max(2, (Math.abs(d.value)/max)*(height/2));
+        return (
+          <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',flex:1,height:'100%',justifyContent:'center',position:'relative'}} title={d.label+': $'+Math.round(d.value).toLocaleString()}>
+            {isPos
+              ? <div style={{width:'100%',background:color,borderRadius:'2px 2px 0 0',height:h,marginTop:'auto',marginBottom:0,position:'absolute',bottom:'50%'}}/>
+              : <div style={{width:'100%',background:'#fca5a5',borderRadius:'0 0 2px 2px',height:h,position:'absolute',top:'50%'}}/>
+            }
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniLineChart({data, color='#1a56db', height=120}) {
+  if(!data||data.length<2) return null;
+  const vals = data.map(d=>d.value);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const range = max - min || 1;
+  const W = 280, H = height;
+  const pts = vals.map((v,i)=>`${(i/(vals.length-1))*W},${H-((v-min)/range)*H}`).join(' ');
+  const fillPts = `0,${H} ` + pts + ` ${W},${H}`;
+  const lastVal = vals[vals.length-1];
+  const firstVal = vals[0];
+  const up = lastVal >= firstVal;
+  return (
+    <div style={{position:'relative'}}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{display:'block'}}>
+        <defs>
+          <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon points={fillPts} fill={`url(#grad-${color})`}/>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+      </svg>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
+        <span style={{fontSize:10,color:'#9ca3af'}}>{data[0]?.label}</span>
+        <span style={{fontSize:11,fontWeight:700,color:up?'#059669':'#d92d20'}}>{up?'▲':'▼'} ${Math.abs(lastVal-firstVal).toLocaleString()}</span>
+        <span style={{fontSize:10,color:'#9ca3af'}}>{data[data.length-1]?.label}</span>
+      </div>
+    </div>
+  );
+}
+
+function MiniDualBar({data, height=120}) {
+  if(!data||data.length===0) return null;
+  const max = Math.max(...data.map(d=>Math.max(d.revenue,d.expenses))) || 1;
+  return (
+    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:height}}>
+      {data.map((d,i)=>(
+        <div key={i} style={{flex:1,display:'flex',gap:1,alignItems:'flex-end',height:'100%'}} title={d.label}>
+          <div style={{flex:1,background:'#34d399',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.revenue/max)*height)}}/>
+          <div style={{flex:1,background:'#fca5a5',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.expenses/max)*height)}}/>
+        </div>
+      ))}
     </div>
   );
 }
@@ -2600,6 +3053,182 @@ def refresh_property_values():
             return jsonify({'refreshed': len(refreshed), 'properties': refreshed})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ── PERFORMANCE TRACKING ──────────────────────────────────────────────────────
+def record_monthly_snapshot(user_id):
+    """Record a monthly snapshot of portfolio + each property performance"""
+    from datetime import date
+    today = date.today()
+    month_start = date(today.year, today.month, 1)
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Get all properties
+            cur.execute("SELECT * FROM properties WHERE user_id=%s", (user_id,))
+            props = cur.fetchall()
+            if not props:
+                cur.close(); return
+
+            total_value = sum(float(p.get('zestimate') or p.get('purchase_price') or 0) for p in props)
+            total_equity = sum(float(p.get('equity') or 0) for p in props)
+            total_debt = total_value - total_equity
+            gross_revenue = sum(float(p.get('monthly_revenue') or 0) for p in props)
+            total_expenses = sum(float(p.get('monthly_expenses') or 0) for p in props)
+            net_cashflow = gross_revenue - total_expenses
+            noi = gross_revenue - sum(
+                float(p.get('property_tax') or 0) + float(p.get('insurance') or 0) + float(p.get('hoa') or 0)
+                for p in props
+            )
+            avg_cap_rate = (noi * 12 / total_value) if total_value > 0 else 0
+            total_down = sum(float(p.get('down_payment') or 0) for p in props)
+            avg_coc = (net_cashflow * 12 / total_down) if total_down > 0 else 0
+
+            # Upsert portfolio snapshot
+            cur.execute("""
+                INSERT INTO monthly_snapshots
+                    (user_id, snapshot_month, total_value, total_equity, total_debt,
+                     gross_revenue, total_expenses, net_cashflow, noi, property_count,
+                     avg_cap_rate, avg_cash_on_cash)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (user_id, snapshot_month) DO UPDATE SET
+                    total_value=EXCLUDED.total_value, total_equity=EXCLUDED.total_equity,
+                    total_debt=EXCLUDED.total_debt, gross_revenue=EXCLUDED.gross_revenue,
+                    total_expenses=EXCLUDED.total_expenses, net_cashflow=EXCLUDED.net_cashflow,
+                    noi=EXCLUDED.noi, property_count=EXCLUDED.property_count,
+                    avg_cap_rate=EXCLUDED.avg_cap_rate, avg_cash_on_cash=EXCLUDED.avg_cash_on_cash
+            """, (user_id, month_start, total_value, total_equity, total_debt,
+                  gross_revenue, total_expenses, net_cashflow, noi, len(props),
+                  avg_cap_rate, avg_coc))
+
+            # Per-property snapshots
+            for p in props:
+                val = float(p.get('zestimate') or p.get('purchase_price') or 0)
+                eq = float(p.get('equity') or 0)
+                rev = float(p.get('monthly_revenue') or 0)
+                exp = float(p.get('monthly_expenses') or 0)
+                p_noi = rev - float(p.get('property_tax') or 0) - float(p.get('insurance') or 0) - float(p.get('hoa') or 0)
+                p_cap = (p_noi * 12 / val) if val > 0 else 0
+                p_down = float(p.get('down_payment') or 0)
+                p_coc = ((rev - exp) * 12 / p_down) if p_down > 0 else 0
+                cur.execute("""
+                    INSERT INTO property_snapshots
+                        (property_id, user_id, snapshot_month, estimated_value, equity,
+                         revenue, expenses, net_cashflow, noi, cap_rate, cash_on_cash)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (property_id, snapshot_month) DO UPDATE SET
+                        estimated_value=EXCLUDED.estimated_value, equity=EXCLUDED.equity,
+                        revenue=EXCLUDED.revenue, expenses=EXCLUDED.expenses,
+                        net_cashflow=EXCLUDED.net_cashflow, noi=EXCLUDED.noi,
+                        cap_rate=EXCLUDED.cap_rate, cash_on_cash=EXCLUDED.cash_on_cash
+                """, (p['id'], user_id, month_start, val, eq, rev, exp,
+                      rev-exp, p_noi, p_cap, p_coc))
+
+            conn.commit(); cur.close()
+    except Exception as e:
+        print(f'Snapshot error: {e}')
+
+
+@app.route('/api/performance/portfolio/<int:uid>')
+def get_portfolio_performance(uid):
+    """Get full portfolio performance history - MoM, YoY, trends"""
+    req_uid = session.get('user_id')
+    if not req_uid: return jsonify({'error': 'Not authenticated'}), 401
+    months = int(request.args.get('months', 24))
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT * FROM monthly_snapshots
+                WHERE user_id=%s
+                ORDER BY snapshot_month ASC
+                LIMIT %s
+            """, (uid, months))
+            snapshots = [dict(r) for r in cur.fetchall()]
+
+            # Calculate MoM and YoY changes
+            for i, s in enumerate(snapshots):
+                # MoM
+                if i > 0:
+                    prev = snapshots[i-1]
+                    s['mom_cashflow'] = float(s['net_cashflow']) - float(prev['net_cashflow'])
+                    s['mom_value'] = float(s['total_value']) - float(prev['total_value'])
+                    s['mom_equity'] = float(s['total_equity']) - float(prev['total_equity'])
+                else:
+                    s['mom_cashflow'] = 0; s['mom_value'] = 0; s['mom_equity'] = 0
+                # YoY
+                yoy = next((x for x in snapshots if
+                    x['snapshot_month'].year == s['snapshot_month'].year - 1 and
+                    x['snapshot_month'].month == s['snapshot_month'].month), None)
+                if yoy:
+                    s['yoy_cashflow'] = float(s['net_cashflow']) - float(yoy['net_cashflow'])
+                    s['yoy_value'] = float(s['total_value']) - float(yoy['total_value'])
+                    s['yoy_value_pct'] = ((float(s['total_value']) - float(yoy['total_value'])) / float(yoy['total_value']) * 100) if float(yoy['total_value']) > 0 else 0
+                else:
+                    s['yoy_cashflow'] = None; s['yoy_value'] = None; s['yoy_value_pct'] = None
+
+                # Convert dates to strings
+                s['snapshot_month'] = s['snapshot_month'].isoformat()
+
+            # Summary stats
+            if snapshots:
+                latest = snapshots[-1]
+                oldest = snapshots[0]
+                total_appreciation = float(latest['total_value']) - float(oldest['total_value'])
+                total_cashflow = sum(float(s['net_cashflow']) for s in snapshots)
+                summary = {
+                    'total_appreciation': total_appreciation,
+                    'total_cashflow_earned': total_cashflow,
+                    'total_return': total_appreciation + total_cashflow,
+                    'months_tracked': len(snapshots),
+                    'current_cap_rate': float(latest['avg_cap_rate']),
+                    'current_coc': float(latest['avg_cash_on_cash']),
+                    'best_cashflow_month': max(snapshots, key=lambda x: float(x['net_cashflow']))['snapshot_month'],
+                    'worst_cashflow_month': min(snapshots, key=lambda x: float(x['net_cashflow']))['snapshot_month'],
+                }
+            else:
+                summary = {}
+
+            cur.close()
+            return jsonify({'snapshots': snapshots, 'summary': summary})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/performance/property/<int:pid>')
+def get_property_performance(pid):
+    """Per-property performance history"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    months = int(request.args.get('months', 24))
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Verify ownership
+            cur.execute("SELECT user_id FROM properties WHERE id=%s", (pid,))
+            row = cur.fetchone()
+            if not row or row['user_id'] != uid:
+                return jsonify({'error': 'Not found'}), 404
+            cur.execute("""
+                SELECT * FROM property_snapshots
+                WHERE property_id=%s ORDER BY snapshot_month ASC LIMIT %s
+            """, (pid, months))
+            snaps = [dict(r) for r in cur.fetchall()]
+            for s in snaps:
+                s['snapshot_month'] = s['snapshot_month'].isoformat()
+            cur.close()
+            return jsonify({'snapshots': snaps})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/performance/snapshot', methods=['POST'])
+def take_snapshot():
+    """Manually trigger a snapshot"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    record_monthly_snapshot(uid)
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
