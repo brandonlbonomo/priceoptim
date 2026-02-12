@@ -42,6 +42,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/propertypi
 PLAID_CLIENT_ID = os.environ.get('PLAID_CLIENT_ID', '')
 PLAID_SECRET = os.environ.get('PLAID_SECRET', '')
 PLAID_ENV = os.environ.get('PLAID_ENV', 'sandbox')
+ATTOM_API_KEY = os.environ.get('ATTOM_API_KEY', '')
 
 @contextmanager
 def get_db():
@@ -95,9 +96,22 @@ def init_db():
         """)
         try:
             cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS zestimate DECIMAL(12,2) DEFAULT 0")
+        except Exception: pass
+        try:
             cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS zpid VARCHAR(50)")
-        except Exception:
-            pass
+        except Exception: pass
+        try:
+            cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS bedrooms INTEGER")
+        except Exception: pass
+        try:
+            cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS bathrooms DECIMAL(4,1)")
+        except Exception: pass
+        try:
+            cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS sqft INTEGER")
+        except Exception: pass
+        try:
+            cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS year_built INTEGER")
+        except Exception: pass
         cur.execute("""
             CREATE TABLE IF NOT EXISTS follows (
                 follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -869,6 +883,7 @@ function MainApp({user,setUser,onLogout}) {
   const [showAddProp,setShowAddProp]=useState(false);
   const [showPlaid,setShowPlaid]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
+  const [editProp,setEditProp]=useState(null);
 
   const accent=user?.accent_color||'#1a56db';
 
@@ -934,13 +949,14 @@ function MainApp({user,setUser,onLogout}) {
         </div>
       </div>
       <div className="content">
-        {tab==='portfolio'&&<PortfolioTab portfolio={portfolio} properties={properties} accent={accent} onAddProp={()=>setShowAddProp(true)} onConnectBank={()=>setShowPlaid(true)} onRefresh={loadAll}/>}
+        {tab==='portfolio'&&<PortfolioTab portfolio={portfolio} properties={properties} accent={accent} onAddProp={()=>setShowAddProp(true)} onConnectBank={()=>setShowPlaid(true)} onRefresh={loadAll} onEditProp={p=>setEditProp(p)}/>}
         {tab==='cashflow'&&<CashflowTab portfolio={portfolio} properties={properties}/>}
         {tab==='discover'&&<DiscoverTab users={users} following={following} accent={accent} onRefresh={loadAll}/>}
         {tab==='feed'&&<FeedTab feed={feed}/>}
         {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} accent={accent} onEdit={()=>setShowSettings(true)}/>}
       </div>
       {showAddProp&&<AddPropModal userId={user.id} onClose={()=>setShowAddProp(false)} onSave={()=>{setShowAddProp(false);loadAll();}}/>}
+      {editProp&&<EditPropModal prop={editProp} onClose={()=>setEditProp(null)} onSave={()=>{setEditProp(null);loadAll();}}/>}
       {showPlaid&&<PlaidModal onClose={()=>setShowPlaid(false)}/>}
       {showSettings&&<SettingsModal user={user} onClose={()=>setShowSettings(false)} onSave={u=>{setUser(u);setShowSettings(false);}}/>}
     </div>
@@ -948,7 +964,7 @@ function MainApp({user,setUser,onLogout}) {
 }
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
-function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRefresh}) {
+function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRefresh,onEditProp}) {
   const chartRef=useRef(null);const ci=useRef(null);const [tf,setTf]=useState('3M');
   useEffect(()=>{
     if(!chartRef.current)return;
@@ -1017,13 +1033,20 @@ function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRef
             <button className="btn btn-blue" onClick={onAddProp}>Add Property</button>
           </div>
         ):(properties||[]).map(p=>(
-          <div key={p.id} className="prow">
+          <div key={p.id} className="prow" style={{cursor:'pointer'}} onClick={()=>onEditProp(p)}>
             <div className="picon"><svg width="18" height="18" fill="none" stroke="#6b7280" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></div>
-            <div style={{flex:1}}><div className="pname">{p.name}</div><div className="ploc">{p.location}</div></div>
-            <div>
-              {p.zestimate>0&&<div className="pzest">Zestimate: {fmt$(p.zestimate)}</div>}
+            <div style={{flex:1}}>
+              <div className="pname">{p.name}</div>
+              <div className="ploc">{p.location}</div>
+              <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>
+                {[p.bedrooms&&p.bedrooms+'bd',p.bathrooms&&p.bathrooms+'ba',p.sqft&&p.sqft.toLocaleString()+'sqft'].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              {p.zestimate>0&&<div className="pzest">Est: {fmt$(p.zestimate)}</div>}
               <div className="pamount">{fmt$(p.purchase_price)}</div>
-              <div style={{fontSize:11,color:'#9ca3af',textAlign:'right'}}>{fmt$(p.monthly_revenue)}/mo revenue</div>
+              <div style={{fontSize:11,color:'#9ca3af'}}>{fmt$(p.monthly_revenue)}/mo</div>
+              <div style={{fontSize:11,color:'#3b82f6',marginTop:2}}>Edit →</div>
             </div>
           </div>
         ))}
@@ -1387,15 +1410,117 @@ function SettingsModal({user,onClose,onSave}) {
   );
 }
 
+
+// ── EDIT PROPERTY MODAL ───────────────────────────────────────────────────────
+function EditPropModal({prop,onClose,onSave}) {
+  const [f,setF]=useState({
+    name: prop.name||'',
+    location: prop.location||'',
+    purchase_price: prop.purchase_price||'',
+    down_payment: prop.down_payment||'',
+    zestimate: prop.zestimate||'',
+    mortgage: prop.mortgage||'',
+    insurance: prop.insurance||'',
+    hoa: prop.hoa||'',
+    property_tax: prop.property_tax||'',
+    monthly_revenue: prop.monthly_revenue||'',
+  });
+  const [saving,setSaving]=useState(false);
+  const [deleting,setDeleting]=useState(false);
+  const [confirmDelete,setConfirmDelete]=useState(false);
+  const [err,setErr]=useState('');
+
+  const save=async e=>{
+    e.preventDefault();setSaving(true);setErr('');
+    try{
+      const r=await fetch('/api/property/'+prop.id,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(f)});
+      const d=await r.json();
+      if(r.ok) onSave(); else setErr(d.error||'Save failed');
+    }catch(e){setErr('Network error');}
+    setSaving(false);
+  };
+
+  const remove=async()=>{
+    setDeleting(true);
+    try{
+      await fetch('/api/property/'+prop.id,{method:'DELETE',credentials:'include'});
+      onSave();
+    }catch(e){}
+    setDeleting(false);
+  };
+
+  const netCashflow=(parseFloat(f.monthly_revenue)||0)-(parseFloat(f.mortgage)||0)-(parseFloat(f.insurance)||0)-(parseFloat(f.hoa)||0)-(parseFloat(f.property_tax)||0);
+
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+          <div className="mtitle" style={{margin:0}}>Edit Property</div>
+          {!confirmDelete&&<button className="btn btn-danger btn-sm" onClick={()=>setConfirmDelete(true)}>Delete</button>}
+          {confirmDelete&&<div style={{display:'flex',gap:6,alignItems:'center'}}>
+            <span style={{fontSize:12,color:'#991b1b'}}>Sure?</span>
+            <button className="btn btn-danger btn-sm" onClick={remove} disabled={deleting}>{deleting?'Deleting...':'Yes, delete'}</button>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setConfirmDelete(false)}>Cancel</button>
+          </div>}
+        </div>
+        {err&&<div className="err-box">{err}</div>}
+
+        {/* Live cashflow preview */}
+        <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'10px 14px',marginBottom:16,display:'flex',gap:16}}>
+          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Monthly Net</div>
+            <div style={{fontSize:16,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{netCashflow>=0?'+':''}{fmt$(netCashflow)}</div></div>
+          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Annual</div>
+            <div style={{fontSize:16,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{fmt$(netCashflow*12)}</div></div>
+          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Est. Value</div>
+            <div style={{fontSize:16,fontWeight:700}}>{fmt$(parseFloat(f.zestimate)||parseFloat(f.purchase_price)||0)}</div></div>
+        </div>
+
+        <form onSubmit={save}>
+          <div className="frow">
+            <div className="field"><label>Property name</label><input value={f.name} onChange={e=>setF({...f,name:e.target.value})} required/></div>
+            <div className="field"><label>Location</label><input value={f.location} onChange={e=>setF({...f,location:e.target.value})}/></div>
+          </div>
+
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Value & Purchase</div>
+          <div className="frow">
+            <div className="field"><label>Purchase price</label><input type="number" value={f.purchase_price} onChange={e=>setF({...f,purchase_price:e.target.value})}/></div>
+            <div className="field"><label>Down payment</label><input type="number" value={f.down_payment} onChange={e=>setF({...f,down_payment:e.target.value})}/></div>
+          </div>
+          <div className="field"><label>Current estimated value</label><input type="number" value={f.zestimate} onChange={e=>setF({...f,zestimate:e.target.value})} placeholder="Check Zillow/Redfin/ATTOM"/></div>
+
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,marginTop:16,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Monthly Income & Expenses</div>
+          <div className="frow">
+            <div className="field"><label>Rental income</label><input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:e.target.value})}/></div>
+            <div className="field"><label>Mortgage</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:e.target.value})}/></div>
+          </div>
+          <div className="frow">
+            <div className="field"><label>Property tax /mo</label><input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:e.target.value})}/></div>
+            <div className="field"><label>Insurance /mo</label><input type="number" value={f.insurance} onChange={e=>setF({...f,insurance:e.target.value})}/></div>
+          </div>
+          <div className="field"><label>HOA /mo</label><input type="number" value={f.hoa} onChange={e=>setF({...f,hoa:e.target.value})}/></div>
+
+          <div className="mfoot">
+            <button type="button" style={{background:'var(--gray-100)',color:'var(--gray-700)'}} onClick={onClose}>Cancel</button>
+            <button type="submit" style={{background:'var(--blue)',color:'#fff'}} disabled={saving}>{saving?'Saving...':'Save changes'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── ADD PROPERTY MODAL (OpenStreetMap address autocomplete) ──────────────────
 function AddPropModal({userId,onClose,onSave}) {
   const [query,setQuery]=useState('');
   const [suggestions,setSuggestions]=useState([]);
   const [searching,setSearching]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
-  const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',zestimate:0,zpid:''});
+  const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',zestimate:0,zpid:'',bedrooms:'',bathrooms:'',sqft:'',year_built:''});
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState('');
+  const [propData,setPropData]=useState(null);
+  const [plaidIncome,setPlaidIncome]=useState(null);
+  const [scanning,setScanning]=useState(false);
 
   // Address autocomplete via OpenStreetMap Nominatim (free, no API key, no CORS)
   useEffect(()=>{
@@ -1416,14 +1541,55 @@ function AddPropModal({userId,onClose,onSave}) {
     return()=>clearTimeout(t);
   },[query,confirmed]);
 
-  const selectAddress=item=>{
+  const selectAddress=async item=>{
     const addr=item.display_name;
     const parts=addr.split(',');
     const streetName=parts[0]?.trim()||addr;
-    setQuery(addr);
+    // Build a clean address string
+    const cleanAddr=[parts[0],parts[1],parts[2]].filter(Boolean).join(',').trim();
+    setQuery(cleanAddr);
     setConfirmed(true);
     setSuggestions([]);
-    setF(prev=>({...prev,name:streetName,location:addr}));
+    setF(prev=>({...prev,name:streetName,location:cleanAddr}));
+    // Fetch property data
+    setSearching(true);
+    setPropData(null);
+    try{
+      const r=await fetch('/api/property/lookup?address='+encodeURIComponent(cleanAddr),{credentials:'include'});
+      const d=await r.json();
+      setPropData(d);
+      // Auto-populate all fields from ATTOM/Rentcast
+      setF(prev=>({
+        ...prev,
+        name: streetName,
+        location: cleanAddr,
+        purchase_price: d.estimated_value||prev.purchase_price||'',
+        zestimate: d.estimated_value||0,
+        property_tax: d.monthly_tax||prev.property_tax||'',
+        monthly_revenue: d.rent_estimate||prev.monthly_revenue||'',
+        bedrooms: d.bedrooms||prev.bedrooms||'',
+        bathrooms: d.bathrooms||prev.bathrooms||'',
+        sqft: d.sqft||prev.sqft||'',
+        year_built: d.year_built||prev.year_built||'',
+      }));
+    }catch(e){}
+    setSearching(false);
+  };
+
+  // Scan Plaid for rental income
+  const scanPlaidIncome=async()=>{
+    setScanning(true);
+    try{
+      const r=await fetch('/api/plaid/rental-income/'+userId,{credentials:'include'});
+      const d=await r.json();
+      if(d.income_estimate){
+        setF(prev=>({...prev,monthly_revenue:d.income_estimate}));
+        setPlaidIncome(d);
+      } else {
+        setPlaidIncome({message:d.message||'No recurring deposits found'});
+      }
+    }catch(e){}
+    setScanning(false);
   };
 
   const submit=async e=>{
@@ -1476,24 +1642,62 @@ function AddPropModal({userId,onClose,onSave}) {
             <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="My Houston Property" required/>
           </div>
 
+          {/* Property data card */}
+          {propData&&propData.source&&propData.source!=='manual'&&(
+            <div className="zprop-card">
+              <div style={{fontSize:12,fontWeight:700,color:'#065f46',marginBottom:8}}>Auto-populated from {propData.source}</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 16px'}}>
+                {propData.estimated_value&&<div className="zprop-row"><span className="zprop-label">Est. Value</span><span className="zprop-val">{fmt$(propData.estimated_value)}</span></div>}
+                {propData.assessed_value&&<div className="zprop-row"><span className="zprop-label">Assessed</span><span className="zprop-val">{fmt$(propData.assessed_value)}</span></div>}
+                {propData.monthly_tax&&<div className="zprop-row"><span className="zprop-label">Tax /mo</span><span className="zprop-val">{fmt$(propData.monthly_tax)}</span></div>}
+                {propData.annual_tax&&<div className="zprop-row"><span className="zprop-label">Annual Tax</span><span className="zprop-val">{fmt$(propData.annual_tax)}</span></div>}
+                {propData.bedrooms&&<div className="zprop-row"><span className="zprop-label">Beds</span><span className="zprop-val">{propData.bedrooms}</span></div>}
+                {propData.bathrooms&&<div className="zprop-row"><span className="zprop-label">Baths</span><span className="zprop-val">{propData.bathrooms}</span></div>}
+                {propData.sqft&&<div className="zprop-row"><span className="zprop-label">Sq Ft</span><span className="zprop-val">{propData.sqft?.toLocaleString()}</span></div>}
+                {propData.year_built&&<div className="zprop-row"><span className="zprop-label">Built</span><span className="zprop-val">{propData.year_built}</span></div>}
+                {propData.rent_estimate&&<div className="zprop-row"><span className="zprop-label">Rent Est.</span><span className="zprop-val" style={{color:'#059669'}}>{fmt$(propData.rent_estimate)}/mo</span></div>}
+              </div>
+            </div>
+          )}
+          {propData&&propData.source==='manual'&&(
+            <div className="warn-box" style={{marginBottom:12}}>
+              No property API key configured. Fields pre-filled where possible — add ATTOM_API_KEY to Render for full auto-population.
+            </div>
+          )}
+
           {/* Purchase info */}
           <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,marginTop:4,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Purchase Details</div>
           <div className="frow">
             <div className="field"><label>Purchase price</label><input type="number" value={f.purchase_price} onChange={e=>setF({...f,purchase_price:e.target.value})} placeholder="450000"/></div>
             <div className="field"><label>Down payment</label><input type="number" value={f.down_payment} onChange={e=>setF({...f,down_payment:e.target.value})} placeholder="90000"/></div>
           </div>
-          <div className="field"><label>Current estimated value <span style={{fontWeight:400,color:'#9ca3af',textTransform:'none'}}>(check Zillow/Redfin)</span></label>
+          <div className="field">
+            <label>Current estimated value</label>
             <input type="number" value={f.zestimate} onChange={e=>setF({...f,zestimate:e.target.value})} placeholder="500000"/>
+            {propData?.estimated_value&&<div style={{fontSize:11,color:'#059669',marginTop:3}}>Auto-filled from {propData.source}: {fmt$(propData.estimated_value)}</div>}
           </div>
 
           {/* Monthly income/expenses */}
           <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10,marginTop:16,paddingBottom:6,borderBottom:'1px solid #f3f4f6'}}>Monthly Financials</div>
-          <div className="frow">
-            <div className="field"><label>Rental income</label><input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:e.target.value})} placeholder="2500"/></div>
-            <div className="field"><label>Mortgage payment</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:e.target.value})} placeholder="1800"/></div>
+          <div className="field">
+            <label>Rental income</label>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <input type="number" value={f.monthly_revenue} onChange={e=>setF({...f,monthly_revenue:e.target.value})} placeholder="2500" style={{flex:1}}/>
+              <button type="button" className="btn btn-outline btn-sm" style={{whiteSpace:'nowrap'}} onClick={scanPlaidIncome} disabled={scanning}>
+                {scanning?'Scanning...':'Scan Plaid'}
+              </button>
+            </div>
+            {propData?.rent_estimate&&!plaidIncome&&<div style={{fontSize:11,color:'#059669',marginTop:3}}>Rent estimate: {fmt$(propData.rent_estimate)}/mo — {fmt$(propData.rent_estimate_low)}–{fmt$(propData.rent_estimate_high)} range</div>}
+            {plaidIncome?.income_estimate&&<div style={{fontSize:11,color:'#059669',marginTop:3}}>Found {fmt$(plaidIncome.income_estimate)}/mo from {plaidIncome.recurring_deposits?.length} recurring deposits</div>}
+            {plaidIncome?.message&&<div style={{fontSize:11,color:'#9ca3af',marginTop:3}}>{plaidIncome.message}</div>}
           </div>
+          <div className="field"><label>Mortgage payment</label><input type="number" value={f.mortgage} onChange={e=>setF({...f,mortgage:e.target.value})} placeholder="1800"/></div>
           <div className="frow">
-            <div className="field"><label>Property tax /mo</label><input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:e.target.value})} placeholder="400"/></div>
+            <div className="field">
+              <label>Property tax /mo</label>
+              <input type="number" value={f.property_tax} onChange={e=>setF({...f,property_tax:e.target.value})} placeholder="400"/>
+              {propData?.monthly_tax&&<div style={{fontSize:11,color:'#059669',marginTop:3}}>Auto-filled: {fmt$(propData.monthly_tax)}/mo</div>}
+            </div>
             <div className="field"><label>Insurance /mo</label><input type="number" value={f.insurance} onChange={e=>setF({...f,insurance:e.target.value})} placeholder="150"/></div>
           </div>
           <div className="field"><label>HOA /mo <span style={{fontWeight:400,color:'#9ca3af',textTransform:'none'}}>(if applicable)</span></label>
@@ -1797,6 +2001,56 @@ def get_portfolio(uid):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/property/<int:pid>', methods=['PUT'])
+def update_property(pid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    d = request.json
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Verify ownership
+            cur.execute("SELECT user_id FROM properties WHERE id=%s", (pid,))
+            row = cur.fetchone()
+            if not row or row['user_id'] != uid:
+                return jsonify({'error': 'Not found'}), 404
+            exp = (float(d.get('mortgage',0) or 0) + float(d.get('insurance',0) or 0) +
+                   float(d.get('hoa',0) or 0) + float(d.get('property_tax',0) or 0))
+            cur.execute("""UPDATE properties SET
+                name=%s, location=%s, purchase_price=%s, down_payment=%s,
+                zestimate=%s, mortgage=%s, insurance=%s, hoa=%s,
+                property_tax=%s, monthly_revenue=%s, monthly_expenses=%s
+                WHERE id=%s RETURNING *""",
+                (d.get('name'), d.get('location'), float(d.get('purchase_price',0) or 0),
+                 float(d.get('down_payment',0) or 0), float(d.get('zestimate',0) or 0),
+                 float(d.get('mortgage',0) or 0), float(d.get('insurance',0) or 0),
+                 float(d.get('hoa',0) or 0), float(d.get('property_tax',0) or 0),
+                 float(d.get('monthly_revenue',0) or 0), exp, pid))
+            prop = dict(cur.fetchone())
+            conn.commit(); cur.close()
+            update_metrics(uid)
+            return jsonify(prop)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/property/<int:pid>', methods=['DELETE'])
+def delete_property(pid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT user_id FROM properties WHERE id=%s", (pid,))
+            row = cur.fetchone()
+            if not row or row[0] != uid:
+                return jsonify({'error': 'Not found'}), 404
+            cur.execute("DELETE FROM properties WHERE id=%s", (pid,))
+            conn.commit(); cur.close()
+            update_metrics(uid)
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/properties/<int:uid>')
 def get_properties(uid):
     try:
@@ -1816,12 +2070,13 @@ def add_property(uid):
             cur = conn.cursor(cursor_factory=RealDictCursor)
             exp = d.get('mortgage',0) + d.get('insurance',0) + d.get('hoa',0) + d.get('property_tax',0)
             zest = d.get('zestimate', 0) or 0
-            cur.execute("""INSERT INTO properties(user_id,name,location,purchase_price,down_payment,equity,zestimate,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,zpid)
-                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *""",
+            cur.execute("""INSERT INTO properties(user_id,name,location,purchase_price,down_payment,equity,zestimate,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,zpid,bedrooms,bathrooms,sqft,year_built)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *""",
                 (uid, d['name'], d.get('location',''), d.get('purchase_price',0), d.get('down_payment',0),
                  max(zest, d.get('down_payment',0)), zest,
                  d.get('mortgage',0), d.get('insurance',0), d.get('hoa',0), d.get('property_tax',0),
-                 d.get('monthly_revenue',0), exp, d.get('zpid','')))
+                 d.get('monthly_revenue',0), exp, d.get('zpid',''),
+                 d.get('bedrooms'), d.get('bathrooms'), d.get('sqft'), d.get('year_built')))
             prop = dict(cur.fetchone())
             content_str = json.dumps({"text": f"Added a new property: {d['name']}", "highlight": str(d.get('location',''))})
             cur.execute("INSERT INTO feed_items(user_id,type,content) VALUES(%s,%s,%s::jsonb)", (uid, 'acquisition', content_str))
@@ -1831,98 +2086,189 @@ def add_property(uid):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ── ZILLOW ROUTES ─────────────────────────────────────────────────────────────
-@app.route('/api/zillow/search')
-def zillow_search():
+# ── PROPERTY DATA ROUTES ──────────────────────────────────────────────────────
+@app.route('/api/property/lookup')
+def property_lookup():
+    """
+    Multi-source property data lookup:
+    1. ATTOM Data API (if key set) - most complete: value, tax, beds/baths
+    2. Regrid API fallback (free, parcel data)
+    Returns estimated value, tax, assessed value, property details
+    """
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
     address = request.args.get('address', '')
-    if not address: return jsonify({'results': []})
-    try:
-        encoded = urllib.parse.quote(address)
-        # Try multiple Zillow autocomplete endpoints
-        urls = [
-            f'https://www.zillowstatic.com/autocomplete/v3/suggestions?q={encoded}&abKey=&clientId=homepage-render',
-            f'https://www.zillow.com/search/GetSearchPageState.htm?searchQueryState=%7B%22usersSearchTerm%22%3A%22{encoded}%22%7D',
-        ]
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': 'https://www.zillow.com/',
-            'Origin': 'https://www.zillow.com',
-            'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-        }
-        req = urllib.request.Request(urls[0], headers=headers)
-        resp = urllib.request.urlopen(req, timeout=8)
-        data = json.loads(resp.read())
-        results = []
-        for item in (data.get('results') or [])[:6]:
-            results.append({
-                'display': item.get('display',''),
-                'zpid': item.get('zpid',''),
-                'type': item.get('resultType','')
-            })
-        return jsonify({'results': results})
-    except Exception as e:
-        # Fallback: use Census geocoder to at least validate address
-        try:
-            encoded2 = urllib.parse.quote(address)
-            census_url = f'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address={encoded2}&benchmark=2020&format=json'
-            req2 = urllib.request.Request(census_url, headers={'User-Agent': 'PropertyPigeon/1.0'})
-            resp2 = urllib.request.urlopen(req2, timeout=5)
-            cdata = json.loads(resp2.read())
-            matches = cdata.get('result',{}).get('addressMatches',[])
-            results = []
-            for m in matches[:3]:
-                addr = m.get('matchedAddress','')
-                coords = m.get('coordinates',{})
-                results.append({
-                    'display': addr,
-                    'zpid': '',
-                    'type': 'address',
-                    'lat': coords.get('y'),
-                    'lon': coords.get('x')
-                })
-            return jsonify({'results': results})
-        except Exception as e2:
-            return jsonify({'results': [], 'error': str(e)+' | '+str(e2)})
+    if not address: return jsonify({'error': 'Address required'}), 400
 
-@app.route('/api/zillow/property')
-def zillow_property():
-    uid = session.get('user_id')
-    if not uid: return jsonify({'error': 'Not authenticated'}), 401
-    address = request.args.get('address', '')
+    result = {
+        'address': address,
+        'estimated_value': None,
+        'assessed_value': None,
+        'annual_tax': None,
+        'monthly_tax': None,
+        'bedrooms': None,
+        'bathrooms': None,
+        'sqft': None,
+        'year_built': None,
+        'property_type': None,
+        'source': None,
+        'error': None
+    }
+
+    # ── SOURCE 1: ATTOM Data API ──────────────────────────────────────────────
+    if ATTOM_API_KEY:
+        try:
+            encoded = urllib.parse.quote(address)
+            url = f'https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/address?address1={encoded}&zipcode='
+            req = urllib.request.Request(url, headers={
+                'Accept': 'application/json',
+                'apikey': ATTOM_API_KEY
+            })
+            resp = urllib.request.urlopen(req, timeout=8)
+            data = json.loads(resp.read())
+            props = data.get('property', [])
+            if props:
+                p = props[0]
+                # ATTOM nested structure varies - handle multiple possible paths
+                avm = p.get('avm', {})
+                assessment = p.get('assessment', {})
+                summary = p.get('summary', {})
+                building = p.get('building', {})
+                sale = p.get('sale', {})
+
+                # Estimated value — try AVM first, then sale amount
+                est_val = (avm.get('amount', {}).get('value') or
+                          avm.get('value') or
+                          sale.get('saleAmountData', {}).get('saleAmt'))
+
+                # Tax data
+                tax_data = assessment.get('tax', {})
+                assessed_data = assessment.get('assessed', {})
+                annual_tax = (tax_data.get('taxAmt') or
+                             tax_data.get('taxamt') or
+                             assessment.get('taxAmt'))
+                assessed_val = (assessed_data.get('totalValue') or
+                               assessed_data.get('assdTtlValue') or
+                               assessment.get('assdTtlValue'))
+
+                # Building details
+                rooms = building.get('rooms', {})
+                size = building.get('size', {})
+                beds = rooms.get('beds') or rooms.get('bedsNum') or summary.get('bedsNum')
+                baths = rooms.get('bathsFull') or rooms.get('bathsFullCalc') or summary.get('bathsFullCalc')
+                sqft = size.get('livingSize') or size.get('bldgSize') or summary.get('GLA')
+                yr = summary.get('yearBuilt') or building.get('construction', {}).get('yearBuilt')
+
+                result.update({
+                    'estimated_value': int(est_val) if est_val else None,
+                    'assessed_value': int(assessed_val) if assessed_val else None,
+                    'annual_tax': int(annual_tax) if annual_tax else None,
+                    'monthly_tax': round(int(annual_tax) / 12) if annual_tax else None,
+                    'bedrooms': beds,
+                    'bathrooms': baths,
+                    'sqft': sqft,
+                    'year_built': yr,
+                    'property_type': summary.get('propClass') or summary.get('propType'),
+                    'source': 'ATTOM',
+                    'raw': p  # include raw for debugging
+                })
+                return jsonify(result)
+        except Exception as e:
+            result['error'] = f'ATTOM: {str(e)}'
+
+    # ── SOURCE 2: Rentcast API (free tier - rental estimates) ─────────────────
+    RENTCAST_KEY = os.environ.get('RENTCAST_API_KEY', '')
+    if RENTCAST_KEY:
+        try:
+            encoded = urllib.parse.quote(address)
+            url = f'https://api.rentcast.io/v1/properties?address={encoded}&limit=1'
+            req = urllib.request.Request(url, headers={
+                'Accept': 'application/json',
+                'X-Api-Key': RENTCAST_KEY
+            })
+            resp = urllib.request.urlopen(req, timeout=8)
+            data = json.loads(resp.read())
+            if data and len(data) > 0:
+                p = data[0]
+                result.update({
+                    'estimated_value': p.get('price'),
+                    'bedrooms': p.get('bedrooms'),
+                    'bathrooms': p.get('bathrooms'),
+                    'sqft': p.get('squareFootage'),
+                    'year_built': p.get('yearBuilt'),
+                    'property_type': p.get('propertyType'),
+                    'source': 'Rentcast'
+                })
+                # Also get rent estimate
+                rent_url = f'https://api.rentcast.io/v1/avm/rent/long-term?address={encoded}'
+                rent_req = urllib.request.Request(rent_url, headers={'Accept': 'application/json', 'X-Api-Key': RENTCAST_KEY})
+                rent_resp = urllib.request.urlopen(rent_req, timeout=6)
+                rent_data = json.loads(rent_resp.read())
+                result['rent_estimate'] = rent_data.get('rent')
+                result['rent_estimate_low'] = rent_data.get('rentRangeLow')
+                result['rent_estimate_high'] = rent_data.get('rentRangeHigh')
+                return jsonify(result)
+        except Exception as e:
+            result['error'] = (result.get('error') or '') + f' | Rentcast: {str(e)}'
+
+    # ── SOURCE 3: No key configured ───────────────────────────────────────────
+    result['source'] = 'manual'
+    result['error'] = 'No property data API configured. Add ATTOM_API_KEY or RENTCAST_API_KEY to Render environment variables.'
+    return jsonify(result)
+
+
+@app.route('/api/plaid/rental-income/<int:uid>')
+def get_rental_income(uid):
+    """Scan Plaid transactions for recurring rental income deposits"""
+    req_uid = session.get('user_id')
+    if not req_uid or req_uid != uid:
+        return jsonify({'error': 'Not authenticated'}), 401
+    if not PLAID_CLIENT_ID:
+        return jsonify({'income_estimate': None, 'message': 'Plaid not configured'})
     try:
-        encoded_addr = urllib.parse.quote(address.replace(' ','-').replace(',','-').replace('--','-'))
-        url = f'https://www.zillow.com/homes/{encoded_addr}_rb/'
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-        })
-        resp = urllib.request.urlopen(req, timeout=8)
-        html = resp.read().decode('utf-8', errors='ignore')
-        zestimate = None
-        tax_annual = None
-        tax_assessed = None
-        m = re.search(r'"zestimate"\s*:\s*\{[^}]*"amount"\s*:\s*(\d+)', html)
-        if m: zestimate = int(m.group(1))
-        m2 = re.search(r'"taxAnnualAmount"\s*:\s*(\d+)', html)
-        if m2: tax_annual = int(m2.group(1))
-        m3 = re.search(r'"taxAssessedValue"\s*:\s*(\d+)', html)
-        if m3: tax_assessed = int(m3.group(1))
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT access_token FROM plaid_items WHERE user_id=%s LIMIT 1", (uid,))
+            item = cur.fetchone(); cur.close()
+            if not item:
+                return jsonify({'income_estimate': None, 'message': 'No bank connected'})
+        # Fetch transactions from last 90 days
+        from datetime import date, timedelta
+        end = date.today().isoformat()
+        start = (date.today() - timedelta(days=90)).isoformat()
+        env_url = 'https://sandbox.plaid.com' if PLAID_ENV == 'sandbox' else 'https://production.plaid.com'
+        payload = json.dumps({
+            'client_id': PLAID_CLIENT_ID, 'secret': PLAID_SECRET,
+            'access_token': item['access_token'],
+            'start_date': start, 'end_date': end,
+            'options': {'count': 500}
+        }).encode()
+        req = urllib.request.Request(env_url + '/transactions/get', data=payload, headers={'Content-Type': 'application/json'})
+        resp = urllib.request.urlopen(req)
+        data = json.loads(resp.read())
+        txns = data.get('transactions', [])
+        # Find likely rental income: positive deposits, recurring monthly, >$500
+        from collections import defaultdict
+        deposits = [t for t in txns if t.get('amount', 0) < -300]  # Plaid uses negative for income
+        # Group by approximate amount (within 10%) to find recurring
+        recurring = []
+        seen = set()
+        for d in deposits:
+            amt = abs(d['amount'])
+            key = round(amt / 50) * 50  # Round to nearest 50
+            if key not in seen:
+                count = sum(1 for x in deposits if abs(abs(x['amount']) - amt) < amt * 0.1)
+                if count >= 2:
+                    seen.add(key)
+                    recurring.append({'amount': round(amt), 'occurrences': count, 'name': d.get('name', '')})
+        total_monthly = sum(r['amount'] for r in recurring)
         return jsonify({
-            'address': address,
-            'zestimate': zestimate,
-            'taxAssessedValue': tax_assessed,
-            'taxAnnualAmount': tax_annual,
-            'monthlyTax': round(tax_annual / 12) if tax_annual else None,
+            'income_estimate': total_monthly,
+            'recurring_deposits': recurring,
+            'transactions_analyzed': len(txns)
         })
     except Exception as e:
-        return jsonify({'address': address, 'zestimate': None, 'error': str(e)})
+        return jsonify({'error': str(e), 'income_estimate': None})
 
 # ── PLAID ROUTES ──────────────────────────────────────────────────────────────
 @app.route('/api/plaid/create-link-token')
