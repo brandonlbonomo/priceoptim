@@ -935,9 +935,13 @@ function MainApp({user,setUser,onLogout}) {
   },[accent]);
 
   useEffect(()=>{
-    loadAll();
-    // Trigger background value refresh after initial load
-    setTimeout(refreshValues, 2000);
+    loadAll().then(()=>{
+      // Trigger background value refresh after initial load
+      fetch('/api/properties/refresh-values',{method:'POST',credentials:'include'})
+        .then(r=>r.json())
+        .then(d=>{ if(d.refreshed>0) loadAll(); })
+        .catch(()=>{});
+    });
   },[]);
 
   const loadAll=async()=>{
