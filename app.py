@@ -35,7 +35,22 @@ def _qr_svg(uri):
     return f'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={encoded}'
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+# SECRET_KEY must be set in Render env vars - if missing, sessions reset on every restart
+_secret = os.environ.get('SECRET_KEY')
+if not _secret:
+    print('WARNING: SECRET_KEY not set - sessions will not persist across restarts')
+    _secret = secrets.token_hex(32)
+app.secret_key = _secret
+
+# Session config - make sessions persist
+from datetime import timedelta
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+    SESSION_COOKIE_NAME='pp_session',
+)
 CORS(app, supports_credentials=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/propertypigeon')
@@ -292,6 +307,56 @@ li{font-size:15px;color:#374151;margin-bottom:6px;}
 .highlight p{margin:0;color:#1e40af;font-weight:500;}
 a{color:#1a56db;}
 footer{text-align:center;padding:40px 24px;color:#9ca3af;font-size:13px;border-top:1px solid #e5e7eb;margin-top:60px;}
+
+/* ── INTERACTIVITY & MICRO-INTERACTIONS ─────────────────────────────────────── */
+* { -webkit-tap-highlight-color: transparent; }
+
+.ni { transition: all .15s ease; cursor: pointer; }
+.ni:hover { background: var(--gray-100) !important; transform: translateX(3px); }
+.ni:active { transform: translateX(3px) scale(.98); }
+.ni.active { background: #eff6ff !important; }
+
+.prow { transition: all .15s ease; cursor: pointer; border-radius: 10px; }
+.prow:hover { background: #f8faff !important; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,219,.08); }
+.prow:active { transform: translateY(0) scale(.99); }
+
+button { transition: all .15s ease; }
+button:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+button:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: none; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.card-hover { transition: all .2s ease; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); border-color: #c7d7f9 !important; }
+
+input, select { transition: border-color .15s, box-shadow .15s; }
+input:focus, select:focus { outline: none; border-color: #1a56db !important; box-shadow: 0 0 0 3px rgba(26,86,219,.12); }
+
+.kpi-card { transition: all .2s ease; cursor: default; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08); border-color: #dbeafe !important; }
+
+tr { transition: background .12s; }
+tr:hover td { background: #f8faff; }
+
+.overlay { animation: fadeIn .15s ease; }
+.modal { animation: slideUp .2s cubic-bezier(.34,1.56,.64,1); }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes slideUp { from { opacity:0; transform: translateY(20px) scale(.97); } to { opacity:1; transform: translateY(0) scale(1); } }
+
+.tab-content { animation: fadeInUp .2s ease; }
+@keyframes fadeInUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+.btn { transition: all .15s ease; }
+.btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: scale(.97); }
+
+/* Pulse animation for connect bank banner */
+.connect-pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(26,86,219,.2); } 50% { box-shadow: 0 0 0 8px rgba(26,86,219,0); } }
+
+/* Skeleton loading */
+.skel { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
 </style>
 </head>
 <body>
@@ -927,6 +992,7 @@ function MainApp({user,setUser,onLogout}) {
   const [showPlaid,setShowPlaid]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
   const [editProp,setEditProp]=useState(null);
+  const [stockPortfolioValue,setStockPortfolioValue]=useState(0);
 
   const accent=user?.accent_color||'#1a56db';
 
@@ -966,6 +1032,9 @@ function MainApp({user,setUser,onLogout}) {
     {id:'portfolio',label:'Portfolio',path:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
     {id:'cashflow',label:'Cash flow',path:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
     {id:'performance',label:'Performance',path:'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z'},
+    {id:'projections',label:'Projections',path:'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'},
+    {id:'networth',label:'Net Worth',path:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 10v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
+    {id:'stocks',label:'Stocks',path:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
     {id:'discover',label:'Discover',path:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
     {id:'feed',label:'Feed',path:'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z'},
     {id:'profile',label:'Profile',path:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'},
@@ -1005,6 +1074,9 @@ function MainApp({user,setUser,onLogout}) {
       {tab==='performance'&&<PerformanceTab user={user} properties={properties} accent={accent}/>}
         {tab==='cashflow'&&<CashflowTab portfolio={portfolio} properties={properties}/>}
         {tab==='performance'&&<PerformanceTab user={user} properties={properties} accent={accent}/>}
+        {tab==='projections'&&<ProjectionsTab properties={properties} accent={accent}/>}
+        {tab==='networth'&&<NetWorthTab properties={properties} accent={accent} user={user} stockValue={stockPortfolioValue}/>}
+        {tab==='stocks'&&<StocksTab accent={accent} user={user} onValueChange={setStockPortfolioValue}/>}
         {tab==='discover'&&<DiscoverTab users={users} following={following} accent={accent} onRefresh={loadAll}/>}
         {tab==='feed'&&<FeedTab feed={feed}/>}
         {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} accent={accent} onEdit={()=>setShowSettings(true)}/>}
@@ -1118,7 +1190,7 @@ function PerformanceTab({user, properties, accent}) {
           {label:'Monthly Expenses',   val:fmt$(totalExpenses),  sub:'All costs combined',                  color:'#d92d20'},
           {label:'Cash Invested',      val:fmt$(totalDown),      sub:'Total down payments',                 color:'#6b7280'},
         ].map((k,i) => (
-          <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
+          <div key={i} className='kpi-card' style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
             <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:6}}>{k.label}</div>
             <div style={{fontSize:20,fontWeight:700,color:k.color,lineHeight:1.1}}>{k.val}</div>
             <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>{k.sub}</div>
@@ -1324,6 +1396,464 @@ function MiniDualBar({data, height}) {
         <span><span style={{display:'inline-block',width:8,height:8,background:'#34d399',borderRadius:2,marginRight:4}}/>Revenue</span>
         <span><span style={{display:'inline-block',width:8,height:8,background:'#fca5a5',borderRadius:2,marginRight:4}}/>Expenses</span>
       </div>
+    </div>
+  );
+}
+
+
+// ── PROJECTIONS TAB ───────────────────────────────────────────────────────────
+function ProjectionsTab({properties, accent}) {
+  const [years, setYears] = React.useState(30);
+  const [appRate, setAppRate] = React.useState(3.5);
+  const [rentGrowth, setRentGrowth] = React.useState(2.5);
+  const [expGrowth, setExpGrowth] = React.useState(2.0);
+  const [vacRate, setVacRate] = React.useState(5.0);
+
+  const fmt$ = n => {
+    const abs = Math.abs(n||0); const sign = (n||0)<0?'-':'';
+    if(abs>=1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
+    if(abs>=1000) return sign+'$'+(abs/1000).toFixed(1)+'K';
+    return sign+'$'+Math.round(abs).toLocaleString();
+  };
+
+  const totalValue = properties.reduce((s,p)=>s+parseFloat(p.zestimate||p.purchase_price||0),0);
+  const totalRevenue = properties.reduce((s,p)=>s+parseFloat(p.monthly_revenue||0),0);
+  const totalExpenses = properties.reduce((s,p)=>s+parseFloat(p.monthly_expenses||0),0);
+  const totalDown = properties.reduce((s,p)=>s+parseFloat(p.down_payment||0),0);
+  const totalDebt = totalValue - properties.reduce((s,p)=>s+parseFloat(p.equity||0),0);
+
+  // Build projection data year by year
+  const projections = React.useMemo(() => {
+    const rows = [];
+    let val = totalValue, rev = totalRevenue*12, exp = totalExpenses*12, debt = totalDebt;
+    let cumCF = 0, cumAppreciation = 0;
+    for(let y = 1; y <= years; y++) {
+      val = val * (1 + appRate/100);
+      rev = rev * (1 + rentGrowth/100);
+      exp = exp * (1 + expGrowth/100);
+      // Assume mortgage stays fixed (principal portion reduces debt)
+      const mortgagePayments = properties.reduce((s,p)=>s+parseFloat(p.mortgage||0)*12,0);
+      const principalPaid = mortgagePayments * 0.35 * Math.pow(1.02, y); // rough amortization
+      debt = Math.max(0, debt - principalPaid);
+      const equity = val - debt;
+      const effectiveRev = rev * (1 - vacRate/100);
+      const cf = effectiveRev - exp;
+      cumCF += cf;
+      cumAppreciation = val - totalValue;
+      const totalReturn = cumCF + cumAppreciation;
+      const coc = totalDown > 0 ? (cf/totalDown*100) : 0;
+      const capRate = val > 0 ? ((effectiveRev - (exp - mortgagePayments))/val*100) : 0;
+      rows.push({year:y, value:val, equity, debt, revenue:effectiveRev, expenses:exp, cf, cumCF, appreciation:cumAppreciation, totalReturn, coc, capRate});
+    }
+    return rows;
+  }, [years, appRate, rentGrowth, expGrowth, vacRate, totalValue, totalRevenue, totalExpenses, totalDown, totalDebt]);
+
+  const yr10 = projections[9];
+  const yr20 = projections[19];
+  const yr30 = projections[Math.min(29, projections.length-1)];
+
+  return (
+    <div className="tab-content">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
+        <div>
+          <h2 style={{fontSize:22,fontWeight:700,margin:0}}>30-Year Projections</h2>
+          <p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Long-term portfolio outlook based on your assumptions</p>
+        </div>
+      </div>
+
+      {/* Assumption sliders */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>Assumptions</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:20}}>
+          {[
+            {label:'Projection Years', val:years, set:setYears, min:5, max:40, step:5, suffix:'yr'},
+            {label:'Annual Appreciation', val:appRate, set:setAppRate, min:0, max:10, step:0.5, suffix:'%'},
+            {label:'Rent Growth /yr', val:rentGrowth, set:setRentGrowth, min:0, max:8, step:0.5, suffix:'%'},
+            {label:'Expense Growth /yr', val:expGrowth, set:setExpGrowth, min:0, max:6, step:0.5, suffix:'%'},
+            {label:'Vacancy Rate', val:vacRate, set:setVacRate, min:0, max:20, step:0.5, suffix:'%'},
+          ].map((s,i)=>(
+            <div key={i}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                <span style={{fontSize:12,fontWeight:600,color:'#374151'}}>{s.label}</span>
+                <span style={{fontSize:13,fontWeight:700,color:accent}}>{s.val}{s.suffix}</span>
+              </div>
+              <input type="range" min={s.min} max={s.max} step={s.step} value={s.val}
+                onChange={e=>s.set(parseFloat(e.target.value))}
+                style={{width:'100%',accentColor:accent,cursor:'pointer'}}/>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#9ca3af',marginTop:2}}>
+                <span>{s.min}{s.suffix}</span><span>{s.max}{s.suffix}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Milestone cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:20}}>
+        {[[10,yr10,'#1a56db'],[20,yr20,'#7c3aed'],[years,yr30,'#059669']].map(([y,d,c])=> d && (
+          <div key={y} className="card-hover" style={{background:'#fff',border:'2px solid '+c+'22',borderRadius:12,padding:20}}>
+            <div style={{fontSize:12,fontWeight:700,color:c,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:12}}>Year {y}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {[
+                {l:'Portfolio Value', v:fmt$(d.value)},
+                {l:'Total Equity', v:fmt$(d.equity)},
+                {l:'Annual Cash Flow', v:fmt$(d.cf), color:d.cf>=0?'#059669':'#d92d20'},
+                {l:'Cumulative Cash Flow', v:fmt$(d.cumCF), color:d.cumCF>=0?'#059669':'#d92d20'},
+                {l:'Appreciation', v:fmt$(d.appreciation), color:'#059669'},
+                {l:'Total Return', v:fmt$(d.totalReturn), color:d.totalReturn>=0?'#059669':'#d92d20'},
+                {l:'Cash-on-Cash', v:d.coc.toFixed(1)+'%'},
+              ].map((r,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:'1px solid #f3f4f6'}}>
+                  <span style={{fontSize:12,color:'#6b7280'}}>{r.l}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:r.color||'#111827'}}>{r.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Full table */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+        <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:15}}>Year-by-Year Breakdown</div>
+        <div style={{overflowX:'auto',maxHeight:420,overflowY:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead style={{position:'sticky',top:0,background:'#f9fafb',zIndex:1}}>
+              <tr>
+                {['Year','Portfolio Value','Equity','Debt','Annual Revenue','Annual CF','Cumulative CF','Appreciation','Total Return','Cap Rate'].map(h=>(
+                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',whiteSpace:'nowrap',letterSpacing:'.3px'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {projections.map((r,i)=>(
+                <tr key={i} style={{borderTop:'1px solid #f3f4f6',background:[5,10,15,20,25,30].includes(r.year)?'#fafbff':''}}>
+                  <td style={{padding:'9px 14px',fontWeight:[5,10,20,30].includes(r.year)?700:400}}>{r.year}</td>
+                  <td style={{padding:'9px 14px'}}>{fmt$(r.value)}</td>
+                  <td style={{padding:'9px 14px',color:'#1a56db'}}>{fmt$(r.equity)}</td>
+                  <td style={{padding:'9px 14px',color:'#6b7280'}}>{fmt$(r.debt)}</td>
+                  <td style={{padding:'9px 14px'}}>{fmt$(r.revenue)}</td>
+                  <td style={{padding:'9px 14px',fontWeight:600,color:r.cf>=0?'#059669':'#d92d20'}}>{fmt$(r.cf)}</td>
+                  <td style={{padding:'9px 14px',color:r.cumCF>=0?'#059669':'#d92d20'}}>{fmt$(r.cumCF)}</td>
+                  <td style={{padding:'9px 14px',color:'#059669'}}>{fmt$(r.appreciation)}</td>
+                  <td style={{padding:'9px 14px',fontWeight:600,color:r.totalReturn>=0?'#059669':'#d92d20'}}>{fmt$(r.totalReturn)}</td>
+                  <td style={{padding:'9px 14px'}}>{r.capRate.toFixed(2)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── NET WORTH TAB ─────────────────────────────────────────────────────────────
+function NetWorthTab(props) {
+  const {properties, accent, user} = props;
+  const [assets, setAssets] = React.useState([
+    {id:1, label:'Cash & Savings', value:'', category:'liquid'},
+    {id:2, label:'Checking Account', value:'', category:'liquid'},
+    {id:3, label:'Vehicle(s)', value:'', category:'personal'},
+    {id:4, label:'Other Assets', value:'', category:'other'},
+  ]);
+  const [liabilities, setLiabilities] = React.useState([
+    {id:1, label:'Car Loan', value:'', category:'personal'},
+    {id:2, label:'Credit Cards', value:'', category:'revolving'},
+    {id:3, label:'Student Loans', value:'', category:'installment'},
+    {id:4, label:'Other Debt', value:'', category:'other'},
+  ]);
+  const stockVal = props.stockValue || 0;
+  const fmt$ = n => {
+    const abs=Math.abs(n||0); const sign=(n||0)<0?'-':'';
+    if(abs>=1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
+    if(abs>=1000) return sign+'$'+(abs/1000).toFixed(1)+'K';
+    return sign+'$'+Math.round(abs).toLocaleString();
+  };
+
+  const realEstateValue = properties.reduce((s,p)=>s+parseFloat(p.zestimate||p.purchase_price||0),0);
+  const realEstateEquity = properties.reduce((s,p)=>s+parseFloat(p.equity||0),0);
+  const realEstateMortgages = properties.reduce((s,p)=>s+parseFloat(p.purchase_price||0)-parseFloat(p.equity||0),0);
+  const otherAssets = assets.reduce((s,a)=>s+parseFloat(a.value||0),0);
+  const otherLiabilities = liabilities.reduce((s,l)=>s+parseFloat(l.value||0),0);
+  const totalAssets = realEstateEquity + otherAssets + stockVal;
+  const totalLiabilities = otherLiabilities;
+  const netWorth = totalAssets - totalLiabilities;
+
+  const addRow = (setter, items, type) => {
+    setter([...items, {id:Date.now(), label:type==='asset'?'New Asset':'New Liability', value:'', category:'other'}]);
+  };
+  const updateRow = (setter, items, id, field, val) => {
+    setter(items.map(r=>r.id===id?{...r,[field]:val}:r));
+  };
+  const removeRow = (setter, items, id) => setter(items.filter(r=>r.id!==id));
+
+  const pct = (val, total) => total>0?(val/total*100).toFixed(1)+'%':'0%';
+
+  return (
+    <div className="tab-content">
+      <div style={{marginBottom:24}}>
+        <h2 style={{fontSize:22,fontWeight:700,margin:0}}>Net Worth</h2>
+        <p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Total assets minus total liabilities</p>
+      </div>
+
+      {/* Big number */}
+      <div style={{background: netWorth>=0?'linear-gradient(135deg,#1a56db,#1e40af)':'linear-gradient(135deg,#dc2626,#991b1b)', borderRadius:16,padding:28,marginBottom:24,color:'#fff',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:-20,right:-20,width:120,height:120,background:'rgba(255,255,255,.05)',borderRadius:'50%'}}/>
+        <div style={{position:'absolute',bottom:-30,left:60,width:80,height:80,background:'rgba(255,255,255,.05)',borderRadius:'50%'}}/>
+        <div style={{fontSize:12,fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',opacity:.8,marginBottom:8}}>Total Net Worth</div>
+        <div style={{fontSize:42,fontWeight:800,letterSpacing:'-1px'}}>{fmt$(netWorth)}</div>
+        <div style={{display:'flex',gap:24,marginTop:16,fontSize:13}}>
+          <div><div style={{opacity:.7}}>Total Assets</div><div style={{fontWeight:700,fontSize:18}}>{fmt$(totalAssets)}</div></div>
+          <div><div style={{opacity:.7}}>Total Liabilities</div><div style={{fontWeight:700,fontSize:18}}>-{fmt$(totalLiabilities)}</div></div>
+        </div>
+      </div>
+
+      {/* Asset breakdown */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:16,color:'#059669'}}>Assets</div>
+          {/* Real estate */}
+          <div style={{padding:'10px 12px',background:'#f0fdf4',borderRadius:8,marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontWeight:600,fontSize:13}}>Real Estate Equity</span>
+              <span style={{fontWeight:700,fontSize:13,color:'#059669'}}>{fmt$(realEstateEquity)}</span>
+            </div>
+            <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{pct(realEstateEquity,totalAssets)} of assets · {fmt$(realEstateValue)} total value</div>
+          </div>
+          {/* Stocks */}
+          {stockVal>0&&<div style={{padding:'10px 12px',background:'#eff6ff',borderRadius:8,marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontWeight:600,fontSize:13}}>Stock Portfolio</span>
+              <span style={{fontWeight:700,fontSize:13,color:'#1a56db'}}>{fmt$(stockVal)}</span>
+            </div>
+            <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{pct(stockVal,totalAssets)} of assets</div>
+          </div>}
+          {/* Other assets */}
+          {assets.map(a=>(
+            <div key={a.id} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
+              <input value={a.label} onChange={e=>updateRow(setAssets,assets,a.id,'label',e.target.value)}
+                style={{flex:2,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:12}}/>
+              <input type="number" value={a.value} onChange={e=>updateRow(setAssets,assets,a.id,'value',e.target.value)}
+                placeholder="0" style={{flex:1,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:12}}/>
+              <button onClick={()=>removeRow(setAssets,assets,a.id)} style={{padding:'4px 8px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:4,cursor:'pointer',fontSize:12}}>×</button>
+            </div>
+          ))}
+          <button onClick={()=>addRow(setAssets,assets,'asset')} style={{fontSize:12,color:accent,background:'none',border:'1px dashed '+accent,borderRadius:6,padding:'5px 12px',cursor:'pointer',marginTop:4}}>+ Add Asset</button>
+        </div>
+
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:16,color:'#d92d20'}}>Liabilities</div>
+          {/* Mortgages */}
+          <div style={{padding:'10px 12px',background:'#fef2f2',borderRadius:8,marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontWeight:600,fontSize:13}}>Mortgages</span>
+              <span style={{fontWeight:700,fontSize:13,color:'#d92d20'}}>-{fmt$(realEstateMortgages)}</span>
+            </div>
+            <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{properties.length} mortgage{properties.length!==1?'s':''}</div>
+          </div>
+          {liabilities.map(l=>(
+            <div key={l.id} style={{display:'flex',gap:8,marginBottom:6,alignItems:'center'}}>
+              <input value={l.label} onChange={e=>updateRow(setLiabilities,liabilities,l.id,'label',e.target.value)}
+                style={{flex:2,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:12}}/>
+              <input type="number" value={l.value} onChange={e=>updateRow(setLiabilities,liabilities,l.id,'value',e.target.value)}
+                placeholder="0" style={{flex:1,padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:12}}/>
+              <button onClick={()=>removeRow(setLiabilities,liabilities,l.id)} style={{padding:'4px 8px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:4,cursor:'pointer',fontSize:12}}>×</button>
+            </div>
+          ))}
+          <button onClick={()=>addRow(setLiabilities,liabilities,'liability')} style={{fontSize:12,color:'#d92d20',background:'none',border:'1px dashed #d92d20',borderRadius:6,padding:'5px 12px',cursor:'pointer',marginTop:4}}>+ Add Liability</button>
+        </div>
+      </div>
+
+      {/* Composition bar */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Asset Composition</div>
+        <div style={{display:'flex',borderRadius:8,overflow:'hidden',height:24,marginBottom:10}}>
+          {[
+            {val:realEstateEquity, color:'#1a56db', label:'Real Estate'},
+            {val:stockVal, color:'#7c3aed', label:'Stocks'},
+            {val:otherAssets, color:'#0891b2', label:'Other'},
+          ].filter(s=>s.val>0).map((s,i)=>(
+            <div key={i} title={s.label+': '+fmt$(s.val)} style={{flex:s.val,background:s.color,transition:'flex .3s ease'}}/>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+          {[
+            {label:'Real Estate', val:realEstateEquity, color:'#1a56db'},
+            {label:'Stocks', val:stockVal, color:'#7c3aed'},
+            {label:'Other', val:otherAssets, color:'#0891b2'},
+          ].filter(s=>s.val>0).map((s,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:12}}>
+              <div style={{width:10,height:10,background:s.color,borderRadius:2}}/>
+              <span style={{color:'#6b7280'}}>{s.label}</span>
+              <span style={{fontWeight:700}}>{fmt$(s.val)} ({pct(s.val,totalAssets)})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── STOCKS TAB ────────────────────────────────────────────────────────────────
+function StocksTab({accent, user, onValueChange}) {
+  const [holdings, setHoldings] = React.useState([]);
+  const [adding, setAdding] = React.useState(false);
+  const [form, setForm] = React.useState({ticker:'', shares:'', cost_basis:'', current_price:''});
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState('');
+
+  const fmt$ = n => {
+    const abs=Math.abs(n||0); const sign=(n||0)<0?'-':'';
+    if(abs>=1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
+    if(abs>=1000) return sign+'$'+(abs/1000).toFixed(1)+'K';
+    return sign+'$'+Math.round(abs).toLocaleString();
+  };
+  const fmtPct = n => (n>=0?'+':'')+n.toFixed(2)+'%';
+
+  const lookupPrice = async (ticker) => {
+    if(!ticker) return;
+    setLoading(true);
+    try {
+      const r = await fetch('/api/stocks/quote?ticker='+ticker.toUpperCase(), {credentials:'include'});
+      const d = await r.json();
+      if(d.price) setForm(f=>({...f, current_price: d.price}));
+    } catch(e) {}
+    setLoading(false);
+  };
+
+  const addHolding = () => {
+    if(!form.ticker || !form.shares) { setErr('Ticker and shares required'); return; }
+    const shares = parseFloat(form.shares);
+    const cost = parseFloat(form.cost_basis||0);
+    const price = parseFloat(form.current_price||cost);
+    const holding = {
+      id: Date.now(),
+      ticker: form.ticker.toUpperCase(),
+      shares, cost_basis: cost, current_price: price,
+      market_value: shares * price,
+      gain_loss: (price - cost) * shares,
+      gain_pct: cost > 0 ? ((price - cost) / cost * 100) : 0,
+    };
+    setHoldings(h=>[...h, holding]);
+    setForm({ticker:'', shares:'', cost_basis:'', current_price:''});
+    setAdding(false); setErr('');
+  };
+
+  const removeHolding = (id) => setHoldings(h=>h.filter(x=>x.id!==id));
+
+  const totalValue = holdings.reduce((s,h)=>s+h.market_value,0);
+  React.useEffect(()=>{ if(onValueChange) onValueChange(totalValue); },[totalValue]);
+  const totalCost = holdings.reduce((s,h)=>s+(h.cost_basis*h.shares),0);
+  const totalGL = holdings.reduce((s,h)=>s+h.gain_loss,0);
+  const totalPct = totalCost > 0 ? ((totalValue-totalCost)/totalCost*100) : 0;
+
+  return (
+    <div className="tab-content">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
+        <div>
+          <h2 style={{fontSize:22,fontWeight:700,margin:0}}>Stock Portfolio</h2>
+          <p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Track your equity holdings alongside real estate</p>
+        </div>
+        <button onClick={()=>setAdding(true)} style={{padding:'8px 18px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,fontSize:13,cursor:'pointer'}}>+ Add Holding</button>
+      </div>
+
+      {/* Schwab notice */}
+      <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:10,padding:'14px 18px',marginBottom:20,display:'flex',gap:12,alignItems:'center'}}>
+        <div style={{fontSize:20}}>🔗</div>
+        <div>
+          <div style={{fontWeight:600,fontSize:13}}>Schwab / Brokerage Integration</div>
+          <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>Direct brokerage connections via OAuth are coming. For now, manually add your holdings below — they factor into your Net Worth automatically.</div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      {holdings.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+          {[
+            {label:'Portfolio Value', val:fmt$(totalValue), color:'#111827'},
+            {label:'Total Cost Basis', val:fmt$(totalCost), color:'#6b7280'},
+            {label:'Total Gain/Loss', val:fmt$(totalGL), color:totalGL>=0?'#059669':'#d92d20'},
+            {label:'Total Return', val:fmtPct(totalPct), color:totalPct>=0?'#059669':'#d92d20'},
+          ].map((k,i)=>(
+            <div key={i} className="kpi-card" style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:6}}>{k.label}</div>
+              <div style={{fontSize:20,fontWeight:700,color:k.color}}>{k.val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add form */}
+      {adding && (
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Add Holding</div>
+          {err&&<div style={{color:'#d92d20',fontSize:12,marginBottom:10}}>{err}</div>}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10,marginBottom:12}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',display:'block',marginBottom:4}}>Ticker</label>
+              <input value={form.ticker} onChange={e=>setForm(f=>({...f,ticker:e.target.value.toUpperCase()}))}
+                onBlur={e=>lookupPrice(e.target.value)} placeholder="AAPL"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',display:'block',marginBottom:4}}>Shares</label>
+              <input type="number" value={form.shares} onChange={e=>setForm(f=>({...f,shares:e.target.value}))} placeholder="10"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',display:'block',marginBottom:4}}>Avg Cost</label>
+              <input type="number" value={form.cost_basis} onChange={e=>setForm(f=>({...f,cost_basis:e.target.value}))} placeholder="150.00"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',display:'block',marginBottom:4}}>Current Price {loading&&'...'}</label>
+              <input type="number" value={form.current_price} onChange={e=>setForm(f=>({...f,current_price:e.target.value}))} placeholder="Auto-filled"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,boxSizing:'border-box'}}/>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={addHolding} style={{padding:'8px 20px',background:accent,color:'#fff',border:'none',borderRadius:7,fontWeight:600,fontSize:13,cursor:'pointer'}}>Add</button>
+            <button onClick={()=>{setAdding(false);setErr('');}} style={{padding:'8px 16px',background:'#f3f4f6',color:'#374151',border:'none',borderRadius:7,fontSize:13,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Holdings table */}
+      {holdings.length === 0 ? (
+        <div style={{textAlign:'center',padding:60,background:'#f9fafb',borderRadius:12,border:'1px dashed #d1d5db'}}>
+          <div style={{fontSize:36,marginBottom:10}}>📊</div>
+          <div style={{fontWeight:600,fontSize:16,marginBottom:6}}>No holdings yet</div>
+          <p style={{fontSize:13,color:'#6b7280',maxWidth:300,margin:'0 auto 20px'}}>Add your stocks manually and they'll automatically factor into your Net Worth.</p>
+          <button onClick={()=>setAdding(true)} style={{padding:'9px 22px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,cursor:'pointer'}}>Add First Holding</button>
+        </div>
+      ) : (
+        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead>
+              <tr style={{background:'#f9fafb'}}>
+                {['Ticker','Shares','Avg Cost','Current Price','Market Value','Gain/Loss','Return',''].map(h=>(
+                  <th key={h} style={{padding:'10px 16px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {holdings.map((h,i)=>(
+                <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
+                  <td style={{padding:'11px 16px',fontWeight:700,color:accent}}>{h.ticker}</td>
+                  <td style={{padding:'11px 16px'}}>{h.shares}</td>
+                  <td style={{padding:'11px 16px'}}>${h.cost_basis.toFixed(2)}</td>
+                  <td style={{padding:'11px 16px'}}>${h.current_price.toFixed(2)}</td>
+                  <td style={{padding:'11px 16px',fontWeight:600}}>{fmt$(h.market_value)}</td>
+                  <td style={{padding:'11px 16px',color:h.gain_loss>=0?'#059669':'#d92d20',fontWeight:600}}>{fmt$(h.gain_loss)}</td>
+                  <td style={{padding:'11px 16px',color:h.gain_pct>=0?'#059669':'#d92d20'}}>{fmtPct(h.gain_pct)}</td>
+                  <td style={{padding:'11px 16px'}}><button onClick={()=>removeHolding(h.id)} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:16}}>×</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -2226,6 +2756,7 @@ def signup():
                 (d['username'], d['email'], hash_password(d['password']), d.get('full_name',''), d['portfolio_name'], ticker))
             u = dict(cur.fetchone())
             conn.commit(); cur.close()
+            session.permanent = True
             session['user_id'] = u['id']
             update_metrics(u['id'])
             return jsonify({'user': u})
@@ -3141,6 +3672,30 @@ def take_snapshot():
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
     record_monthly_snapshot(uid)
     return jsonify({'success': True})
+
+
+@app.route('/api/stocks/quote')
+def stock_quote():
+    """Fetch current stock price from Yahoo Finance (no API key needed)"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    ticker = request.args.get('ticker', '').upper()
+    if not ticker: return jsonify({'error': 'Ticker required'}), 400
+    try:
+        url = f'https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d'
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0',
+            'Accept': 'application/json'
+        })
+        resp = urllib.request.urlopen(req, timeout=6)
+        data = json.loads(resp.read())
+        meta = data.get('chart', {}).get('result', [{}])[0].get('meta', {})
+        price = meta.get('regularMarketPrice') or meta.get('previousClose')
+        prev_close = meta.get('previousClose', price)
+        change = ((price - prev_close) / prev_close * 100) if prev_close else 0
+        return jsonify({'ticker': ticker, 'price': price, 'change_pct': change, 'prev_close': prev_close})
+    except Exception as e:
+        return jsonify({'error': str(e), 'price': None})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
