@@ -1018,30 +1018,31 @@ function MainApp({user,setUser,onLogout}) {
 }
 
 
+
 // ── PERFORMANCE TAB ───────────────────────────────────────────────────────────
 function PerformanceTab({user, properties, accent}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState(12); // months
-  const [view, setView] = useState('portfolio'); // portfolio | property
-  const [selProp, setSelProp] = useState(null);
-  const [propData, setPropData] = useState(null);
+  const [range, setRange] = useState(12);
   const [snapping, setSnapping] = useState(false);
 
   const fmt$ = n => {
     const abs = Math.abs(n||0);
-    const sign = n < 0 ? '-' : '';
+    const sign = (n||0) < 0 ? '-' : '';
     if(abs >= 1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
     if(abs >= 1000) return sign+'$'+(abs/1000).toFixed(1)+'K';
     return sign+'$'+Math.round(abs).toLocaleString();
   };
-  const fmtPct = n => (n >= 0 ? '+' : '') + (n||0).toFixed(2) + '%';
-  const fmtMo = iso => { if(!iso) return ''; const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}); };
+  const fmtPct = n => ((n||0) >= 0 ? '+' : '') + (n||0).toFixed(2) + '%';
+  const fmtMo = iso => {
+    if(!iso) return '';
+    const d = new Date(iso+'T00:00:00');
+    return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+  };
 
-  useEffect(() => { loadPortfolio(); }, [range]);
-  useEffect(() => { if(selProp) loadProperty(selProp.id); }, [selProp]);
+  useEffect(() => { loadData(); }, [range]);
 
-  const loadPortfolio = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
       const r = await fetch('/api/performance/portfolio/'+user.id+'?months='+range, {credentials:'include'});
@@ -1051,181 +1052,187 @@ function PerformanceTab({user, properties, accent}) {
     setLoading(false);
   };
 
-  const loadProperty = async (pid) => {
-    try {
-      const r = await fetch('/api/performance/property/'+pid+'?months='+range, {credentials:'include'});
-      const d = await r.json();
-      setPropData(d);
-    } catch(e) {}
-  };
-
   const takeSnapshot = async () => {
     setSnapping(true);
     await fetch('/api/performance/snapshot', {method:'POST', credentials:'include'});
-    await loadPortfolio();
+    await loadData();
     setSnapping(false);
   };
 
-  // Draw sparkline SVG
-  const Sparkline = ({values, color='#1a56db', height=40, width=120}) => {
-    if(!values || values.length < 2) return null;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const pts = values.map((v,i) => {
-      const x = (i/(values.length-1))*width;
-      const y = height - ((v-min)/range)*height;
-      return `${x},${y}`;
-    }).join(' ');
-    return (
-      <svg width={width} height={height} style={{overflow:'visible'}}>
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-      </svg>
-    );
-  };
-
-  const snaps = data?.snapshots || [];
-  const summary = data?.summary || {};
+  const snaps = (data && data.snapshots) || [];
+  const summary = (data && data.summary) || {};
   const latest = snaps[snaps.length-1];
   const prev = snaps[snaps.length-2];
+  const noData = snaps.length === 0;
 
-  // Chart data
-  const cashflowVals = snaps.map(s => parseFloat(s.net_cashflow));
-  const valueVals = snaps.map(s => parseFloat(s.total_value));
-  const equityVals = snaps.map(s => parseFloat(s.total_equity));
-  const noMonths = snaps.length === 0;
+  // Current portfolio stats from live property data
+  const totalValue = properties.reduce((s,p) => s + parseFloat(p.zestimate||p.purchase_price||0), 0);
+  const totalEquity = properties.reduce((s,p) => s + parseFloat(p.equity||0), 0);
+  const totalRevenue = properties.reduce((s,p) => s + parseFloat(p.monthly_revenue||0), 0);
+  const totalExpenses = properties.reduce((s,p) => s + parseFloat(p.monthly_expenses||0), 0);
+  const totalCF = totalRevenue - totalExpenses;
+  const totalNOI = properties.reduce((s,p) => s + parseFloat(p.monthly_revenue||0) - parseFloat(p.property_tax||0) - parseFloat(p.insurance||0) - parseFloat(p.hoa||0), 0);
+  const totalDown = properties.reduce((s,p) => s + parseFloat(p.down_payment||0), 0);
+  const totalDebt = totalValue - totalEquity;
+  const ltv = totalValue > 0 ? (totalDebt / totalValue * 100) : 0;
+  const capRate = totalValue > 0 ? (totalNOI * 12 / totalValue * 100) : 0;
+  const coc = totalDown > 0 ? (totalCF * 12 / totalDown * 100) : 0;
+  const grossYield = totalValue > 0 ? (totalRevenue * 12 / totalValue * 100) : 0;
 
   return (
     <div className="tab-content">
+
       {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
         <div>
-          <h2 style={{fontSize:20,fontWeight:700,margin:0}}>Performance</h2>
-          <p style={{fontSize:13,color:'#6b7280',margin:0,marginTop:2}}>Portfolio analytics & trends</p>
+          <h2 style={{fontSize:22,fontWeight:700,margin:0}}>Portfolio Performance</h2>
+          <p style={{fontSize:13,color:'#6b7280',margin:'2px 0 0'}}>Total portfolio · {properties.length} {properties.length===1?'property':'properties'}</p>
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          {/* Range selector */}
           <div style={{display:'flex',background:'#f3f4f6',borderRadius:8,padding:2}}>
             {[6,12,24].map(m=>(
-              <button key={m} onClick={()=>setRange(m)} style={{
-                padding:'4px 10px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,
-                background:range===m?'#fff':'transparent',
-                color:range===m?'#111827':'#6b7280',
-                boxShadow:range===m?'0 1px 3px rgba(0,0,0,.1)':''
-              }}>{m}M</button>
+              <button key={m} onClick={()=>setRange(m)} style={{padding:'4px 12px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:range===m?'#fff':'transparent',color:range===m?'#111827':'#6b7280',boxShadow:range===m?'0 1px 3px rgba(0,0,0,.1)':''}}>
+                {m}M
+              </button>
             ))}
           </div>
-          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'6px 12px',background:accent,color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
-            {snapping?'Saving...':'Snapshot'}
+          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'7px 16px',background:accent,color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+            {snapping ? 'Saving...' : 'Save Snapshot'}
           </button>
         </div>
       </div>
 
-      {/* View toggle */}
-      <div style={{display:'flex',gap:4,marginBottom:20,background:'#f3f4f6',borderRadius:8,padding:2,width:'fit-content'}}>
-        <button onClick={()=>{setView('portfolio');setSelProp(null);}} style={{padding:'6px 16px',borderRadius:6,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,background:view==='portfolio'?'#fff':'transparent',color:view==='portfolio'?'#111827':'#6b7280'}}>Portfolio</button>
-        {properties.map(p=>(
-          <button key={p.id} onClick={()=>{setView('property');setSelProp(p);}} style={{padding:'6px 16px',borderRadius:6,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,background:(view==='property'&&selProp?.id===p.id)?'#fff':'transparent',color:(view==='property'&&selProp?.id===p.id)?'#111827':'#6b7280',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-            {p.name?.split(' ')[0]||'Property'}
-          </button>
+      {/* Live KPI Grid - always visible from current property data */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
+        {[
+          {label:'Portfolio Value',    val:fmt$(totalValue),     sub:properties.length+' properties',       color:'#111827'},
+          {label:'Total Equity',       val:fmt$(totalEquity),    sub:ltv.toFixed(1)+'% LTV',                color:'#1a56db'},
+          {label:'Monthly Cash Flow',  val:fmt$(totalCF),        sub:totalCF>=0?'Positive':'Negative',      color:totalCF>=0?'#059669':'#d92d20'},
+          {label:'Annual Cash Flow',   val:fmt$(totalCF*12),     sub:'Net after all expenses',              color:totalCF>=0?'#059669':'#d92d20'},
+          {label:'Monthly NOI',        val:fmt$(totalNOI),       sub:'Before debt service',                 color:'#374151'},
+          {label:'Annual NOI',         val:fmt$(totalNOI*12),    sub:'Net operating income',                color:'#374151'},
+          {label:'Cap Rate',           val:capRate.toFixed(2)+'%', sub:'NOI / Portfolio value',             color:'#7c3aed'},
+          {label:'Cash-on-Cash',       val:coc.toFixed(2)+'%',  sub:'Annual CF / Cash invested',           color:'#0891b2'},
+          {label:'Gross Yield',        val:grossYield.toFixed(2)+'%', sub:'Annual rent / Value',            color:'#059669'},
+          {label:'Monthly Revenue',    val:fmt$(totalRevenue),   sub:'Gross rental income',                 color:'#059669'},
+          {label:'Monthly Expenses',   val:fmt$(totalExpenses),  sub:'All costs combined',                  color:'#d92d20'},
+          {label:'Cash Invested',      val:fmt$(totalDown),      sub:'Total down payments',                 color:'#6b7280'},
+        ].map((k,i) => (
+          <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:6}}>{k.label}</div>
+            <div style={{fontSize:20,fontWeight:700,color:k.color,lineHeight:1.1}}>{k.val}</div>
+            <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>{k.sub}</div>
+          </div>
         ))}
       </div>
 
-      {loading && <div style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Loading performance data...</div>}
+      {/* Monthly P&L breakdown */}
+      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>Monthly P&L Breakdown</div>
+        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+          <div style={{display:'flex',justifyContent:'space-between',padding:'10px 14px',background:'#f0fdf4',borderRadius:8}}>
+            <span style={{fontWeight:600,color:'#065f46'}}>Rental Income</span>
+            <span style={{fontWeight:700,color:'#059669',fontSize:15}}>{fmt$(totalRevenue)}/mo</span>
+          </div>
+          {[
+            {label:'Mortgage Payments', val: properties.reduce((s,p)=>s+parseFloat(p.mortgage||0),0)},
+            {label:'Property Taxes',    val: properties.reduce((s,p)=>s+parseFloat(p.property_tax||0),0)},
+            {label:'Insurance',         val: properties.reduce((s,p)=>s+parseFloat(p.insurance||0),0)},
+            {label:'HOA Fees',          val: properties.reduce((s,p)=>s+parseFloat(p.hoa||0),0)},
+          ].filter(r => r.val > 0).map((r,i) => (
+            <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'10px 14px',background:'#f9fafb',borderRadius:8}}>
+              <span style={{color:'#374151'}}>{r.label}</span>
+              <span style={{fontWeight:600,color:'#d92d20'}}>-{fmt$(r.val)}/mo</span>
+            </div>
+          ))}
+          <div style={{display:'flex',justifyContent:'space-between',padding:'12px 14px',background:totalCF>=0?'#f0fdf4':'#fef2f2',borderRadius:8,borderTop:'2px solid '+(totalCF>=0?'#86efac':'#fca5a5'),marginTop:4}}>
+            <span style={{fontWeight:700,fontSize:15}}>Net Cash Flow</span>
+            <span style={{fontWeight:700,fontSize:18,color:totalCF>=0?'#059669':'#d92d20'}}>{totalCF>=0?'+':''}{fmt$(totalCF)}/mo</span>
+          </div>
+        </div>
+      </div>
 
-      {!loading && noMonths && (
-        <div style={{textAlign:'center',padding:60,background:'#f9fafb',borderRadius:12,border:'1px dashed #e5e7eb'}}>
-          <div style={{fontSize:32,marginBottom:8}}>📈</div>
-          <div style={{fontWeight:600,marginBottom:4}}>No history yet</div>
-          <p style={{fontSize:13,color:'#6b7280',marginBottom:16}}>Click "Snapshot" to record your first data point. The app will automatically save a snapshot each time you add or update a property.</p>
-          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'8px 20px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,cursor:'pointer'}}>
-            {snapping?'Saving...':'Record First Snapshot'}
+      {/* Historical section */}
+      {noData ? (
+        <div style={{textAlign:'center',padding:48,background:'#f9fafb',borderRadius:12,border:'1px dashed #d1d5db'}}>
+          <div style={{fontSize:36,marginBottom:10}}>📈</div>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>No historical data yet</div>
+          <p style={{fontSize:13,color:'#6b7280',maxWidth:340,margin:'0 auto 20px'}}>
+            Click "Save Snapshot" to record today\'s numbers. Come back next month and you\'ll see MoM trends, charts, and YoY performance automatically.
+          </p>
+          <button onClick={takeSnapshot} disabled={snapping} style={{padding:'10px 24px',background:accent,color:'#fff',border:'none',borderRadius:8,fontWeight:600,fontSize:14,cursor:'pointer'}}>
+            {snapping ? 'Saving...' : 'Save First Snapshot'}
           </button>
         </div>
-      )}
-
-      {!loading && !noMonths && view==='portfolio' && (
+      ) : (
         <>
-          {/* KPI Cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
+          {/* Trend summary cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
             {[
-              {label:'Portfolio Value', val:fmt$(latest?.total_value), sub:latest?.yoy_value_pct!=null?fmtPct(latest.yoy_value_pct)+' YoY':null, color: latest?.yoy_value_pct>=0?'#059669':'#d92d20'},
-              {label:'Total Equity', val:fmt$(latest?.total_equity), sub:prev?fmt$(parseFloat(latest.total_equity)-parseFloat(prev.total_equity))+' MoM':null, color:'#1a56db'},
-              {label:'Monthly Cash Flow', val:fmt$(latest?.net_cashflow), sub:latest?.mom_cashflow?fmt$(latest.mom_cashflow)+' vs last mo':null, color:parseFloat(latest?.net_cashflow||0)>=0?'#059669':'#d92d20'},
-              {label:'Monthly NOI', val:fmt$(latest?.noi), sub:'Before debt service', color:'#374151'},
-              {label:'Cap Rate', val:((parseFloat(latest?.avg_cap_rate||0))*100).toFixed(2)+'%', sub:'Net / Value', color:'#7c3aed'},
-              {label:'Cash-on-Cash', val:((parseFloat(latest?.avg_cash_on_cash||0))*100).toFixed(2)+'%', sub:'Annual / Invested', color:'#0891b2'},
-              {label:'Total Appreciation', val:fmt$(summary.total_appreciation), sub:snaps.length+' months tracked', color:summary.total_appreciation>=0?'#059669':'#d92d20'},
-              {label:'Total Return', val:fmt$(summary.total_return), sub:'Appreciation + Cash flow', color:'#111827'},
-            ].map((k,i)=>(
-              <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:4}}>{k.label}</div>
-                <div style={{fontSize:22,fontWeight:700,color:k.color,lineHeight:1.1}}>{k.val}</div>
-                {k.sub&&<div style={{fontSize:11,color:'#6b7280',marginTop:3}}>{k.sub}</div>}
+              {label:'Total Appreciation', val:fmt$(summary.total_appreciation||0), sub:'Value change since first snapshot', color:(summary.total_appreciation||0)>=0?'#059669':'#d92d20'},
+              {label:'Total Cash Flow Earned', val:fmt$(summary.total_cashflow_earned||0), sub:'Cumulative net cash flow', color:(summary.total_cashflow_earned||0)>=0?'#059669':'#d92d20'},
+              {label:'Total Return', val:fmt$(summary.total_return||0), sub:'Appreciation + Cash flow combined', color:(summary.total_return||0)>=0?'#059669':'#d92d20'},
+            ].map((k,i) => (
+              <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'16px 18px'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:6}}>{k.label}</div>
+                <div style={{fontSize:22,fontWeight:700,color:k.color}}>{k.val}</div>
+                <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>{k.sub}</div>
               </div>
             ))}
           </div>
 
-          {/* Charts */}
+          {/* Charts row */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
-            {/* Cash Flow Chart */}
             <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Monthly Cash Flow</div>
-              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Net income after all expenses</div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Monthly Cash Flow</div>
+              <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Net income after all expenses</div>
               <MiniBarChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.net_cashflow)}))} color={accent} height={120}/>
             </div>
-            {/* Portfolio Value Chart */}
             <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Portfolio Value</div>
-              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Total estimated value over time</div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Portfolio Value</div>
+              <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Total estimated value over time</div>
               <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_value)}))} color="#7c3aed" height={120}/>
             </div>
           </div>
-
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}}>
-            {/* Equity Chart */}
             <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Equity Growth</div>
-              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Your ownership stake growing over time</div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Equity Growth</div>
+              <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Total equity across all properties</div>
               <MiniLineChart data={snaps.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.total_equity)}))} color="#059669" height={120}/>
             </div>
-            {/* Revenue vs Expenses */}
             <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Revenue vs Expenses</div>
-              <div style={{fontSize:12,color:'#6b7280',marginBottom:16}}>Income and cost breakdown</div>
-              <MiniDualBar
-                data={snaps.map(s=>({label:fmtMo(s.snapshot_month),revenue:parseFloat(s.gross_revenue),expenses:parseFloat(s.total_expenses)}))}
-                height={120}
-              />
+              <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>Revenue vs Expenses</div>
+              <div style={{fontSize:12,color:'#9ca3af',marginBottom:16}}>Monthly income vs total costs</div>
+              <MiniDualBar data={snaps.map(s=>({label:fmtMo(s.snapshot_month),revenue:parseFloat(s.gross_revenue),expenses:parseFloat(s.total_expenses)}))} height={120}/>
             </div>
           </div>
 
-          {/* Month by Month Table */}
-          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden',marginBottom:20}}>
-            <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:14}}>Month-by-Month Detail</div>
+          {/* MoM table */}
+          <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
+            <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:15}}>Month-by-Month History</div>
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
                 <thead>
                   <tr style={{background:'#f9fafb'}}>
-                    {['Month','Portfolio Value','Equity','Cash Flow','NOI','Cap Rate','CoC','MoM Value','YoY Value'].map(h=>(
-                      <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px',whiteSpace:'nowrap'}}>{h}</th>
+                    {['Month','Portfolio Value','Equity','Cash Flow','NOI','Cap Rate','CoC','MoM Value Δ','YoY Value Δ'].map(h=>(
+                      <th key={h} style={{padding:'10px 16px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px',whiteSpace:'nowrap'}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {[...snaps].reverse().map((s,i)=>(
                     <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
-                      <td style={{padding:'10px 14px',fontWeight:600}}>{fmtMo(s.snapshot_month)}</td>
-                      <td style={{padding:'10px 14px'}}>{fmt$(s.total_value)}</td>
-                      <td style={{padding:'10px 14px'}}>{fmt$(s.total_equity)}</td>
-                      <td style={{padding:'10px 14px',color:parseFloat(s.net_cashflow)>=0?'#059669':'#d92d20',fontWeight:600}}>{fmt$(s.net_cashflow)}</td>
-                      <td style={{padding:'10px 14px'}}>{fmt$(s.noi)}</td>
-                      <td style={{padding:'10px 14px'}}>{(parseFloat(s.avg_cap_rate)*100).toFixed(2)}%</td>
-                      <td style={{padding:'10px 14px'}}>{(parseFloat(s.avg_cash_on_cash)*100).toFixed(2)}%</td>
-                      <td style={{padding:'10px 14px',color:s.mom_value>=0?'#059669':'#d92d20'}}>{s.mom_value!==0?fmt$(s.mom_value):'—'}</td>
-                      <td style={{padding:'10px 14px',color:s.yoy_value!=null?(s.yoy_value>=0?'#059669':'#d92d20'):'#9ca3af'}}>
+                      <td style={{padding:'11px 16px',fontWeight:600,whiteSpace:'nowrap'}}>{fmtMo(s.snapshot_month)}</td>
+                      <td style={{padding:'11px 16px'}}>{fmt$(s.total_value)}</td>
+                      <td style={{padding:'11px 16px'}}>{fmt$(s.total_equity)}</td>
+                      <td style={{padding:'11px 16px',fontWeight:600,color:parseFloat(s.net_cashflow)>=0?'#059669':'#d92d20'}}>{fmt$(s.net_cashflow)}</td>
+                      <td style={{padding:'11px 16px'}}>{fmt$(s.noi)}</td>
+                      <td style={{padding:'11px 16px'}}>{(parseFloat(s.avg_cap_rate||0)*100).toFixed(2)}%</td>
+                      <td style={{padding:'11px 16px'}}>{(parseFloat(s.avg_cash_on_cash||0)*100).toFixed(2)}%</td>
+                      <td style={{padding:'11px 16px',color:(s.mom_value||0)>=0?'#059669':'#d92d20'}}>{s.mom_value?fmt$(s.mom_value):'—'}</td>
+                      <td style={{padding:'11px 16px',color:s.yoy_value!=null?(s.yoy_value>=0?'#059669':'#d92d20'):'#9ca3af'}}>
                         {s.yoy_value!=null?fmt$(s.yoy_value):'—'}
-                        {s.yoy_value_pct!=null&&<span style={{fontSize:11,marginLeft:4}}>({fmtPct(s.yoy_value_pct)})</span>}
+                        {s.yoy_value_pct!=null&&<span style={{fontSize:11,marginLeft:4,color:'inherit'}}>({fmtPct(s.yoy_value_pct)})</span>}
                       </td>
                     </tr>
                   ))}
@@ -1233,147 +1240,35 @@ function PerformanceTab({user, properties, accent}) {
               </table>
             </div>
           </div>
-
-          {/* Property comparison */}
-          {properties.length > 1 && (
-            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden'}}>
-              <div style={{padding:'16px 20px',borderBottom:'1px solid #e5e7eb',fontWeight:700,fontSize:14}}>Property Comparison</div>
-              <div style={{overflowX:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-                  <thead>
-                    <tr style={{background:'#f9fafb'}}>
-                      {['Property','Est. Value','Equity','Monthly CF','NOI/yr','Cap Rate','CoC Return','Cash Invested'].map(h=>(
-                        <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,fontSize:11,color:'#6b7280',textTransform:'uppercase',letterSpacing:'.3px',whiteSpace:'nowrap'}}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {properties.map((p,i)=>{
-                      const val = parseFloat(p.zestimate||p.purchase_price||0);
-                      const rev = parseFloat(p.monthly_revenue||0);
-                      const exp = parseFloat(p.monthly_expenses||0);
-                      const cf = rev - exp;
-                      const noi = rev - parseFloat(p.property_tax||0) - parseFloat(p.insurance||0) - parseFloat(p.hoa||0);
-                      const cap = val > 0 ? (noi*12/val*100) : 0;
-                      const down = parseFloat(p.down_payment||0);
-                      const coc = down > 0 ? (cf*12/down*100) : 0;
-                      return (
-                        <tr key={i} style={{borderTop:'1px solid #f3f4f6',cursor:'pointer'}} onClick={()=>{setView('property');setSelProp(p);}}>
-                          <td style={{padding:'10px 14px',fontWeight:600}}>{p.name}</td>
-                          <td style={{padding:'10px 14px'}}>{fmt$(val)}</td>
-                          <td style={{padding:'10px 14px'}}>{fmt$(p.equity)}</td>
-                          <td style={{padding:'10px 14px',color:cf>=0?'#059669':'#d92d20',fontWeight:600}}>{fmt$(cf)}</td>
-                          <td style={{padding:'10px 14px'}}>{fmt$(noi*12)}</td>
-                          <td style={{padding:'10px 14px'}}>{cap.toFixed(2)}%</td>
-                          <td style={{padding:'10px 14px',color:coc>=0?'#059669':'#d92d20'}}>{coc.toFixed(2)}%</td>
-                          <td style={{padding:'10px 14px'}}>{fmt$(down)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </>
-      )}
-
-      {/* Property drill-down view */}
-      {!loading && !noMonths && view==='property' && selProp && (
-        <PropertyPerformanceView prop={selProp} snapshots={propData?.snapshots||[]} fmt$={fmt$} fmtMo={fmtMo} fmtPct={fmtPct} accent={accent}/>
-      )}
-    </div>
-  );
-}
-
-// ── PROPERTY PERFORMANCE DRILL-DOWN ──────────────────────────────────────────
-function PropertyPerformanceView({prop, snapshots, fmt$, fmtMo, fmtPct, accent}) {
-  const val = parseFloat(prop.zestimate||prop.purchase_price||0);
-  const rev = parseFloat(prop.monthly_revenue||0);
-  const exp = parseFloat(prop.monthly_expenses||0);
-  const cf = rev - exp;
-  const noi = rev - parseFloat(prop.property_tax||0) - parseFloat(prop.insurance||0) - parseFloat(prop.hoa||0);
-  const cap = val > 0 ? (noi*12/val*100) : 0;
-  const down = parseFloat(prop.down_payment||0);
-  const coc = down > 0 ? (cf*12/down*100) : 0;
-  const equity = parseFloat(prop.equity||0);
-  const debt = val - equity;
-  const ltv = val > 0 ? (debt/val*100) : 0;
-
-  return (
-    <div>
-      <div style={{fontWeight:700,fontSize:16,marginBottom:16}}>{prop.name}</div>
-      {/* Property KPIs */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12,marginBottom:20}}>
-        {[
-          {label:'Est. Value', val:fmt$(val), color:'#111827'},
-          {label:'Equity', val:fmt$(equity), sub:ltv.toFixed(1)+'% LTV', color:'#1a56db'},
-          {label:'Monthly CF', val:fmt$(cf), color:cf>=0?'#059669':'#d92d20'},
-          {label:'Annual NOI', val:fmt$(noi*12), color:'#374151'},
-          {label:'Cap Rate', val:cap.toFixed(2)+'%', color:'#7c3aed'},
-          {label:'Cash-on-Cash', val:coc.toFixed(2)+'%', color:'#0891b2'},
-          {label:'Cash Invested', val:fmt$(down), color:'#374151'},
-          {label:'Annual Revenue', val:fmt$(rev*12), color:'#059669'},
-        ].map((k,i)=>(
-          <div key={i} style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:10,padding:'14px 16px'}}>
-            <div style={{fontSize:11,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:4}}>{k.label}</div>
-            <div style={{fontSize:20,fontWeight:700,color:k.color}}>{k.val}</div>
-            {k.sub&&<div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{k.sub}</div>}
-          </div>
-        ))}
-      </div>
-
-      {/* Monthly breakdown */}
-      <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20,marginBottom:16}}>
-        <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Monthly P&L Breakdown</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {[
-            {label:'Rental Income', val:rev, color:'#059669'},
-            {label:'Mortgage', val:-parseFloat(prop.mortgage||0), color:'#d92d20'},
-            {label:'Property Tax', val:-parseFloat(prop.property_tax||0), color:'#d92d20'},
-            {label:'Insurance', val:-parseFloat(prop.insurance||0), color:'#d92d20'},
-            {label:'HOA', val:-parseFloat(prop.hoa||0), color:'#d92d20'},
-          ].filter(r=>r.val!==0).map((r,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'#f9fafb',borderRadius:6}}>
-              <span style={{fontSize:13,color:'#374151'}}>{r.label}</span>
-              <span style={{fontSize:13,fontWeight:600,color:r.color}}>{r.val>=0?'+':''}{fmt$(r.val)}</span>
-            </div>
-          ))}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:cf>=0?'#f0fdf4':'#fef2f2',borderRadius:6,borderTop:'2px solid '+(cf>=0?'#bbf7d0':'#fecaca')}}>
-            <span style={{fontSize:13,fontWeight:700}}>Net Cash Flow</span>
-            <span style={{fontSize:15,fontWeight:700,color:cf>=0?'#059669':'#d92d20'}}>{cf>=0?'+':''}{fmt$(cf)}/mo</span>
-          </div>
-        </div>
-      </div>
-
-      {snapshots.length > 0 && (
-        <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:20}}>
-          <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Historical Performance</div>
-          <MiniLineChart data={snapshots.map(s=>({label:fmtMo(s.snapshot_month),value:parseFloat(s.net_cashflow)}))} color={accent} height={100}/>
-        </div>
       )}
     </div>
   );
 }
 
 // ── CHART COMPONENTS ──────────────────────────────────────────────────────────
-function MiniBarChart({data, color='#1a56db', height=120}) {
-  if(!data||data.length===0) return null;
-  const vals = data.map(d=>d.value);
-  const max = Math.max(...vals.map(Math.abs)) || 1;
-  const barW = Math.max(4, Math.floor(280/data.length)-2);
+function MiniBarChart({data, color, height}) {
+  color = color || '#1a56db';
+  height = height || 120;
+  if(!data || data.length === 0) return null;
+  const vals = data.map(function(d){return d.value;});
+  const max = Math.max.apply(null, vals.map(Math.abs)) || 1;
   return (
     <div style={{display:'flex',alignItems:'flex-end',gap:2,height:height,position:'relative'}}>
       <div style={{position:'absolute',top:'50%',left:0,right:0,height:1,background:'#e5e7eb'}}/>
-      {data.map((d,i)=>{
-        const isPos = d.value >= 0;
-        const h = Math.max(2, (Math.abs(d.value)/max)*(height/2));
+      {data.map(function(d,i){
+        var isPos = d.value >= 0;
+        var h = Math.max(2, (Math.abs(d.value)/max)*(height/2));
         return (
-          <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',flex:1,height:'100%',justifyContent:'center',position:'relative'}} title={d.label+': $'+Math.round(d.value).toLocaleString()}>
-            {isPos
-              ? <div style={{width:'100%',background:color,borderRadius:'2px 2px 0 0',height:h,marginTop:'auto',marginBottom:0,position:'absolute',bottom:'50%'}}/>
-              : <div style={{width:'100%',background:'#fca5a5',borderRadius:'0 0 2px 2px',height:h,position:'absolute',top:'50%'}}/>
-            }
+          <div key={i} title={d.label+': $'+Math.round(d.value).toLocaleString()} style={{flex:1,height:'100%',position:'relative'}}>
+            <div style={{
+              position:'absolute', width:'100%',
+              background: isPos ? color : '#fca5a5',
+              borderRadius: isPos ? '2px 2px 0 0' : '0 0 2px 2px',
+              height: h,
+              bottom: isPos ? '50%' : undefined,
+              top: isPos ? undefined : '50%'
+            }}/>
           </div>
         );
       })}
@@ -1381,53 +1276,58 @@ function MiniBarChart({data, color='#1a56db', height=120}) {
   );
 }
 
-function MiniLineChart({data, color='#1a56db', height=120}) {
-  if(!data||data.length<2) return null;
-  const vals = data.map(d=>d.value);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-  const W = 280, H = height;
-  const pts = vals.map((v,i)=>`${(i/(vals.length-1))*W},${H-((v-min)/range)*H}`).join(' ');
-  const fillPts = `0,${H} ` + pts + ` ${W},${H}`;
-  const lastVal = vals[vals.length-1];
-  const firstVal = vals[0];
-  const up = lastVal >= firstVal;
+function MiniLineChart({data, color, height}) {
+  color = color || '#1a56db';
+  height = height || 120;
+  if(!data || data.length < 2) return null;
+  var vals = data.map(function(d){return d.value;});
+  var min = Math.min.apply(null, vals);
+  var max = Math.max.apply(null, vals);
+  var range = max - min || 1;
+  var W = 280, H = height;
+  var pts = vals.map(function(v,i){
+    return ((i/(vals.length-1))*W)+','+(H-((v-min)/range)*H);
+  }).join(' ');
+  var up = vals[vals.length-1] >= vals[0];
+  var diff = Math.abs(vals[vals.length-1] - vals[0]);
   return (
-    <div style={{position:'relative'}}>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{display:'block'}}>
-        <defs>
-          <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.15"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0"/>
-          </linearGradient>
-        </defs>
-        <polygon points={fillPts} fill={`url(#grad-${color})`}/>
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round"/>
+    <div>
+      <svg width="100%" viewBox={'0 0 '+W+' '+H} preserveAspectRatio="none" style={{display:'block'}}>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round"/>
       </svg>
-      <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>
-        <span style={{fontSize:10,color:'#9ca3af'}}>{data[0]?.label}</span>
-        <span style={{fontSize:11,fontWeight:700,color:up?'#059669':'#d92d20'}}>{up?'▲':'▼'} ${Math.abs(lastVal-firstVal).toLocaleString()}</span>
-        <span style={{fontSize:10,color:'#9ca3af'}}>{data[data.length-1]?.label}</span>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:6}}>
+        <span style={{fontSize:10,color:'#9ca3af'}}>{data[0] && data[0].label}</span>
+        <span style={{fontSize:12,fontWeight:700,color:up?'#059669':'#d92d20'}}>{up?'▲':'▼'} ${diff.toLocaleString()}</span>
+        <span style={{fontSize:10,color:'#9ca3af'}}>{data[data.length-1] && data[data.length-1].label}</span>
       </div>
     </div>
   );
 }
 
-function MiniDualBar({data, height=120}) {
-  if(!data||data.length===0) return null;
-  const max = Math.max(...data.map(d=>Math.max(d.revenue,d.expenses))) || 1;
+function MiniDualBar({data, height}) {
+  height = height || 120;
+  if(!data || data.length === 0) return null;
+  var max = Math.max.apply(null, data.map(function(d){return Math.max(d.revenue,d.expenses);})) || 1;
   return (
-    <div style={{display:'flex',alignItems:'flex-end',gap:3,height:height}}>
-      {data.map((d,i)=>(
-        <div key={i} style={{flex:1,display:'flex',gap:1,alignItems:'flex-end',height:'100%'}} title={d.label}>
-          <div style={{flex:1,background:'#34d399',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.revenue/max)*height)}}/>
-          <div style={{flex:1,background:'#fca5a5',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.expenses/max)*height)}}/>
-        </div>
-      ))}
+    <div>
+      <div style={{display:'flex',alignItems:'flex-end',gap:3,height:height}}>
+        {data.map(function(d,i){
+          return (
+            <div key={i} title={d.label} style={{flex:1,display:'flex',gap:1,alignItems:'flex-end',height:'100%'}}>
+              <div style={{flex:1,background:'#34d399',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.revenue/max)*height)}}/>
+              <div style={{flex:1,background:'#fca5a5',borderRadius:'2px 2px 0 0',height:Math.max(2,(d.expenses/max)*height)}}/>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:'flex',gap:12,marginTop:8,fontSize:11,color:'#6b7280'}}>
+        <span><span style={{display:'inline-block',width:8,height:8,background:'#34d399',borderRadius:2,marginRight:4}}/>Revenue</span>
+        <span><span style={{display:'inline-block',width:8,height:8,background:'#fca5a5',borderRadius:2,marginRight:4}}/>Expenses</span>
+      </div>
     </div>
   );
 }
+
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
 function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRefresh,onEditProp}) {
