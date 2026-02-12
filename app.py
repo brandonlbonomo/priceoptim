@@ -1411,6 +1411,51 @@ function SettingsModal({user,onClose,onSave}) {
 }
 
 
+
+// ── REFRESH VALUE BUTTON ─────────────────────────────────────────────────────
+function RefreshValueBtn({prop, onUpdate}) {
+  const [loading,setLoading]=useState(false);
+  const [result,setResult]=useState(null);
+
+  const refresh=async()=>{
+    if(!prop.location) return;
+    setLoading(true);
+    try{
+      const r=await fetch('/api/property/lookup?address='+encodeURIComponent(prop.location),{credentials:'include'});
+      const d=await r.json();
+      if(d.estimated_value){
+        onUpdate(d.estimated_value);
+        setResult({value:d.estimated_value, source:d.source, tax:d.monthly_tax, rent:d.rent_estimate});
+      } else {
+        setResult({error:'No data found for this address'});
+      }
+    }catch(e){setResult({error:'Lookup failed'});}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{marginBottom:14}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:result?6:0}}>
+        <button type="button" className="btn btn-outline btn-sm" onClick={refresh} disabled={loading}>
+          {loading?'Looking up...':'Refresh from ATTOM'}
+        </button>
+        <span style={{fontSize:11,color:'#9ca3af'}}>Auto-fill estimated value, tax, rent</span>
+      </div>
+      {result&&!result.error&&(
+        <div className="zprop-card" style={{marginTop:8}}>
+          <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+            {result.value&&<span style={{fontSize:13}}><strong>Est. Value:</strong> {fmt$(result.value)}</span>}
+            {result.tax&&<span style={{fontSize:13}}><strong>Tax/mo:</strong> {fmt$(result.tax)}</span>}
+            {result.rent&&<span style={{fontSize:13}}><strong>Rent est:</strong> {fmt$(result.rent)}/mo</span>}
+            <span style={{fontSize:11,color:'#059669'}}>from {result.source} ✓</span>
+          </div>
+        </div>
+      )}
+      {result?.error&&<div style={{fontSize:12,color:'#d92d20',marginTop:4}}>{result.error}</div>}
+    </div>
+  );
+}
+
 // ── EDIT PROPERTY MODAL ───────────────────────────────────────────────────────
 function EditPropModal({prop,onClose,onSave}) {
   const [f,setF]=useState({
@@ -1466,14 +1511,21 @@ function EditPropModal({prop,onClose,onSave}) {
         {err&&<div className="err-box">{err}</div>}
 
         {/* Live cashflow preview */}
-        <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'10px 14px',marginBottom:16,display:'flex',gap:16}}>
-          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Monthly Net</div>
-            <div style={{fontSize:16,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{netCashflow>=0?'+':''}{fmt$(netCashflow)}</div></div>
-          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Annual</div>
-            <div style={{fontSize:16,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{fmt$(netCashflow*12)}</div></div>
-          <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase'}}>Est. Value</div>
-            <div style={{fontSize:16,fontWeight:700}}>{fmt$(parseFloat(f.zestimate)||parseFloat(f.purchase_price)||0)}</div></div>
+        <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 16px',marginBottom:16}}>
+          <div style={{display:'flex',gap:20,marginBottom:8}}>
+            <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px'}}>Monthly Net</div>
+              <div style={{fontSize:18,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{netCashflow>=0?'+':''}{fmt$(netCashflow)}</div></div>
+            <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px'}}>Annual</div>
+              <div style={{fontSize:18,fontWeight:700,color:netCashflow>=0?'#059669':'#d92d20'}}>{fmt$(netCashflow*12)}</div></div>
+            <div><div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'.4px'}}>Est. Value</div>
+              <div style={{fontSize:18,fontWeight:700}}>{fmt$(parseFloat(f.zestimate)||parseFloat(f.purchase_price)||0)}</div></div>
+          </div>
+          {prop.bedrooms&&<div style={{fontSize:12,color:'#6b7280'}}>
+            {[prop.bedrooms&&prop.bedrooms+' bed',prop.bathrooms&&prop.bathrooms+' bath',prop.sqft&&prop.sqft.toLocaleString()+' sqft',prop.year_built&&'Built '+prop.year_built].filter(Boolean).join(' · ')}
+          </div>}
         </div>
+        {/* Refresh estimated value from ATTOM */}
+        <RefreshValueBtn prop={prop} onUpdate={val=>setF(prev=>({...prev,zestimate:val}))}/>
 
         <form onSubmit={save}>
           <div className="frow">
@@ -1563,14 +1615,16 @@ function AddPropModal({userId,onClose,onSave}) {
         ...prev,
         name: streetName,
         location: cleanAddr,
-        purchase_price: d.estimated_value||prev.purchase_price||'',
-        zestimate: d.estimated_value||0,
+        // estimated value goes to BOTH zestimate and purchase_price (as default)
+        // user can override purchase_price with what they actually paid
+        zestimate: d.estimated_value||prev.zestimate||'',
+        purchase_price: prev.purchase_price||d.estimated_value||'',
         property_tax: d.monthly_tax||prev.property_tax||'',
         monthly_revenue: d.rent_estimate||prev.monthly_revenue||'',
-        bedrooms: d.bedrooms||prev.bedrooms||'',
-        bathrooms: d.bathrooms||prev.bathrooms||'',
-        sqft: d.sqft||prev.sqft||'',
-        year_built: d.year_built||prev.year_built||'',
+        bedrooms: d.bedrooms||'',
+        bathrooms: d.bathrooms||'',
+        sqft: d.sqft||'',
+        year_built: d.year_built||'',
       }));
     }catch(e){}
     setSearching(false);
@@ -2434,6 +2488,42 @@ def mfa_challenge():
             return jsonify({'user': ud})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/debug/attom')
+def debug_attom():
+    """Test ATTOM API key and connection"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    address = request.args.get('address', '123 Main St, Houston TX')
+    result = {
+        'attom_key_set': bool(ATTOM_API_KEY),
+        'attom_key_preview': ATTOM_API_KEY[:8]+'...' if ATTOM_API_KEY else None,
+        'rentcast_key_set': bool(os.environ.get('RENTCAST_API_KEY','')),
+        'address_tested': address,
+        'attom_response': None,
+        'attom_error': None,
+        'attom_status': None,
+    }
+    if ATTOM_API_KEY:
+        try:
+            encoded = urllib.parse.quote(address)
+            url = f'https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/address?address1={encoded}'
+            req = urllib.request.Request(url, headers={
+                'Accept': 'application/json',
+                'apikey': ATTOM_API_KEY
+            })
+            resp = urllib.request.urlopen(req, timeout=10)
+            result['attom_status'] = resp.status
+            raw = json.loads(resp.read())
+            result['attom_response'] = raw
+        except urllib.error.HTTPError as e:
+            result['attom_error'] = f'HTTP {e.code}: {e.reason}'
+            try: result['attom_error_body'] = json.loads(e.read())
+            except: pass
+        except Exception as e:
+            result['attom_error'] = str(e)
+    return jsonify(result)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
