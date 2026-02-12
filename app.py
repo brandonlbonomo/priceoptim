@@ -112,6 +112,9 @@ def init_db():
         try:
             cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS year_built INTEGER")
         except Exception: pass
+        try:
+            cur.execute("ALTER TABLE properties ADD COLUMN IF NOT EXISTS last_value_refresh TIMESTAMP")
+        except Exception: pass
         cur.execute("""
             CREATE TABLE IF NOT EXISTS follows (
                 follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -891,7 +894,11 @@ function MainApp({user,setUser,onLogout}) {
     document.documentElement.style.setProperty('--blue',accent);
   },[accent]);
 
-  useEffect(()=>{loadAll();},[]);
+  useEffect(()=>{
+    loadAll();
+    // Trigger background value refresh after initial load
+    setTimeout(refreshValues, 2000);
+  },[]);
 
   const loadAll=async()=>{
     try{
@@ -1047,6 +1054,7 @@ function PortfolioTab({portfolio,properties,accent,onAddProp,onConnectBank,onRef
               <div className="pamount">{fmt$(p.purchase_price)}</div>
               <div style={{fontSize:11,color:'#9ca3af'}}>{fmt$(p.monthly_revenue)}/mo</div>
               <div style={{fontSize:11,color:'#3b82f6',marginTop:2}}>Edit →</div>
+              {p.last_value_refresh&&<div style={{fontSize:10,color:'#d1d5db',marginTop:1}}>Updated {new Date(p.last_value_refresh).toLocaleDateString()}</div>}
             </div>
           </div>
         ))}
@@ -2524,6 +2532,73 @@ def debug_attom():
         except Exception as e:
             result['attom_error'] = str(e)
     return jsonify(result)
+
+
+@app.route('/api/properties/refresh-values', methods=['POST'])
+def refresh_property_values():
+    """Auto-refresh estimated values from ATTOM for stale properties (>7 days old)"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    if not ATTOM_API_KEY:
+        return jsonify({'refreshed': 0, 'message': 'No ATTOM key configured'})
+    try:
+        from datetime import datetime, timedelta
+        stale_cutoff = datetime.utcnow() - timedelta(days=7)
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Get properties that need refresh (never refreshed OR stale)
+            cur.execute("""
+                SELECT id, location FROM properties
+                WHERE user_id=%s
+                AND location IS NOT NULL AND location != ''
+                AND (last_value_refresh IS NULL OR last_value_refresh < %s)
+            """, (uid, stale_cutoff))
+            stale = cur.fetchall()
+            refreshed = []
+            for prop in stale:
+                try:
+                    encoded = urllib.parse.quote(prop['location'])
+                    url = f'https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/address?address1={encoded}'
+                    req = urllib.request.Request(url, headers={
+                        'Accept': 'application/json',
+                        'apikey': ATTOM_API_KEY
+                    })
+                    resp = urllib.request.urlopen(req, timeout=8)
+                    data = json.loads(resp.read())
+                    props = data.get('property', [])
+                    if props:
+                        p = props[0]
+                        avm = p.get('avm', {})
+                        assessment = p.get('assessment', {})
+                        tax_data = assessment.get('tax', {})
+                        assessed_data = assessment.get('assessed', {})
+                        est_val = (avm.get('amount', {}).get('value') or avm.get('value'))
+                        annual_tax = (tax_data.get('taxAmt') or tax_data.get('taxamt'))
+                        assessed_val = (assessed_data.get('totalValue') or assessed_data.get('assdTtlValue'))
+                        if est_val:
+                            cur.execute("""
+                                UPDATE properties SET
+                                    zestimate=%s,
+                                    property_tax=CASE WHEN %s IS NOT NULL THEN %s ELSE property_tax END,
+                                    last_value_refresh=%s
+                                WHERE id=%s
+                            """, (
+                                int(est_val),
+                                annual_tax, round(int(annual_tax)/12) if annual_tax else None,
+                                datetime.utcnow(),
+                                prop['id']
+                            ))
+                            refreshed.append({'id': prop['id'], 'new_value': int(est_val)})
+                except Exception:
+                    pass  # Skip failed lookups silently
+            conn.commit()
+            cur.close()
+            # Also update portfolio metrics
+            if refreshed:
+                update_metrics(uid)
+            return jsonify({'refreshed': len(refreshed), 'properties': refreshed})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
