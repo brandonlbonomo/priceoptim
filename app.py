@@ -170,8 +170,10 @@ def migrate_db():
                 try:
                     cur.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {dtype}")
                     conn.commit()
-                except Exception:
+                    print(f"Migration OK: {table}.{col}")
+                except Exception as me:
                     conn.rollback()
+                    print(f"Migration skip {table}.{col}: {me}")
             cur.close()
     except Exception as e:
         print(f'Migration warning: {e}')
@@ -238,6 +240,7 @@ def update_metrics(user_id):
             cur = conn.cursor(cursor_factory=RealDictCursor)
             cur.execute("SELECT * FROM properties WHERE user_id=%s", (user_id,))
             props = cur.fetchall()
+            # zestimate may not exist in old schema - fallback to purchase_price
             tv = sum(float(p.get('zestimate') or p.get('purchase_price') or 0) for p in props)
             te = sum(float(p.get('equity') or 0) for p in props)
             mcf = sum(float(p.get('monthly_revenue') or 0) - float(p.get('monthly_expenses') or 0) for p in props)
@@ -497,18 +500,31 @@ def properties(uid):
             d = request.json or {}
             exp = sum(float(d.get(k,0)) for k in ['mortgage','insurance','hoa','property_tax'])
             eq = float(d.get('zestimate') or d.get('purchase_price',0)) - (float(d.get('purchase_price',0)) - float(d.get('down_payment',0)))
-            cur.execute("""
-                INSERT INTO properties (user_id,name,location,purchase_price,down_payment,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,zestimate,zpid,bedrooms,bathrooms,sqft,year_built,zillow_url,equity)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
-            """, (uid, d.get('name','Property'), d.get('location',''),
-                  float(d.get('purchase_price',0)), float(d.get('down_payment',0)),
-                  float(d.get('mortgage',0)), float(d.get('insurance',0)),
-                  float(d.get('hoa',0)), float(d.get('property_tax',0)),
-                  float(d.get('monthly_revenue',0)), exp,
-                  float(d.get('zestimate') or d.get('purchase_price',0)),
-                  d.get('zpid',''), int(d.get('bedrooms',0) or 0),
-                  float(d.get('bathrooms',0) or 0), int(d.get('sqft',0) or 0),
-                  int(d.get('year_built',0) or 0), d.get('zillow_url',''), max(0,eq)))
+            # Try full insert with all columns; fall back to core columns if new ones don't exist yet
+            try:
+                cur.execute("""
+                    INSERT INTO properties (user_id,name,location,purchase_price,down_payment,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,zestimate,zpid,bedrooms,bathrooms,sqft,year_built,zillow_url,equity)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                """, (uid, d.get('name','Property'), d.get('location',''),
+                      float(d.get('purchase_price',0)), float(d.get('down_payment',0)),
+                      float(d.get('mortgage',0)), float(d.get('insurance',0)),
+                      float(d.get('hoa',0)), float(d.get('property_tax',0)),
+                      float(d.get('monthly_revenue',0)), exp,
+                      float(d.get('zestimate') or d.get('purchase_price',0)),
+                      d.get('zpid',''), int(d.get('bedrooms',0) or 0),
+                      float(d.get('bathrooms',0) or 0), int(d.get('sqft',0) or 0),
+                      int(d.get('year_built',0) or 0), d.get('zillow_url',''), max(0,eq)))
+            except Exception as col_err:
+                conn.rollback()
+                # Fallback: core columns only (matches original DB schema)
+                cur.execute("""
+                    INSERT INTO properties (user_id,name,location,purchase_price,down_payment,equity,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                """, (uid, d.get('name','Property'), d.get('location',''),
+                      float(d.get('purchase_price',0)), float(d.get('down_payment',0)),
+                      max(0,eq), float(d.get('mortgage',0)), float(d.get('insurance',0)),
+                      float(d.get('hoa',0)), float(d.get('property_tax',0)),
+                      float(d.get('monthly_revenue',0)), exp))
             prop = dict(cur.fetchone())
             conn.commit(); cur.close()
             update_metrics(uid)
@@ -607,34 +623,148 @@ def zillow_zestimate():
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
     url = (request.json or {}).get('url','').strip()
     if 'zillow.com' not in url: return jsonify({'error': 'Must be a Zillow URL'}), 400
-    try:
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-            'Accept': 'text/html,application/xhtml+xml,*/*',
-            'Accept-Language': 'en-US,en;q=0.9',
-        })
-        import gzip
-        resp = urllib.request.urlopen(req, timeout=12)
-        raw = resp.read()
-        try: html = gzip.decompress(raw).decode('utf-8','ignore')
-        except: html = raw.decode('utf-8','ignore')
-        result = {}
-        for pat in [r'"zestimate":\{"value":(\d+)', r'"homeValue":(\d+)', r'"price":(\d{5,8})']:
-            m = re.search(pat, html)
-            if m and int(m.group(1)) > 50000:
-                result['zestimate'] = int(m.group(1)); break
-        for key, pat in [('address', r'"streetAddress":"([^"]+)"'), ('bedrooms', r'"bedrooms":(\d+)'),
-                         ('bathrooms', r'"bathrooms":([\d.]+)'), ('sqft', r'"livingArea":(\d+)'),
-                         ('year_built', r'"yearBuilt":(\d{4})'), ('tax_annual', r'"taxAnnualAmount":(\d+)')]:
-            m = re.search(pat, html)
-            if m: result[key] = m.group(1)
-        if result.get('tax_annual'):
-            result['monthly_tax'] = round(int(result['tax_annual'])/12)
-        if not result.get('zestimate'):
-            result['error'] = 'Could not find Zestimate. Try a direct zillow.com/homedetails/ URL.'
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({'error': str(e)})
+    import gzip as _gzip
+
+    USER_AGENTS = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    ]
+
+    html = ''
+    for ua in USER_AGENTS:
+        try:
+            req = urllib.request.Request(url, headers={
+                'User-Agent': ua,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate',
+                'Referer': 'https://www.zillow.com/',
+                'Cache-Control': 'no-cache',
+            })
+            resp = urllib.request.urlopen(req, timeout=15)
+            raw = resp.read()
+            try: html = _gzip.decompress(raw).decode('utf-8','ignore')
+            except: html = raw.decode('utf-8','ignore')
+            if len(html) > 10000: break
+        except Exception as e:
+            html = ''
+            continue
+
+    if len(html) < 1000:
+        return jsonify({'error': 'Zillow is blocking this request. Open the property page in your browser first, then paste the URL.'})
+
+    result = {}
+
+    # ── Parse __NEXT_DATA__ JSON blob (most reliable) ─────────────────────────
+    def find_val(obj, *keys, mn=None, mx=None):
+        if isinstance(obj, dict):
+            for k,v in obj.items():
+                if k in keys and v is not None:
+                    try:
+                        fv=float(str(v).replace(',',''))
+                        if mn is not None and fv<mn: pass
+                        elif mx is not None and fv>mx: pass
+                        else: return v
+                    except:
+                        if mn is None and mx is None: return v
+                r=find_val(v,*keys,mn=mn,mx=mx)
+                if r is not None: return r
+        elif isinstance(obj,list):
+            for item in obj:
+                r=find_val(item,*keys,mn=mn,mx=mx)
+                if r is not None: return r
+        return None
+
+    m = re.search(r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL)
+    nd = None
+    if m:
+        try: nd = json.loads(m.group(1))
+        except: pass
+
+    if nd:
+        z = find_val(nd,'zestimate','zestimateValue','homeValue',mn=50000,mx=50000000)
+        if z: result['zestimate'] = int(float(str(z).replace(',','')))
+
+        p = find_val(nd,'price','listPrice',mn=50000,mx=50000000)
+        if p and 'zestimate' not in result: result['zestimate'] = int(float(str(p).replace(',','')))
+
+        beds = find_val(nd,'bedrooms','beds',mn=0,mx=50)
+        if beds: result['bedrooms'] = str(int(float(str(beds))))
+
+        baths = find_val(nd,'bathrooms','baths',mn=0,mx=30)
+        if baths: result['bathrooms'] = str(float(str(baths)))
+
+        sqft = find_val(nd,'livingArea','livingAreaValue','finishedSqFt',mn=100,mx=100000)
+        if sqft: result['sqft'] = str(int(float(str(sqft).replace(',',''))))
+
+        yr = find_val(nd,'yearBuilt','builtYear',mn=1800,mx=2025)
+        if yr: result['year_built'] = str(int(float(str(yr))))
+
+        street = find_val(nd,'streetAddress')
+        city = find_val(nd,'city')
+        state = find_val(nd,'state')
+        zipcode = find_val(nd,'zipcode','zip')
+        if street:
+            addr = str(street)
+            if city: addr += f', {city}'
+            if state: addr += f', {state}'
+            if zipcode: addr += f' {zipcode}'
+            result['address'] = addr
+        elif city:
+            result['address'] = ', '.join(filter(None,[str(city), str(state) if state else '', str(zipcode) if zipcode else '']))
+
+        tax = find_val(nd,'taxAnnualAmount','annualTax',mn=1)
+        if tax: result['tax_annual'] = float(str(tax).replace(',',''))
+
+        hoa = find_val(nd,'monthlyHoaFee','hoaFee',mn=0,mx=10000)
+        if hoa:
+            try: result['hoa'] = float(str(hoa))
+            except: pass
+
+        desc = find_val(nd,'description')
+        if isinstance(desc,str) and len(desc)>30: result['description'] = desc[:400]
+
+        ptype = find_val(nd,'homeType','propertyType','homeTypeDimension')
+        if ptype: result['property_type'] = str(ptype)
+
+    # ── Regex fallbacks ────────────────────────────────────────────────────────
+    rgx = {
+        'zestimate':  [r'"zestimate":\{"value":(\d+)', r'"homeValue":(\d+)', r'"zestimate":(\d{5,8})'],
+        'bedrooms':   [r'"bedrooms":(\d+)', r'"beds":(\d+)'],
+        'bathrooms':  [r'"bathrooms":([\d.]+)', r'"baths":([\d.]+)'],
+        'sqft':       [r'"livingArea":(\d+)', r'"finishedSqFt":(\d+)'],
+        'year_built': [r'"yearBuilt":(\d{4})'],
+        'address':    [r'"streetAddress":"([^"]+)"'],
+        'tax_annual': [r'"taxAnnualAmount":([\d.]+)'],
+    }
+    for key, pats in rgx.items():
+        if key in result: continue
+        for pat in pats:
+            mm = re.search(pat, html)
+            if mm:
+                v = mm.group(1).replace(',','')
+                if key=='zestimate':
+                    try:
+                        if 50000<=int(float(v))<=50000000: result[key]=int(float(v))
+                    except: pass
+                elif key=='year_built':
+                    try:
+                        if 1800<=int(v)<=2025: result[key]=v
+                    except: pass
+                else: result[key]=v
+                break
+
+    if result.get('tax_annual'):
+        try: result['monthly_tax'] = round(float(str(result['tax_annual']))/12)
+        except: pass
+
+    if not result.get('zestimate') and not result.get('address'):
+        return jsonify({'error': 'Could not extract data from Zillow. Make sure you paste the full homedetails URL (zillow.com/homedetails/...).'})
+
+    result['fields_found'] = [k for k in ['zestimate','address','bedrooms','bathrooms','sqft','year_built','monthly_tax','hoa'] if k in result]
+    return jsonify(result)
+
 
 # ── ATTOM ──────────────────────────────────────────────────────────────────────
 ATTOM_KEY = os.environ.get('ATTOM_API_KEY','')
@@ -769,7 +899,7 @@ HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Property Pigeon</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -777,227 +907,227 @@ HTML = r"""<!DOCTYPE html>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --blue:#1a56db;--green:#059669;--red:#d92d20;--purple:#7c3aed;
+  --blue:#1a56db;--green:#059669;--red:#d92d20;--purple:#7c3aed;--amber:#f59e0b;
   --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
   --g400:#9ca3af;--g500:#6b7280;--g700:#374151;--g900:#111827;
   --glass:rgba(255,255,255,0.68);--glassh:rgba(255,255,255,0.88);
-  --gb:rgba(255,255,255,0.82);--gsh:0 8px 32px rgba(31,38,135,.1),0 2px 8px rgba(31,38,135,.06);
+  --gb:rgba(255,255,255,0.82);
+  --gsh:0 8px 32px rgba(31,38,135,.1),0 2px 8px rgba(31,38,135,.06);
   --gsh2:0 16px 48px rgba(31,38,135,.15),0 4px 16px rgba(31,38,135,.08);
   --blur:blur(24px) saturate(180%);--r:12px;--r2:18px;
+  --nav-h:68px;--top-h:52px;
+  --safe-b:env(safe-area-inset-bottom, 0px);
 }
-html,body{height:100%;overflow:hidden;}
+html,body{height:100%;overflow:hidden;-webkit-font-smoothing:antialiased;}
 body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#dce8ff 0%,#eef2ff 25%,#e6f7ef 55%,#f0e8ff 100%);background-attachment:fixed;color:var(--g900);}
 input,button,select,textarea{font-family:inherit;}
 ::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:99px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.14);border-radius:99px;}
 ::-webkit-scrollbar-track{background:transparent;}
 
-/* AUTH */
-.auth-wrap{display:flex;height:100vh;}
-.auth-panel{width:380px;flex-shrink:0;padding:56px 48px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
-.auth-panel::before{content:'';position:absolute;inset:0;background:var(--blue);z-index:0;}
-.auth-panel::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.08) 0%,transparent 60%);z-index:1;}
-.auth-panel>*{position:relative;z-index:2;}
-.auth-bird{font-size:44px;margin-bottom:20px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2));}
-.auth-panel h1{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:10px;line-height:1.1;}
-.auth-panel p{font-size:14px;color:rgba(255,255,255,.8);line-height:1.6;}
-.auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px;}
-.auth-card{
-  width:100%;max-width:420px;
-  background:var(--glassh);
-  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border:1px solid rgba(255,255,255,.9);
-  border-radius:24px;padding:36px;
-  box-shadow:var(--gsh2),inset 0 1px 0 rgba(255,255,255,.95);
-}
-.auth-logo{font-size:11px;font-weight:700;color:var(--g400);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:22px;}
-.auth-card h2{font-size:24px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px;}
-.auth-card .sub{font-size:13px;color:var(--g500);margin-bottom:24px;}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
-.field input{width:100%;padding:10px 13px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
+/* ── AUTH ───────────────────────────────────────────────────────────────── */
+.auth-wrap{display:flex;height:100vh;height:100dvh;}
+.auth-panel{width:360px;flex-shrink:0;padding:56px 44px;display:flex;flex-direction:column;justify-content:center;background:var(--blue);position:relative;overflow:hidden;}
+.auth-panel::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.1) 0%,transparent 60%);pointer-events:none;}
+.auth-bird{font-size:48px;margin-bottom:20px;}
+.auth-panel h1{font-size:28px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:10px;}
+.auth-panel p{font-size:14px;color:rgba(255,255,255,.78);line-height:1.65;}
+.auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:28px;}
+.auth-card{width:100%;max-width:400px;background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.9);border-radius:24px;padding:34px;box-shadow:var(--gsh2),inset 0 1px 0 rgba(255,255,255,.95);}
+.auth-logo{font-size:10px;font-weight:700;color:var(--g400);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;}
+.auth-card h2{font-size:23px;font-weight:800;letter-spacing:-.4px;margin-bottom:3px;}
+.auth-sub{font-size:13px;color:var(--g500);margin-bottom:22px;}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.field input{width:100%;padding:10px 12px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
 .field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
-.field .hint{font-size:11px;margin-top:4px;font-weight:600;}
-.field .hint.ok{color:var(--green);}
-.field .hint.bad{color:var(--red);}
-.btn-primary{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;margin-top:4px;}
-.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(26,86,219,.35);}
+.field .hint{font-size:11px;margin-top:3px;font-weight:600;}
+.hint-ok{color:var(--green);}
+.hint-bad{color:var(--red);}
+.btn-primary{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;margin-top:2px;}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(26,86,219,.3);}
 .btn-primary:active{transform:scale(.97);}
-.btn-ghost-link{background:none;border:none;font-size:13px;color:var(--blue);cursor:pointer;display:block;width:100%;text-align:center;padding:10px;margin-top:4px;}
-.btn-ghost-link:hover{text-decoration:underline;}
-.err{background:rgba(217,45,32,.06);border:1px solid rgba(217,45,32,.25);border-radius:9px;padding:10px 13px;font-size:13px;color:#b91c1c;margin-bottom:14px;}
-.success{background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.25);border-radius:9px;padding:10px 13px;font-size:13px;color:var(--green);margin-bottom:14px;}
-.warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:9px;padding:10px 13px;font-size:13px;color:#92400e;margin-bottom:14px;}
+.btn-link{background:none;border:none;font-size:13px;color:var(--blue);cursor:pointer;display:block;width:100%;text-align:center;padding:10px;margin-top:4px;}
+.btn-link:hover{text-decoration:underline;}
+.alert{border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:13px;}
+.alert-err{background:rgba(217,45,32,.06);border:1px solid rgba(217,45,32,.2);color:#b91c1c;}
+.alert-ok{background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);color:var(--green);}
+.alert-warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);color:#92400e;}
+.alert-info{background:rgba(26,86,219,.05);border:1px solid rgba(26,86,219,.15);color:var(--blue);}
 
-/* SHELL */
-.shell{display:flex;height:100vh;overflow:hidden;}
-.sidebar{
-  width:218px;flex-shrink:0;
-  background:var(--glass);
-  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-right:1px solid rgba(255,255,255,.65);
-  display:flex;flex-direction:column;
-}
-.sb-logo{padding:20px 18px 14px;font-size:15px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.5);}
-.nav{flex:1;padding:10px 8px;overflow-y:auto;}
-.ni{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:500;color:var(--g500);cursor:pointer;margin-bottom:2px;transition:all .18s cubic-bezier(.34,1.56,.64,1);}
-.ni svg{width:17px;height:17px;flex-shrink:0;}
-.ni:hover{background:rgba(255,255,255,.8);color:var(--g900);transform:translateX(2px);}
-.ni.on{background:rgba(26,86,219,.1);color:var(--blue);font-weight:600;}
-.ni.on svg{stroke:var(--blue);}
-.sb-foot{padding:10px 8px 14px;border-top:1px solid rgba(255,255,255,.5);}
-.user-chip{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:.15s;}
-.user-chip:hover{background:rgba(255,255,255,.7);}
-.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.18);}
-.av-lg{width:52px;height:52px;font-size:16px;}
-.uname{font-size:13px;font-weight:600;line-height:1.2;}
-.uticker{font-size:11px;color:var(--g400);}
-.content{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+/* ── SHELL ──────────────────────────────────────────────────────────────── */
+.shell{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
 .topbar{
-  height:52px;flex-shrink:0;padding:0 22px;
-  display:flex;align-items:center;justify-content:space-between;
-  background:rgba(255,255,255,.55);
+  flex-shrink:0;height:var(--top-h);
+  display:flex;align-items:center;justify-content:space-between;padding:0 18px;
+  background:rgba(255,255,255,.6);
   backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-bottom:1px solid rgba(255,255,255,.6);
+  border-bottom:1px solid rgba(255,255,255,.65);
+  position:relative;z-index:10;
 }
-.topbar h3{font-size:16px;font-weight:700;letter-spacing:-.2px;}
-.page{flex:1;overflow-y:auto;padding:22px;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.page-in{animation:fadeUp .2s ease;}
+.topbar-title{font-size:17px;font-weight:800;letter-spacing:-.3px;}
+.topbar-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.page-area{flex:1;overflow:hidden;position:relative;}
+.page{height:100%;overflow-y:auto;padding:18px 16px;padding-bottom:calc(var(--nav-h) + 12px + var(--safe-b));}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.page-in{animation:fadeUp .18s ease;}
 
-/* GLASS CARD */
-.card{
-  background:var(--glass);
+/* ── BOTTOM NAV ─────────────────────────────────────────────────────────── */
+.bottom-nav{
+  flex-shrink:0;
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--nav-h) + var(--safe-b));
+  padding-bottom:var(--safe-b);
+  background:rgba(255,255,255,.72);
   backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border:1px solid var(--gb);border-radius:var(--r2);
-  box-shadow:var(--gsh);transition:.2s;
+  border-top:1px solid rgba(255,255,255,.75);
+  display:flex;align-items:stretch;justify-content:space-around;
+  z-index:50;
+  box-shadow:0 -4px 24px rgba(31,38,135,.08);
 }
-.card:hover{transform:translateY(-2px);box-shadow:var(--gsh2);}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .15s;padding:0 4px;-webkit-tap-highlight-color:transparent;}
+.nav-tab svg{width:22px;height:22px;transition:.15s;}
+.nav-tab span{font-size:10px;font-weight:600;transition:.15s;color:var(--g400);}
+.nav-tab svg{stroke:var(--g400);}
+.nav-tab.on svg{stroke:var(--blue);}
+.nav-tab.on span{color:var(--blue);}
+.nav-tab.on .nav-dot{background:var(--blue);}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;margin-top:-2px;}
 
-/* STATS GRID */
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.stat{background:rgba(255,255,255,.65);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.8);border-radius:var(--r);padding:15px 16px;transition:.2s;}
-.stat:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.08);}
-.stat-lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
-.stat-val{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+/* ── SUB TABS (inside Performance) ──────────────────────────────────────── */
+.sub-tabs{display:flex;gap:4px;background:rgba(0,0,0,.05);border-radius:12px;padding:3px;margin-bottom:18px;}
+.sub-tab{flex:1;text-align:center;padding:7px 8px;border-radius:9px;font-size:12px;font-weight:600;color:var(--g500);cursor:pointer;transition:.15s;border:none;background:transparent;}
+.sub-tab.on{background:white;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+
+/* ── CARDS ──────────────────────────────────────────────────────────────── */
+.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);box-shadow:var(--gsh);transition:.2s;}
+.glass-row{background:rgba(255,255,255,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.75);border-radius:13px;margin-bottom:7px;transition:all .18s cubic-bezier(.34,1.56,.64,1);}
+.glass-row:hover{background:rgba(255,255,255,.88)!important;transform:translateY(-2px)!important;box-shadow:0 8px 24px rgba(26,86,219,.1)!important;}
+
+/* ── STATS ──────────────────────────────────────────────────────────────── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat{background:rgba(255,255,255,.65);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.8);border-radius:var(--r);padding:14px 14px;transition:.2s;}
+.stat-lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+.stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1.1;}
 .stat-sub{font-size:11px;color:var(--g500);margin-top:3px;}
 
-/* HERO */
-.hero{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:22px;margin-bottom:16px;box-shadow:var(--gsh);}
-.hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+/* ── HERO ───────────────────────────────────────────────────────────────── */
+.hero{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:20px;margin-bottom:14px;box-shadow:var(--gsh);}
 .lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.big{font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1;}
-.chart-wrap{height:72px;margin:4px 0;}
+.big{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;}
+.chart-wrap{height:68px;margin:10px 0 4px;}
 
-/* PROPERTY ROWS */
-.prop-row{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:13px;margin-bottom:6px;background:rgba(255,255,255,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.75);cursor:pointer;transition:all .18s cubic-bezier(.34,1.56,.64,1);}
-.prop-row:hover{background:rgba(255,255,255,.92)!important;transform:translateY(-2px)!important;box-shadow:0 8px 24px rgba(26,86,219,.1)!important;}
-.prop-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-.prop-name{font-size:14px;font-weight:700;}
-.prop-loc{font-size:12px;color:var(--g400);margin-top:1px;}
+/* ── PROP ROWS ──────────────────────────────────────────────────────────── */
+.prop-row{display:flex;align-items:center;gap:12px;padding:12px 13px;cursor:pointer;}
+.prop-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.prop-name{font-size:14px;font-weight:700;line-height:1.2;}
+.prop-loc{font-size:11px;color:var(--g400);margin-top:1px;}
 .prop-zest{font-size:11px;color:var(--blue);font-weight:600;margin-top:2px;}
-.prop-val{font-size:16px;font-weight:800;text-align:right;}
-.prop-cf{font-size:11px;text-align:right;margin-top:1px;}
+.prop-right{text-align:right;flex-shrink:0;}
+.prop-val{font-size:15px;font-weight:800;}
+.prop-cf{font-size:11px;margin-top:1px;}
 
-/* CASHFLOW ROWS */
-.cf-row{display:flex;justify-content:space-between;align-items:center;padding:10px 13px;border-radius:9px;background:rgba(255,255,255,.5);margin-bottom:5px;}
-.cf-row.total{background:rgba(26,86,219,.06);border:1px solid rgba(26,86,219,.15);}
-.cf-lbl{font-size:13px;color:var(--g700);}
-.cf-val{font-size:14px;font-weight:700;}
+/* ── CF ROWS ────────────────────────────────────────────────────────────── */
+.cf-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.5);margin-bottom:4px;}
+.cf-row.total-row{background:rgba(26,86,219,.06);border:1px solid rgba(26,86,219,.14);}
+.cf-lbl{font-size:13px;}
+.cf-val{font-size:13px;font-weight:700;}
 
-/* FEED */
-.feed-item{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r);padding:16px;margin-bottom:10px;}
-.feed-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.feed-name{font-size:14px;font-weight:700;}
-.feed-time{font-size:11px;color:var(--g400);}
-.feed-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.feed-cell{background:rgba(255,255,255,.45);border-radius:8px;padding:8px 10px;}
-.feed-cell-lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;}
-.feed-cell-val{font-size:14px;font-weight:700;margin-top:2px;}
+/* ── SLIDERS ────────────────────────────────────────────────────────────── */
+.slider-row{margin-bottom:16px;}
+.slider-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.slider-name{font-size:13px;font-weight:600;}
+.slider-val{font-size:14px;font-weight:800;color:var(--blue);}
+input[type=range]{width:100%;height:4px;border-radius:99px;-webkit-appearance:none;appearance:none;background:var(--g200);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);box-shadow:0 2px 8px rgba(26,86,219,.4);border:2px solid #fff;transition:.1s;}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--blue);box-shadow:0 2px 8px rgba(26,86,219,.4);border:2px solid #fff;cursor:pointer;}
 
-/* DISCOVER */
-.disc-row{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:13px;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.75);margin-bottom:8px;transition:.18s;}
-.disc-row:hover{background:rgba(255,255,255,.88);transform:translateY(-1px);}
-.disc-name{font-size:14px;font-weight:700;}
-.disc-sub{font-size:12px;color:var(--g500);margin-top:1px;}
-.follow-btn{margin-left:auto;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid var(--blue);background:transparent;color:var(--blue);cursor:pointer;transition:.15s;white-space:nowrap;}
-.follow-btn:hover,.follow-btn.on{background:var(--blue);color:#fff;}
+/* ── PROJ TABLE ─────────────────────────────────────────────────────────── */
+.proj-table{width:100%;border-collapse:collapse;font-size:12px;}
+.proj-table th{padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--g200);white-space:nowrap;}
+.proj-table th:first-child{text-align:left;}
+.proj-table td{padding:7px 10px;text-align:right;border-bottom:1px solid rgba(0,0,0,.04);}
+.proj-table td:first-child{text-align:left;font-weight:700;}
+.proj-table tr.milestone-row td{background:rgba(26,86,219,.04);font-weight:600;}
 
-/* BUTTONS */
+/* ── SEARCH / PROFILE ───────────────────────────────────────────────────── */
+.search-input-wrap{position:relative;margin-bottom:16px;}
+.search-input-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--g400);}
+.search-inp{width:100%;padding:11px 12px 11px 36px;border:1.5px solid var(--g200);border-radius:12px;font-size:14px;background:rgba(255,255,255,.8);transition:.15s;}
+.search-inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
+.user-result{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:13px;background:rgba(255,255,255,.65);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.8);margin-bottom:8px;cursor:pointer;transition:.18s;}
+.user-result:hover{background:rgba(255,255,255,.9);transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,86,219,.08);}
+.ur-name{font-size:14px;font-weight:700;}
+.ur-sub{font-size:12px;color:var(--g500);margin-top:1px;}
+.ur-right{margin-left:auto;text-align:right;flex-shrink:0;}
+.ur-price{font-size:15px;font-weight:800;}
+.ur-delta{font-size:11px;margin-top:1px;}
+.ticker-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;background:rgba(26,86,219,.1);color:var(--blue);letter-spacing:.5px;}
+
+/* ── PUBLIC PROFILE ─────────────────────────────────────────────────────── */
+.profile-header{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:20px;margin-bottom:14px;box-shadow:var(--gsh);}
+.profile-av{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+.profile-name{font-size:20px;font-weight:800;letter-spacing:-.4px;margin-top:10px;}
+.profile-handle{font-size:13px;color:var(--g500);margin-top:2px;}
+.profile-bio{font-size:13px;color:var(--g700);margin-top:8px;line-height:1.5;}
+.pub-preview-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:10px;margin-bottom:14px;font-size:12px;font-weight:600;color:var(--green);}
+
+/* ── SHARE PRICE CHART ──────────────────────────────────────────────────── */
+.share-price-card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:18px;margin-bottom:14px;box-shadow:var(--gsh);}
+
+/* ── NET WORTH ──────────────────────────────────────────────────────────── */
+.nw-big{font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
+.nw-bar{height:10px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin:12px 0;}
+.nw-seg{border-radius:99px;transition:width .4s ease;}
+.plaid-cta{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:2px dashed rgba(26,86,219,.25);border-radius:var(--r2);padding:32px;text-align:center;cursor:pointer;transition:.2s;}
+.plaid-cta:hover{background:rgba(255,255,255,.85);border-style:solid;}
+.manual-link{background:none;border:none;font-size:11px;color:var(--g300);cursor:pointer;margin-top:12px;display:block;width:100%;text-align:center;}
+.manual-link:hover{color:var(--g500);}
+
+/* ── BTNS ───────────────────────────────────────────────────────────────── */
 .btn{padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;}
 .btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 4px 12px rgba(0,0,0,.1);}
 .btn:active:not(:disabled){transform:scale(.97);}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
 .btn-blue{background:var(--blue);color:#fff;}
-.btn-green{background:var(--green);color:#fff;}
 .btn-ghost{background:rgba(0,0,0,.05);color:var(--g700);}
 .btn-outline{background:transparent;border:1.5px solid var(--g200);color:var(--g700);}
-.btn-outline:hover{border-color:var(--blue);color:var(--blue);}
+.btn-danger{background:rgba(217,45,32,.07);color:#b91c1c;border:1.5px solid rgba(217,45,32,.2);}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
-.btn-danger{background:rgba(217,45,32,.08);color:#b91c1c;border:1.5px solid rgba(217,45,32,.2);}
-.btn-danger:hover{background:rgba(217,45,32,.15);}
 
-/* MODAL */
-.overlay{position:fixed;inset:0;background:rgba(10,15,40,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
-@keyframes mIn{from{opacity:0;transform:scale(.93) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal{
-  background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border:1px solid rgba(255,255,255,.92);border-radius:22px;
-  width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:28px;
-  box-shadow:0 32px 80px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.95);
-  animation:mIn .22s cubic-bezier(.34,1.56,.64,1);
-}
-.modal h3{font-size:17px;font-weight:800;letter-spacing:-.2px;margin-bottom:6px;}
-.modal .msub{font-size:13px;color:var(--g500);margin-bottom:20px;}
-.modal-foot{display:flex;gap:8px;margin-top:22px;}
-.sinput{width:100%;padding:9px 12px;border:1.5px solid var(--g200);border-radius:9px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
+/* ── MODAL ──────────────────────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(10,15,40,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:0;}
+@media(min-width:600px){.overlay{align-items:center;padding:20px;}}
+@keyframes sheetUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+.modal{background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.92);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:24px 22px calc(22px + var(--safe-b));box-shadow:0 -8px 48px rgba(0,0,0,.18);animation:sheetUp .22s cubic-bezier(.34,1.56,.64,1);}
+@media(min-width:600px){.modal{border-radius:22px;max-height:90vh;padding:28px;}}
+.modal-handle{width:36px;height:4px;background:var(--g200);border-radius:99px;margin:0 auto 18px;}
+.modal h3{font-size:17px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;}
+.modal .msub{font-size:13px;color:var(--g500);margin-bottom:18px;}
+.modal-foot{display:flex;gap:8px;margin-top:20px;}
+.form-row{margin-bottom:12px;}
+.form-row label{display:block;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.sinput{width:100%;padding:9px 11px;border:1.5px solid var(--g200);border-radius:9px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
 .sinput:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
-.label{display:block;font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
-.form-row{margin-bottom:14px;}
-.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
 
-/* PROJECTIONS TABLE */
-.proj-table{width:100%;border-collapse:collapse;font-size:12px;}
-.proj-table th{padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--g200);}
-.proj-table th:first-child{text-align:left;}
-.proj-table td{padding:8px 10px;text-align:right;border-bottom:1px solid rgba(0,0,0,.04);}
-.proj-table td:first-child{text-align:left;font-weight:700;}
-.proj-table tr.milestone td{background:rgba(26,86,219,.04);}
-.proj-table tr:hover td{background:rgba(26,86,219,.03);}
-
-/* COLOR SWATCHES */
-.swatch-row{display:flex;gap:8px;flex-wrap:wrap;}
-.swatch{width:30px;height:30px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:.15s;}
-.swatch:hover,.swatch.on{border-color:rgba(0,0,0,.3);box-shadow:0 0 0 2px rgba(255,255,255,.8);}
-
-/* PLAID BAR */
-.plaid-bar{background:rgba(26,86,219,.05);border:1px solid rgba(26,86,219,.12);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-
-/* HEALTH RING */
-.ring-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;}
-.ring-center{position:absolute;text-align:center;}
-.ring-num{font-size:20px;font-weight:800;line-height:1;}
-.ring-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);}
-
-/* ZILLOW STEP */
-.zillow-box{background:rgba(26,86,219,.05);border:1.5px solid rgba(26,86,219,.15);border-radius:13px;padding:18px;margin-bottom:16px;}
-.zillow-box h4{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:6px;}
+/* ── ZILLOW BOX ─────────────────────────────────────────────────────────── */
+.zillow-box{background:rgba(26,86,219,.05);border:1.5px solid rgba(26,86,219,.14);border-radius:12px;padding:16px;margin-bottom:14px;}
+.zillow-box h4{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px;}
 .zillow-box p{font-size:12px;color:var(--g500);line-height:1.5;}
-.step-back{background:none;border:none;font-size:12px;color:var(--g400);cursor:pointer;padding:0;display:flex;align-items:center;gap:4px;margin-bottom:14px;}
-.step-back:hover{color:var(--g700);}
+.back-btn{background:none;border:none;font-size:12px;color:var(--g400);cursor:pointer;display:flex;align-items:center;gap:3px;margin-bottom:12px;padding:0;}
+.back-btn:hover{color:var(--g700);}
 
-/* SECTION HEADER */
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.sec-hdr h4{font-size:14px;font-weight:700;}
-
-/* INFO PILL */
-.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-.pill-blue{background:rgba(26,86,219,.1);color:var(--blue);}
-.pill-green{background:rgba(5,150,105,.1);color:var(--green);}
-.pill-red{background:rgba(217,45,32,.1);color:var(--red);}
+/* ── SWATCH ─────────────────────────────────────────────────────────────── */
+.swatch-row{display:flex;gap:8px;flex-wrap:wrap;}
+.swatch{width:28px;height:28px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:.15s;}
+.swatch.on,.swatch:hover{border-color:rgba(0,0,0,.25);box-shadow:0 0 0 2px rgba(255,255,255,.8);}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-hdr h4{font-size:15px;font-weight:700;}
 </style>
 </head>
 <body>
@@ -1005,49 +1135,44 @@ input,button,select,textarea{font-family:inherit;}
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
 const fmt$=v=>v==null?'—':'$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
-const fmt$k=v=>v==null?'—':Math.abs(v)>=1000000?'$'+(v/1000000).toFixed(1)+'M':Math.abs(v)>=1000?'$'+(v/1000).toFixed(0)+'K':fmt$(v);
-const fmtPct=v=>v==null?'—':(+v*100).toFixed(1)+'%';
-const pct=(v,t)=>t?((v/t)*100).toFixed(1)+'%':'0%';
-const clr=v=>v>0?'#059669':v<0?'#d92d20':'#6b7280';
-const initials=s=>(s||'').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?';
+const fmt$k=v=>{if(v==null)return'—';const a=Math.abs(+v);return a>=1e6?'$'+(v/1e6).toFixed(1)+'M':a>=1e3?'$'+(v/1e3).toFixed(0)+'K':fmt$(v);};
+const clr=v=>+v>0?'#059669':+v<0?'#d92d20':'#6b7280';
+const initials=s=>(s||'').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'??';
 
-// ── MINI CHART ────────────────────────────────────────────────────────────────
-function MiniChart({data=[],color='#1a56db'}){
+function MiniChart({data=[],color='#1a56db',height=68}){
   const ref=useRef();
   useEffect(()=>{
-    if(!ref.current||!data.length)return;
-    const ch=new Chart(ref.current,{
-      type:'line',
+    if(!ref.current||data.length<2)return;
+    const ch=new Chart(ref.current,{type:'line',
       data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2,fill:true,
-        backgroundColor:color+'22',tension:0.4,pointRadius:0}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
-        scales:{x:{display:false},y:{display:false}},animation:{duration:400}}
-    });
+        backgroundColor:color+'1a',tension:0.4,pointRadius:0}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{display:false},y:{display:false}},animation:{duration:300}}});
     return()=>ch.destroy();
-  },[data,color]);
-  return <canvas ref={ref} style={{width:'100%',height:'100%'}}/>;
+  },[data.join(','),color]);
+  return <canvas ref={ref} style={{width:'100%',height}}/>;
 }
 
-// ── HEALTH RING ───────────────────────────────────────────────────────────────
-function HealthRing({score=0,size=80}){
-  const r=30,c=2*Math.PI*r,dash=c*(score/100);
+function HealthRing({score=0,size=72}){
+  const r=28,c=2*Math.PI*r,dash=c*(score/100);
   const col=score>=70?'#059669':score>=40?'#f59e0b':'#d92d20';
   return(
-    <div className="ring-wrap" style={{width:size,height:size}}>
-      <svg width={size} height={size} viewBox="0 0 72 72">
-        <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="6"/>
-        <circle cx="36" cy="36" r={r} fill="none" stroke={col} strokeWidth="6"
+    <div style={{position:'relative',width:size,height:size,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+      <svg width={size} height={size} viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="5"/>
+        <circle cx="32" cy="32" r={r} fill="none" stroke={col} strokeWidth="5"
           strokeDasharray={`${dash} ${c-dash}`} strokeDashoffset={c*.25} strokeLinecap="round"/>
       </svg>
-      <div className="ring-center">
-        <div className="ring-num" style={{color:col}}>{score}</div>
-        <div className="ring-lbl">score</div>
+      <div style={{position:'absolute',textAlign:'center'}}>
+        <div style={{fontSize:16,fontWeight:800,color:col,lineHeight:1}}>{score}</div>
+        <div style={{fontSize:8,fontWeight:700,textTransform:'uppercase',letterSpacing:.5,color:'var(--g500)'}}>score</div>
       </div>
     </div>
   );
 }
 
-// ── AUTH SCREEN ───────────────────────────────────────────────────────────────
+// ── AUTH ─────────────────────────────────────────────────────────────────────
 function AuthScreen({onLogin}){
   const [mode,setMode]=useState('login');
   const [err,setErr]=useState('');
@@ -1067,14 +1192,12 @@ function AuthScreen({onLogin}){
     e.preventDefault();setErr('');setLoading(true);
     try{
       const r=await fetch(mode==='login'?'/api/auth/login':'/api/auth/signup',{
-        method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
-        body:JSON.stringify(f)
-      });
+        method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(f)});
       const d=await r.json();
       if(d.mfa_required){setMode('mfa');setLoading(false);return;}
       if(!r.ok){setErr(d.error||'Something went wrong');setLoading(false);return;}
       onLogin(d.user);
-    }catch(e){setErr('Network error — try again');}
+    }catch(e){setErr('Network error');}
     setLoading(false);
   };
 
@@ -1083,31 +1206,31 @@ function AuthScreen({onLogin}){
       <div className="auth-panel">
         <div className="auth-bird">🐦</div>
         <h1>Property Pigeon</h1>
-        <p>The social investment network for real estate investors. Track your portfolio, discover top performers, and connect with the community.</p>
+        <p>The social investment network for real estate investors. Track your portfolio, discover top performers, and connect.</p>
       </div>
       <div className="auth-main">
         <div className="auth-card">
           <div className="auth-logo">Property Pigeon</div>
           <h2>{mode==='login'?'Welcome back':mode==='mfa'?'Two-Factor Auth':'Create account'}</h2>
-          <p className="sub">{mode==='login'?'Sign in to your account':mode==='mfa'?'Enter your authenticator code':'Join real estate investors worldwide'}</p>
-          {err&&<div className="err">{err}</div>}
+          <p className="auth-sub">{mode==='login'?'Sign in to your account':mode==='mfa'?'Enter your authenticator code':'Join real estate investors worldwide'}</p>
+          {err&&<div className="alert alert-err">{err}</div>}
           <form onSubmit={submit}>
             {mode==='signup'&&<>
               <div className="field"><label>Full name</label><input value={f.full_name} onChange={set('full_name')} placeholder="Brandon Bonomo" required/></div>
               <div className="field"><label>Portfolio name</label><input value={f.portfolio_name} onChange={set('portfolio_name')} placeholder="BLB Realty" required/></div>
               <div className="field">
-                <label>Ticker <span style={{color:'var(--g400)',fontWeight:400,textTransform:'none',letterSpacing:0}}>(4 letters — your public ID)</span></label>
-                <input value={f.ticker} onChange={e=>setF(p=>({...p,ticker:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)}))} placeholder="BBLB" maxLength={4} style={{fontFamily:'monospace',letterSpacing:2}} required/>
-                {f.ticker.length===4&&tickerOk!==null&&<div className={`hint ${tickerOk?'ok':'bad'}`}>{tickerOk?'✓ Available':'✗ Already taken'}</div>}
+                <label>Ticker <span style={{textTransform:'none',letterSpacing:0,fontWeight:400,color:'var(--g400)'}}>— 4 letters, your public ID</span></label>
+                <input value={f.ticker} onChange={e=>setF(p=>({...p,ticker:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)}))} placeholder="BBLB" maxLength={4} style={{fontFamily:'monospace',letterSpacing:3}} required/>
+                {f.ticker.length===4&&tickerOk!==null&&<div className={`hint ${tickerOk?'hint-ok':'hint-bad'}`}>{tickerOk?'✓ Available':'✗ Already taken'}</div>}
               </div>
             </>}
             {mode!=='mfa'&&<div className="field"><label>{mode==='login'?'Username or email':'Username'}</label><input value={f.username} onChange={set('username')} placeholder="brandonb" required/></div>}
             {mode==='signup'&&<div className="field"><label>Email</label><input type="email" value={f.email} onChange={set('email')} required/></div>}
             {mode!=='mfa'&&<div className="field"><label>Password</label><input type="password" value={f.password} onChange={set('password')} required/></div>}
-            {mode==='mfa'&&<div className="field"><label>6-digit code</label><input value={f.token||''} onChange={e=>setF(p=>({...p,token:e.target.value}))} placeholder="000000" maxLength={6} style={{fontFamily:'monospace',letterSpacing:4,fontSize:20,textAlign:'center'}}/></div>}
+            {mode==='mfa'&&<div className="field"><label>6-digit code</label><input value={f.token||''} onChange={e=>setF(p=>({...p,token:e.target.value}))} placeholder="000000" maxLength={6} style={{fontFamily:'monospace',letterSpacing:6,fontSize:22,textAlign:'center'}}/></div>}
             <button type="submit" className="btn-primary" disabled={loading}>{loading?'Please wait…':mode==='login'?'Sign in':mode==='mfa'?'Verify':'Create account'}</button>
           </form>
-          {mode!=='mfa'&&<button className="btn-ghost-link" onClick={()=>{setMode(mode==='login'?'signup':'login');setErr('');}}>
+          {mode!=='mfa'&&<button className="btn-link" onClick={()=>{setMode(m=>m==='login'?'signup':'login');setErr('');}}>
             {mode==='login'?'New here? Create an account':'Have an account? Sign in'}
           </button>}
         </div>
@@ -1118,7 +1241,7 @@ function AuthScreen({onLogin}){
 
 // ── ADD PROPERTY MODAL ────────────────────────────────────────────────────────
 function AddPropModal({uid,onClose,onSave}){
-  const [step,setStep]=useState('zillow'); // zillow | form | manual
+  const [step,setStep]=useState('zillow');
   const [url,setUrl]=useState('');
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState('');
@@ -1132,92 +1255,60 @@ function AddPropModal({uid,onClose,onSave}){
     try{
       const r=await fetch('/api/zillow/zestimate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url})});
       const d=await r.json();
-      if(d.error){setErr(d.error);setLoading(false);return;}
-      setF(p=>({...p,
-        name:d.address||'',location:d.address||'',
-        zestimate:d.zestimate||'',purchase_price:d.zestimate||'',
-        property_tax:d.monthly_tax||'',bedrooms:d.bedrooms||'',
-        bathrooms:d.bathrooms||'',sqft:d.sqft||'',year_built:d.year_built||'',
-        zillow_url:url
-      }));
-      setMsg(`Zestimate: ${fmt$(d.zestimate)}`);
-      setStep('form');
-    }catch(e){setErr('Failed to fetch — try again');}
+      if(d.error&&!d.zestimate){setErr(d.error);setLoading(false);return;}
+      setF(p=>({...p,name:d.address||'',location:d.address||'',zestimate:d.zestimate||'',purchase_price:d.zestimate||'',property_tax:d.monthly_tax||'',bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',sqft:d.sqft||'',year_built:d.year_built||'',zillow_url:url}));
+      setMsg(`Zestimate: ${fmt$(d.zestimate)}`);setStep('form');
+    }catch(e){setErr('Failed — try again');}
     setLoading(false);
   };
 
   const save=async()=>{
-    if(!f.name){setErr('Name required');return;}
+    if(!f.name&&!f.location){setErr('Property name required');return;}
+    if(!f.name)setF(p=>({...p,name:p.location||'Property'}));
     setLoading(true);setErr('');
     try{
-      const r=await fetch(`/api/properties/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(f)});
+      const body={...f,name:f.name||f.location||'Property'};
+      const r=await fetch(`/api/properties/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
       const d=await r.json();
-      if(!r.ok){setErr(d.error||'Failed');setLoading(false);return;}
+      if(!r.ok){setErr(d.error||'Failed to save');setLoading(false);return;}
       onSave(d);onClose();
     }catch(e){setErr('Failed to save');}
     setLoading(false);
   };
 
-  const inp=(lbl,k,type='text',placeholder='')=>(
-    <div className="form-row">
-      <label className="label">{lbl}</label>
-      <input className="sinput" type={type} value={f[k]} onChange={set(k)} placeholder={placeholder}/>
-    </div>
+  const inp=(lbl,k,type='text',ph='')=>(
+    <div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]} onChange={set(k)} placeholder={ph}/></div>
   );
 
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
+        <div className="modal-handle"/>
         {step==='zillow'&&<>
-          <h3>Add Property</h3>
-          <p className="msub">Paste a Zillow URL to auto-fill details</p>
+          <h3>Add Property</h3><p className="msub">Paste a Zillow listing URL</p>
           <div className="zillow-box">
-            <h4>🏠 Find on Zillow</h4>
-            <p>Go to zillow.com, find the property, and copy the URL from your browser.</p>
+            <h4>🏠 Auto-fill from Zillow</h4>
+            <p>Find your property on zillow.com and paste the URL below to auto-populate all details.</p>
           </div>
-          {err&&<div className="err">{err}</div>}
-          <div className="form-row">
-            <label className="label">Zillow URL</label>
-            <input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/..."/>
-          </div>
+          {err&&<div className="alert alert-err">{err}</div>}
+          <div className="form-row"><label>Zillow URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/..."/></div>
           <div className="modal-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-blue" onClick={fetchZillow} disabled={loading}>{loading?'Fetching…':'Get Details'}</button>
           </div>
-          <button className="step-back" style={{marginTop:12}} onClick={()=>setStep('manual')}>Enter manually instead →</button>
+          <button className="manual-link" onClick={()=>setStep('form')}>Enter manually instead</button>
         </>}
-        {(step==='form'||step==='manual')&&<>
-          {step==='form'&&<button className="step-back" onClick={()=>setStep('zillow')}>← Back to Zillow</button>}
-          {step==='manual'&&<button className="step-back" onClick={()=>setStep('zillow')}>← Back</button>}
-          <h3>{step==='form'?'Review Details':'Add Manually'}</h3>
-          <p className="msub">{step==='form'?msg||'Review and adjust as needed':'Enter all property details'}</p>
-          {err&&<div className="err">{err}</div>}
-          {inp('Property name','name','text','123 Main St')}
+        {step==='form'&&<>
+          <button className="back-btn" onClick={()=>setStep('zillow')}>← Back</button>
+          <h3>Property Details</h3><p className="msub">{msg||'Fill in the details below'}</p>
+          {err&&<div className="alert alert-err">{err}</div>}
+          {inp('Property name','name','text','22 B Street')}
           {inp('Location','location','text','Houston, TX')}
-          <div className="form-row2">
-            {inp('Purchase price ($)','purchase_price','number')}
-            {inp('Down payment ($)','down_payment','number')}
-          </div>
-          <div className="form-row2">
-            {inp('Current value / Zestimate ($)','zestimate','number')}
-            {inp('Monthly rent ($)','monthly_revenue','number')}
-          </div>
-          <div className="form-row2">
-            {inp('Mortgage /mo ($)','mortgage','number')}
-            {inp('Property tax /mo ($)','property_tax','number')}
-          </div>
-          <div className="form-row2">
-            {inp('Insurance /mo ($)','insurance','number')}
-            {inp('HOA /mo ($)','hoa','number')}
-          </div>
-          <div className="form-row2">
-            {inp('Bedrooms','bedrooms','number')}
-            {inp('Bathrooms','bathrooms','number')}
-          </div>
-          <div className="form-row2">
-            {inp('Sqft','sqft','number')}
-            {inp('Year built','year_built','number')}
-          </div>
+          <div className="form-row2">{inp('Purchase price ($)','purchase_price','number')}{inp('Down payment ($)','down_payment','number')}</div>
+          <div className="form-row2">{inp('Current value / Zestimate ($)','zestimate','number')}{inp('Monthly rent ($)','monthly_revenue','number')}</div>
+          <div className="form-row2">{inp('Mortgage /mo ($)','mortgage','number')}{inp('Property tax /mo ($)','property_tax','number')}</div>
+          <div className="form-row2">{inp('Insurance /mo ($)','insurance','number')}{inp('HOA /mo ($)','hoa','number')}</div>
+          <div className="form-row2">{inp('Beds','bedrooms','number')}{inp('Baths','bathrooms','number')}</div>
           <div className="modal-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-blue" onClick={save} disabled={loading}>{loading?'Saving…':'Add Property'}</button>
@@ -1248,47 +1339,28 @@ function EditPropModal({prop,onClose,onSave,onDelete}){
 
   const del=async()=>{
     if(!confirm('Delete this property?'))return;
-    setLoading(true);
     await fetch(`/api/property/${prop.id}`,{method:'DELETE',credentials:'include'});
     onDelete(prop.id);onClose();
   };
 
-  const inp=(lbl,k,type='text')=>(
-    <div className="form-row">
-      <label className="label">{lbl}</label>
-      <input className="sinput" type={type} value={f[k]||''} onChange={set(k)}/>
-    </div>
-  );
+  const inp=(lbl,k,type='text')=>(<div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]||''} onChange={set(k)}/></div>);
 
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
-        <h3>Edit Property</h3>
-        <p className="msub">{prop.name}</p>
-        {err&&<div className="err">{err}</div>}
-        {inp('Property name','name')}
-        {inp('Location','location')}
-        <div className="form-row2">
-          {inp('Purchase price ($)','purchase_price','number')}
-          {inp('Down payment ($)','down_payment','number')}
-        </div>
-        <div className="form-row2">
-          {inp('Current value ($)','zestimate','number')}
-          {inp('Monthly rent ($)','monthly_revenue','number')}
-        </div>
-        <div className="form-row2">
-          {inp('Mortgage /mo ($)','mortgage','number')}
-          {inp('Property tax /mo ($)','property_tax','number')}
-        </div>
-        <div className="form-row2">
-          {inp('Insurance /mo ($)','insurance','number')}
-          {inp('HOA /mo ($)','hoa','number')}
-        </div>
+        <div className="modal-handle"/>
+        <h3>Edit Property</h3><p className="msub">{prop.name}</p>
+        {err&&<div className="alert alert-err">{err}</div>}
+        {inp('Property name','name')}{inp('Location','location')}
+        <div className="form-row2">{inp('Purchase price','purchase_price','number')}{inp('Down payment','down_payment','number')}</div>
+        <div className="form-row2">{inp('Current value','zestimate','number')}{inp('Monthly rent','monthly_revenue','number')}</div>
+        <div className="form-row2">{inp('Mortgage /mo','mortgage','number')}{inp('Property tax /mo','property_tax','number')}</div>
+        <div className="form-row2">{inp('Insurance /mo','insurance','number')}{inp('HOA /mo','hoa','number')}</div>
         <div className="modal-foot">
           <button className="btn btn-danger btn-sm" onClick={del}>Delete</button>
           <div style={{flex:1}}/>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-blue" onClick={save} disabled={loading}>{loading?'Saving…':'Save Changes'}</button>
+          <button className="btn btn-blue" onClick={save} disabled={loading}>{loading?'Saving…':'Save'}</button>
         </div>
       </div>
     </div>
@@ -1296,73 +1368,59 @@ function EditPropModal({prop,onClose,onSave,onDelete}){
 }
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
-function PortfolioTab({user,props,portfolio,onAddProp,onEditProp,onRefresh}){
+function PortfolioTab({user,props,portfolio,onAddProp,onEditProp}){
   const tv=+portfolio.total_value||0;
   const te=+portfolio.total_equity||0;
   const mcf=+portfolio.monthly_cashflow||0;
   const hs=+portfolio.health_score||0;
-  const history=portfolio.price_history?JSON.parse(typeof portfolio.price_history==='string'?portfolio.price_history:'[]'):[];
-  const chartData=history.map(h=>h.price);
+  const history=useMemo(()=>{
+    try{const h=portfolio.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}
+  },[portfolio.price_history]);
+  const chartData=history.map(h=>+h.price);
   const accent=user.accent_color||'#1a56db';
+  const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
 
   return(
     <div className="page page-in">
-      {/* Plaid connect bar */}
-      <div className="plaid-bar">
-        <span style={{fontSize:20}}>🏦</span>
-        <div style={{flex:1}}>
-          <div style={{fontSize:13,fontWeight:700}}>Connect your bank</div>
-          <div style={{fontSize:11,color:'var(--g500)'}}>Sync rental income &amp; expenses automatically</div>
-        </div>
-        <button className="btn btn-blue btn-sm">Connect</button>
-      </div>
-
-      {/* Hero */}
       <div className="hero">
-        <div className="hero-top">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
             <div className="lbl">Portfolio Value</div>
             <div className="big" style={{color:accent}}>{fmt$k(tv)}</div>
-            <div style={{fontSize:12,color:'var(--g500)',marginTop:4}}>Equity: {fmt$k(te)} · {props.length} {props.length===1?'property':'properties'}</div>
+            <div style={{fontSize:12,color:'var(--g500)',marginTop:4}}>{props.length} {props.length===1?'property':'properties'} · Equity {fmt$k(te)}</div>
           </div>
           <HealthRing score={hs}/>
         </div>
         {chartData.length>1&&<div className="chart-wrap"><MiniChart data={chartData} color={accent}/></div>}
-        <div style={{display:'flex',gap:6,marginTop:8}}>
-          {['1M','3M','6M','1Y'].map(t=><button key={t} className="btn btn-outline btn-sm">{t}</button>)}
-        </div>
       </div>
-
-      {/* Stats */}
-      <div className="grid4" style={{marginBottom:16}}>
+      <div className="grid2" style={{marginBottom:12}}>
         <div className="stat"><div className="stat-lbl">Monthly CF</div><div className="stat-val" style={{color:clr(mcf)}}>{fmt$(mcf)}</div></div>
-        <div className="stat"><div className="stat-lbl">Annual CF</div><div className="stat-val">{fmt$(mcf*12)}</div></div>
-        <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
-        <div className="stat"><div className="stat-lbl">Avg Cap Rate</div><div className="stat-val">{tv>0?((props.reduce((s,p)=>s+(+p.monthly_revenue*12-+p.property_tax*12-+p.insurance*12-+p.hoa*12),0)/tv)*100).toFixed(1)+'%':'—'}</div></div>
+        <div className="stat"><div className="stat-lbl">Annual CF</div><div className="stat-val">{fmt$k(mcf*12)}</div></div>
+        <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
+        <div className="stat"><div className="stat-lbl">Health Score</div><div className="stat-val">{hs}</div></div>
       </div>
-
-      {/* Properties */}
       <div className="sec-hdr">
         <h4>Properties</h4>
-        <button className="btn btn-blue btn-sm" onClick={onAddProp}>+ Add Property</button>
+        <button className="btn btn-blue btn-sm" onClick={onAddProp}>+ Add</button>
       </div>
       {props.length===0&&<div style={{textAlign:'center',padding:'40px 20px',color:'var(--g400)'}}>
         <div style={{fontSize:36,marginBottom:8}}>🏠</div>
         <div style={{fontWeight:600}}>No properties yet</div>
-        <div style={{fontSize:13,marginTop:4}}>Add your first property to get started</div>
+        <div style={{fontSize:13,marginTop:4,marginBottom:16}}>Add your first property to get started</div>
+        <button className="btn btn-blue" onClick={onAddProp}>+ Add Property</button>
       </div>}
       {props.map(p=>{
         const val=+p.zestimate||+p.purchase_price||0;
         const cf=+p.monthly_revenue-(+p.mortgage+ +p.insurance+ +p.hoa+ +p.property_tax);
         return(
-          <div key={p.id} className="prop-row" onClick={()=>onEditProp(p)}>
-            <div className="prop-icon" style={{background:accent+'18'}}>{p.bedrooms?'🏠':'🏢'}</div>
+          <div key={p.id} className="glass-row prop-row" onClick={()=>onEditProp(p)}>
+            <div className="prop-icon" style={{background:accent+'18'}}>{p.bedrooms>0?'🏠':'🏢'}</div>
             <div style={{flex:1,minWidth:0}}>
               <div className="prop-name">{p.name}</div>
               <div className="prop-loc">{p.location}</div>
-              {p.zestimate>0&&<div className="prop-zest">Zestimate {fmt$(p.zestimate)}</div>}
+              {+p.zestimate>0&&<div className="prop-zest">Zestimate {fmt$(p.zestimate)}</div>}
             </div>
-            <div>
+            <div className="prop-right">
               <div className="prop-val">{fmt$k(val)}</div>
               <div className="prop-cf" style={{color:clr(cf)}}>{cf>=0?'+':''}{fmt$(cf)}/mo</div>
             </div>
@@ -1373,8 +1431,86 @@ function PortfolioTab({user,props,portfolio,onAddProp,onEditProp,onRefresh}){
   );
 }
 
-// ── CASHFLOW TAB ──────────────────────────────────────────────────────────────
-function CashflowTab({props}){
+// ── PERFORMANCE PARENT (with sub-tabs) ───────────────────────────────────────
+function PerformanceTab({user,props,portfolio}){
+  const [sub,setSub]=useState('performance');
+  return(
+    <div className="page page-in" style={{paddingTop:14}}>
+      <div className="sub-tabs">
+        {[['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
+          <button key={id} className={`sub-tab${sub===id?' on':''}`} onClick={()=>setSub(id)}>{lbl}</button>
+        ))}
+      </div>
+      {sub==='performance'&&<PerfContent user={user} props={props} portfolio={portfolio}/>}
+      {sub==='cashflow'&&<CashflowContent props={props}/>}
+      {sub==='projections'&&<ProjectionsContent props={props} portfolio={portfolio}/>}
+    </div>
+  );
+}
+
+function PerfContent({user,props,portfolio}){
+  const [snaps,setSnaps]=useState([]);
+  const uid=user.id;
+  const tv=+portfolio.total_value||0;
+  const te=+portfolio.total_equity||0;
+  const mcf=+portfolio.monthly_cashflow||0;
+  const totalDown=props.reduce((s,p)=>s+(+p.down_payment||0),0);
+  const coc=totalDown>0?(mcf*12/totalDown*100):0;
+  const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
+
+  useEffect(()=>{
+    fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'})
+      .then(r=>r.json()).then(d=>setSnaps(d.snapshots||[])).catch(()=>{});
+  },[uid]);
+
+  const saveSnap=async()=>{
+    await fetch('/api/performance/snapshot',{method:'POST',credentials:'include'});
+    const r=await fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'});
+    const d=await r.json();setSnaps(d.snapshots||[]);
+  };
+
+  const chartVals=snaps.map(s=>+s.total_value);
+
+  return(<>
+    <div className="grid2" style={{marginBottom:12}}>
+      <div className="stat"><div className="stat-lbl">Portfolio Value</div><div className="stat-val">{fmt$k(tv)}</div></div>
+      <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
+      <div className="stat"><div className="stat-lbl">Cash-on-Cash</div><div className="stat-val" style={{color:clr(coc)}}>{coc.toFixed(1)}%</div></div>
+      <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
+    </div>
+    {chartVals.length>1&&<div className="card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:8}}>Value History ({snaps.length}mo)</div>
+      <MiniChart data={chartVals} color={user.accent_color||'#1a56db'} height={80}/>
+    </div>}
+    <div className="sec-hdr">
+      <h4 style={{fontSize:13}}>Monthly Snapshots</h4>
+      <button className="btn btn-blue btn-sm" onClick={saveSnap}>Save Now</button>
+    </div>
+    {snaps.length===0&&<div style={{textAlign:'center',padding:'32px 20px',color:'var(--g400)',fontSize:13}}>No snapshots yet — tap Save Now to start tracking</div>}
+    {snaps.length>0&&<div className="card" style={{padding:0,overflow:'hidden'}}>
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{borderBottom:'1px solid var(--g200)'}}>
+            {['Month','Value','Equity','Revenue','Net CF'].map(h=>(
+              <th key={h} style={{padding:'8px 12px',textAlign:h==='Month'?'left':'right',fontWeight:700,color:'var(--g500)',fontSize:10,textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>{[...snaps].reverse().slice(0,12).map((s,i)=>(
+            <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <td style={{padding:'8px 12px',fontWeight:600}}>{s.snapshot_month}</td>
+              <td style={{padding:'8px 12px',textAlign:'right'}}>{fmt$k(s.total_value)}</td>
+              <td style={{padding:'8px 12px',textAlign:'right'}}>{fmt$k(s.total_equity)}</td>
+              <td style={{padding:'8px 12px',textAlign:'right',color:'var(--green)'}}>{fmt$(s.gross_revenue)}</td>
+              <td style={{padding:'8px 12px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow)}}>{fmt$(s.net_cashflow)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>}
+  </>);
+}
+
+function CashflowContent({props}){
   const revenue=props.reduce((s,p)=>s+(+p.monthly_revenue||0),0);
   const mortgage=props.reduce((s,p)=>s+(+p.mortgage||0),0);
   const tax=props.reduce((s,p)=>s+(+p.property_tax||0),0);
@@ -1384,316 +1520,246 @@ function CashflowTab({props}){
   const noi=revenue-tax-ins-hoa;
   const ncf=revenue-total_exp;
 
-  const Row=({label,val,sub,bold,green})=>(
-    <div className={`cf-row${bold?' total':''}`}>
-      <span className="cf-lbl" style={{fontWeight:bold?700:400}}>{label}</span>
-      <span className="cf-val" style={{color:green?clr(val):bold?clr(val):'var(--g700)'}}>{val>=0?'':'-'}{fmt$(Math.abs(val))}{sub?<span style={{fontSize:10,fontWeight:400,color:'var(--g500)',marginLeft:4}}>{sub}</span>:null}</span>
+  return(<>
+    <div className="grid2" style={{marginBottom:14}}>
+      <div className="stat"><div className="stat-lbl">Monthly Revenue</div><div className="stat-val" style={{color:'var(--green)'}}>{fmt$(revenue)}</div></div>
+      <div className="stat"><div className="stat-lbl">Monthly Expenses</div><div className="stat-val" style={{color:'var(--red)'}}>{fmt$(total_exp)}</div></div>
+      <div className="stat"><div className="stat-lbl">NOI</div><div className="stat-val" style={{color:clr(noi)}}>{fmt$(noi)}</div></div>
+      <div className="stat"><div className="stat-lbl">Net Cash Flow</div><div className="stat-val" style={{color:clr(ncf),fontWeight:800}}>{fmt$(ncf)}</div></div>
     </div>
-  );
-
-  return(
-    <div className="page page-in">
-      <div style={{maxWidth:560}}>
-        <div style={{marginBottom:20}}>
-          <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>Monthly Cash Flow</h3>
-          <p style={{fontSize:13,color:'var(--g500)',marginTop:4}}>Across all {props.length} properties</p>
+    <div className="card" style={{padding:18}}>
+      <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Monthly Breakdown</div>
+      {[['Gross Revenue',revenue,true],['Mortgage',mortgage],['Property Taxes',tax],['Insurance',ins],['HOA',hoa]].map(([lbl,val,isIncome])=>(
+        <div key={lbl} className="cf-row">
+          <span className="cf-lbl">{lbl}</span>
+          <span className="cf-val" style={{color:isIncome?'var(--green)':+val>0?'var(--red)':'var(--g700)'}}>{isIncome?'':'-'}{fmt$(Math.abs(val))}</span>
         </div>
-        <div className="card" style={{padding:20,marginBottom:16}}>
-          <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>Income</div>
-          <Row label="Gross Rental Revenue" val={revenue} green/>
-          <div style={{borderTop:'1px solid var(--g100)',margin:'12px 0'}}/>
-          <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>Expenses</div>
-          <Row label="Mortgage Payments" val={-mortgage}/>
-          <Row label="Property Taxes" val={-tax}/>
-          <Row label="Insurance" val={-ins}/>
-          <Row label="HOA Fees" val={-hoa}/>
-          <div style={{borderTop:'1px solid var(--g200)',margin:'12px 0'}}/>
-          <Row label="Net Operating Income (NOI)" val={noi} bold green/>
-          <Row label="Net Cash Flow" val={ncf} bold green/>
-        </div>
-        <div className="grid3">
-          <div className="stat"><div className="stat-lbl">Annual Revenue</div><div className="stat-val">{fmt$k(revenue*12)}</div></div>
-          <div className="stat"><div className="stat-lbl">Annual Expenses</div><div className="stat-val">{fmt$k(total_exp*12)}</div></div>
-          <div className="stat"><div className="stat-lbl">Annual NOI</div><div className="stat-val" style={{color:clr(noi)}}>{fmt$k(noi*12)}</div></div>
-        </div>
-      </div>
+      ))}
+      <div style={{borderTop:'1px solid var(--g200)',margin:'10px 0'}}/>
+      <div className="cf-row total-row"><span className="cf-lbl" style={{fontWeight:700}}>Net Cash Flow</span><span className="cf-val" style={{color:clr(ncf),fontSize:15}}>{fmt$(ncf)}</span></div>
+      <div style={{marginTop:12,fontSize:12,color:'var(--g500)'}}>Annual: {fmt$k(ncf*12)} · Annual Revenue: {fmt$k(revenue*12)}</div>
     </div>
-  );
+  </>);
 }
 
-// ── PERFORMANCE TAB ───────────────────────────────────────────────────────────
-function PerformanceTab({user,portfolio,props}){
-  const [snaps,setSnaps]=useState([]);
-  const uid=user.id;
+function ProjectionsContent({props,portfolio}){
+  const [appreciation,setAppreciation]=useState(3.5);
+  const [rentGrowth,setRentGrowth]=useState(2.5);
+  const [vacancy,setVacancy]=useState(5);
+  const [expInflation,setExpInflation]=useState(2.0);
 
-  useEffect(()=>{
-    fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'})
-      .then(r=>r.json()).then(d=>setSnaps(d.snapshots||[])).catch(()=>{});
-  },[uid]);
-
-  const tv=+portfolio.total_value||0;
-  const te=+portfolio.total_equity||0;
-  const mcf=+portfolio.monthly_cashflow||0;
-  const totalDown=props.reduce((s,p)=>s+(+p.down_payment||0),0);
-  const coc=totalDown>0?(mcf*12/totalDown)*100:0;
-  const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-+p.property_tax*12-+p.insurance*12-+p.hoa*12),0)/tv)*100:0;
-  const chartVals=snaps.map(s=>+s.total_value);
-
-  const saveSnap=async()=>{
-    await fetch('/api/performance/snapshot',{method:'POST',credentials:'include'});
-    const r=await fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'});
-    const d=await r.json();setSnaps(d.snapshots||[]);
-  };
-
-  return(
-    <div className="page page-in">
-      <div className="sec-hdr" style={{marginBottom:20}}>
-        <div>
-          <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>Performance</h3>
-          <p style={{fontSize:13,color:'var(--g500)',marginTop:2}}>Portfolio analytics &amp; historical tracking</p>
-        </div>
-        <button className="btn btn-blue btn-sm" onClick={saveSnap}>Save Snapshot</button>
-      </div>
-      <div className="grid4" style={{marginBottom:16}}>
-        <div className="stat"><div className="stat-lbl">Total Value</div><div className="stat-val">{fmt$k(tv)}</div></div>
-        <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
-        <div className="stat"><div className="stat-lbl">Cash-on-Cash</div><div className="stat-val" style={{color:clr(coc)}}>{coc.toFixed(1)}%</div></div>
-        <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
-      </div>
-      {chartVals.length>1&&<div className="card" style={{padding:20,marginBottom:16}}>
-        <div className="lbl" style={{marginBottom:8}}>Portfolio Value — Last {snaps.length} months</div>
-        <div style={{height:120}}><MiniChart data={chartVals} color={user.accent_color||'#1a56db'}/></div>
-      </div>}
-      {snaps.length>0&&<div className="card" style={{padding:0,overflow:'hidden'}}>
-        <div style={{padding:'14px 18px',borderBottom:'1px solid rgba(0,0,0,.06)',fontWeight:700,fontSize:13}}>Monthly Snapshots</div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-            <thead><tr style={{background:'rgba(0,0,0,.03)'}}>
-              {['Month','Value','Equity','Revenue','Expenses','Net CF'].map(h=><th key={h} style={{padding:'8px 14px',textAlign:'right',fontWeight:700,color:'var(--g500)',fontSize:10,textTransform:'uppercase',letterSpacing:.4,whiteSpace:'nowrap'}}>{h}</th>)}
-            </tr></thead>
-            <tbody>{snaps.slice(-12).reverse().map((s,i)=>(
-              <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-                <td style={{padding:'8px 14px',fontWeight:600}}>{s.snapshot_month}</td>
-                <td style={{padding:'8px 14px',textAlign:'right'}}>{fmt$k(s.total_value)}</td>
-                <td style={{padding:'8px 14px',textAlign:'right'}}>{fmt$k(s.total_equity)}</td>
-                <td style={{padding:'8px 14px',textAlign:'right',color:'var(--green)'}}>{fmt$(s.gross_revenue)}</td>
-                <td style={{padding:'8px 14px',textAlign:'right',color:'var(--red)'}}>{fmt$(s.total_expenses)}</td>
-                <td style={{padding:'8px 14px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow)}}>{fmt$(s.net_cashflow)}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      </div>}
-      {snaps.length===0&&<div style={{textAlign:'center',padding:'40px',color:'var(--g400)'}}>
-        <div style={{fontSize:32,marginBottom:8}}>📊</div>
-        <div style={{fontWeight:600}}>No snapshots yet</div>
-        <div style={{fontSize:13,marginTop:4}}>Click "Save Snapshot" to start tracking over time</div>
-      </div>}
-    </div>
-  );
-}
-
-// ── PROJECTIONS TAB ───────────────────────────────────────────────────────────
-function ProjectionsTab({props,portfolio}){
   const tv=+portfolio.total_value||0;
   const rev=props.reduce((s,p)=>s+(+p.monthly_revenue||0),0)*12;
   const exp=props.reduce((s,p)=>s+(+p.mortgage||0)+(+p.insurance||0)+(+p.hoa||0)+(+p.property_tax||0),0)*12;
   const down=props.reduce((s,p)=>s+(+p.down_payment||0),0);
-  const debt=tv-+portfolio.total_equity;
+  const debt=tv-(+portfolio.total_equity||0);
 
   const proj=useMemo(()=>{
     if(!tv)return[];
+    const vacFactor=1-(vacancy/100);
     return Array.from({length:30},(_,i)=>{
       const y=i+1;
-      const val=tv*Math.pow(1.035,y);
-      const r=rev*Math.pow(1.025,y);
-      const e=exp*Math.pow(1.02,y);
-      const vacAdj=r*.95;
-      const ncf=vacAdj-e;
-      const debtRemain=debt*Math.pow(1-.012-y*.001,y);
+      const val=tv*Math.pow(1+appreciation/100,y);
+      const r=rev*Math.pow(1+rentGrowth/100,y)*vacFactor;
+      const e=exp*Math.pow(1+expInflation/100,y);
+      const ncf=r-e;
+      const debtRemain=debt*Math.pow(1-(.012+y*.001),y);
       const eq=val-Math.max(0,debtRemain);
-      const cumCF=Array.from({length:y},(_,j)=>rev*Math.pow(1.025,j)*.95-exp*Math.pow(1.02,j)).reduce((a,b)=>a+b,0);
-      const totalReturn=eq-down+cumCF;
-      return{y,val,eq,debt:Math.max(0,debtRemain),rev:r,ncf,cumCF,capRate:tv>0?(vacAdj-exp*.7)/val:0,coc:down>0?ncf/down:0,totalReturn};
+      const cumCF=Array.from({length:y},(_,j)=>rev*Math.pow(1+rentGrowth/100,j)*vacFactor-exp*Math.pow(1+expInflation/100,j)).reduce((a,b)=>a+b,0);
+      return{y,val,eq,rev:r,ncf,cumCF,coc:down>0?ncf/down:0};
     });
-  },[tv,rev,exp,down,debt]);
-
-  const milestones=proj.filter(p=>[5,10,15,20,25,30].includes(p.y));
-  const milColors=['#1a56db','#7c3aed','#059669','#f59e0b','#d92d20','#0891b2'];
+  },[tv,rev,exp,down,debt,appreciation,rentGrowth,vacancy,expInflation]);
 
   if(!tv)return(
-    <div className="page page-in" style={{textAlign:'center',paddingTop:80}}>
-      <div style={{fontSize:40,marginBottom:12}}>📈</div>
-      <div style={{fontWeight:700,fontSize:18}}>No properties to project</div>
-      <div style={{fontSize:13,color:'var(--g500)',marginTop:6}}>Add a property to see 30-year projections</div>
+    <div style={{textAlign:'center',padding:'48px 20px',color:'var(--g400)'}}>
+      <div style={{fontSize:36,marginBottom:8}}>📈</div>
+      <div style={{fontWeight:600}}>Add a property to see projections</div>
     </div>
   );
 
-  return(
-    <div className="page page-in">
-      <div style={{marginBottom:20}}>
-        <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>30-Year Projections</h3>
-        <p style={{fontSize:12,color:'var(--g500)',marginTop:4}}>3.5% appreciation · 2.5% rent growth · 2% expense inflation · 5% vacancy</p>
+  const yr10=proj[9];const yr20=proj[19];const yr30=proj[29];
+
+  const Slider=({label,value,set,min,max,step,format})=>(
+    <div className="slider-row">
+      <div className="slider-hdr">
+        <span className="slider-name">{label}</span>
+        <span className="slider-val">{format(value)}</span>
       </div>
-      <div className="grid3" style={{marginBottom:20}}>
-        {milestones.slice(0,3).map((m,i)=>(
-          <div key={m.y} className="card" style={{padding:16,borderTop:`3px solid ${milColors[i]}`}}>
-            <div style={{fontSize:11,fontWeight:700,color:milColors[i],marginBottom:8}}>YEAR {m.y}</div>
-            <div style={{fontSize:10,color:'var(--g400)',marginBottom:2}}>Portfolio Value</div>
-            <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.5px'}}>{fmt$k(m.val)}</div>
-            <div style={{fontSize:10,color:'var(--g400)',marginTop:8,marginBottom:2}}>Equity</div>
-            <div style={{fontSize:15,fontWeight:700,color:'var(--green)'}}>{fmt$k(m.eq)}</div>
-          </div>
-        ))}
-      </div>
-      <div className="card" style={{padding:0,overflow:'hidden'}}>
-        <div style={{overflowX:'auto'}}>
-          <table className="proj-table">
-            <thead><tr>
-              {['Yr','Value','Equity','Revenue','Cash Flow','Cum CF','CoC'].map(h=>(
-                <th key={h}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>{proj.map(r=>(
-              <tr key={r.y} className={[5,10,15,20,25,30].includes(r.y)?'milestone':''}>
-                <td>{r.y}</td>
-                <td>{fmt$k(r.val)}</td>
-                <td style={{color:'var(--green)'}}>{fmt$k(r.eq)}</td>
-                <td>{fmt$k(r.rev)}</td>
-                <td style={{color:clr(r.ncf)}}>{fmt$k(r.ncf)}</td>
-                <td style={{color:clr(r.cumCF)}}>{fmt$k(r.cumCF)}</td>
-                <td style={{color:clr(r.coc)}}>{(r.coc*100).toFixed(1)}%</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      </div>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={e=>set(+e.target.value)}/>
     </div>
   );
+
+  return(<>
+    <div className="card" style={{padding:18,marginBottom:14}}>
+      <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:14}}>Assumptions</div>
+      <Slider label="Appreciation" value={appreciation} set={setAppreciation} min={0} max={10} step={0.5} format={v=>v.toFixed(1)+'%'}/>
+      <Slider label="Rent Growth" value={rentGrowth} set={setRentGrowth} min={0} max={8} step={0.5} format={v=>v.toFixed(1)+'%'}/>
+      <Slider label="Vacancy Rate" value={vacancy} set={setVacancy} min={0} max={20} step={1} format={v=>v+'%'}/>
+      <Slider label="Expense Inflation" value={expInflation} set={setExpInflation} min={0} max={6} step={0.5} format={v=>v.toFixed(1)+'%'}/>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
+      {[[10,yr10,'#1a56db'],[20,yr20,'#7c3aed'],[30,yr30,'#059669']].map(([y,d,c])=>(
+        <div key={y} className="card" style={{padding:14,borderTop:`3px solid ${c}`}}>
+          <div style={{fontSize:10,fontWeight:800,color:c,marginBottom:6}}>YEAR {y}</div>
+          <div style={{fontSize:10,color:'var(--g400)',marginBottom:1}}>Value</div>
+          <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.5px'}}>{fmt$k(d?.val)}</div>
+          <div style={{fontSize:10,color:'var(--g400)',marginTop:6,marginBottom:1}}>Equity</div>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--green)'}}>{fmt$k(d?.eq)}</div>
+        </div>
+      ))}
+    </div>
+    <div className="card" style={{padding:0,overflow:'hidden'}}>
+      <div style={{overflowX:'auto'}}>
+        <table className="proj-table">
+          <thead><tr>
+            {['Yr','Value','Equity','Annual Rev','Net CF','Cum CF','CoC'].map(h=><th key={h}>{h}</th>)}
+          </tr></thead>
+          <tbody>{proj.map(r=>(
+            <tr key={r.y} className={[5,10,15,20,25,30].includes(r.y)?'milestone-row':''}>
+              <td>{r.y}</td>
+              <td>{fmt$k(r.val)}</td>
+              <td style={{color:'var(--green)'}}>{fmt$k(r.eq)}</td>
+              <td>{fmt$k(r.rev)}</td>
+              <td style={{color:clr(r.ncf)}}>{fmt$k(r.ncf)}</td>
+              <td style={{color:clr(r.cumCF)}}>{fmt$k(r.cumCF)}</td>
+              <td style={{color:clr(r.coc)}}>{(r.coc*100).toFixed(1)}%</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  </>);
 }
 
 // ── NET WORTH TAB ─────────────────────────────────────────────────────────────
-function NetWorthTab({portfolio,props}){
+function NetWorthTab({user,portfolio,props}){
+  const [showManual,setShowManual]=useState(false);
   const [stocks,setStocks]=useState([]);
-  const [manuals,setManuals]=useState([
-    {id:1,label:'Cash & Savings',value:'',type:'asset'},
-    {id:2,label:'Vehicle',value:'',type:'asset'},
-    {id:3,label:'Student Loans',value:'',type:'liability'},
-    {id:4,label:'Credit Cards',value:'',type:'liability'},
-  ]);
+  const [stockInput,setStockInput]=useState('');
+  const [manuals,setManuals]=useState([]);
   const [newLabel,setNewLabel]=useState('');
   const [newVal,setNewVal]=useState('');
   const [newType,setNewType]=useState('asset');
-  const [stockInput,setStockInput]=useState('');
-  const [stockLoading,setStockLoading]=useState(false);
+  const plaidConnected=false; // Will be true when Plaid connected
 
   const re=+portfolio.total_equity||0;
+  const stockVal=stocks.reduce((s,st)=>s+(+st.shares*(+st.price||0)),0);
   const manualAssets=manuals.filter(m=>m.type==='asset').reduce((s,m)=>s+(+m.value||0),0);
   const manualLiab=manuals.filter(m=>m.type==='liability').reduce((s,m)=>s+(+m.value||0),0);
-  const stockVal=stocks.reduce((s,st)=>s+(+st.shares*(+st.price||0)),0);
-  const totalAssets=re+manualAssets+stockVal;
-  const totalLiab=manualLiab;
-  const netWorth=totalAssets-totalLiab;
+  const totalAssets=re+stockVal+manualAssets;
+  const netWorth=totalAssets-manualLiab;
+  const accent=user.accent_color||'#1a56db';
 
   const addStock=async()=>{
-    if(!stockInput)return;
-    const parts=stockInput.toUpperCase().split(':');
-    const ticker=parts[0].trim();
-    const shares=parseFloat(parts[1])||1;
-    setStockLoading(true);
+    const parts=stockInput.toUpperCase().trim().split(':');
+    const ticker=parts[0].trim();const shares=parseFloat(parts[1])||1;
+    if(!ticker)return;
     try{
       const r=await fetch(`/api/stocks/quote?ticker=${ticker}`,{credentials:'include'});
       const d=await r.json();
-      if(d.price)setStocks(p=>[...p.filter(s=>s.ticker!==ticker),{ticker,shares,price:d.price,change:d.change_pct}]);
+      if(d.price)setStocks(p=>[...p.filter(s=>s.ticker!==ticker),{ticker,shares,price:d.price,change:d.change_pct||0}]);
     }catch(e){}
-    setStockInput('');setStockLoading(false);
-  };
-
-  const addManual=()=>{
-    if(!newLabel||!newVal)return;
-    setManuals(p=>[...p,{id:Date.now(),label:newLabel,value:newVal,type:newType}]);
-    setNewLabel('');setNewVal('');
+    setStockInput('');
   };
 
   return(
     <div className="page page-in">
-      <div style={{marginBottom:20}}>
-        <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>Net Worth</h3>
-        <div style={{fontSize:32,fontWeight:800,letterSpacing:'-1px',color:clr(netWorth),marginTop:8}}>{fmt$k(netWorth)}</div>
+      <div style={{marginBottom:16}}>
+        <div className="lbl">Net Worth</div>
+        <div className="nw-big" style={{color:clr(netWorth)}}>{fmt$k(netWorth)}</div>
+        {totalAssets>0&&<div className="nw-bar">
+          <div className="nw-seg" style={{width:`${(re/totalAssets*100).toFixed(0)}%`,background:accent}}/>
+          <div className="nw-seg" style={{width:`${(stockVal/totalAssets*100).toFixed(0)}%`,background:'#7c3aed'}}/>
+          <div className="nw-seg" style={{width:`${(manualAssets/totalAssets*100).toFixed(0)}%`,background:'#059669'}}/>
+        </div>}
+        <div style={{display:'flex',gap:12,fontSize:11,color:'var(--g500)',marginTop:4}}>
+          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:8,height:8,borderRadius:2,background:accent,display:'inline-block'}}/> RE Equity {fmt$k(re)}</span>
+          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:8,height:8,borderRadius:2,background:'#7c3aed',display:'inline-block'}}/> Stocks {fmt$k(stockVal)}</span>
+        </div>
       </div>
-      <div className="grid3" style={{marginBottom:16}}>
-        <div className="stat"><div className="stat-lbl">Total Assets</div><div className="stat-val">{fmt$k(totalAssets)}</div></div>
-        <div className="stat"><div className="stat-lbl">Total Liabilities</div><div className="stat-val" style={{color:'var(--red)'}}>{fmt$k(totalLiab)}</div></div>
-        <div className="stat"><div className="stat-lbl">RE Equity</div><div className="stat-val">{fmt$k(re)}</div></div>
-      </div>
-      {totalAssets>0&&<div style={{display:'flex',height:10,borderRadius:99,overflow:'hidden',marginBottom:16,gap:2}}>
-        <div style={{width:pct(re,totalAssets),background:'#1a56db',borderRadius:99}}/>
-        <div style={{width:pct(stockVal,totalAssets),background:'#7c3aed',borderRadius:99}}/>
-        <div style={{width:pct(manualAssets,totalAssets),background:'#059669',borderRadius:99}}/>
+
+      {/* Plaid */}
+      {!plaidConnected&&<div className="plaid-cta" onClick={()=>{}}>
+        <div style={{fontSize:32,marginBottom:8}}>🏦</div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Connect Your Bank</div>
+        <div style={{fontSize:13,color:'var(--g500)',lineHeight:1.5,marginBottom:16}}>Connect via Plaid to automatically pull in all your account balances, cash, and liabilities into your net worth.</div>
+        <button className="btn btn-blue">Connect with Plaid</button>
       </div>}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {/* Stocks */}
-        <div className="card" style={{padding:18}}>
-          <div className="sec-hdr" style={{marginBottom:12}}>
-            <h4>Stocks &amp; ETFs</h4>
-          </div>
-          <div style={{display:'flex',gap:6,marginBottom:12}}>
-            <input className="sinput" value={stockInput} onChange={e=>setStockInput(e.target.value)} placeholder="AAPL:10 (ticker:shares)" onKeyDown={e=>e.key==='Enter'&&addStock()} style={{fontSize:12}}/>
-            <button className="btn btn-blue btn-sm" onClick={addStock} disabled={stockLoading}>{stockLoading?'…':'Add'}</button>
-          </div>
-          {stocks.length===0&&<div style={{fontSize:12,color:'var(--g400)',textAlign:'center',padding:'12px 0'}}>No holdings yet</div>}
-          {stocks.map(s=>(
-            <div key={s.ticker} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--g100)'}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:700}}>{s.ticker}</div>
-                <div style={{fontSize:11,color:'var(--g400)'}}>{s.shares} shares · {fmt$(s.price)}</div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:13,fontWeight:700}}>{fmt$k(s.shares*s.price)}</div>
-                <div style={{fontSize:11,color:clr(s.change)}}>{s.change>=0?'+':''}{(s.change||0).toFixed(1)}%</div>
-              </div>
-            </div>
-          ))}
+
+      {/* Stocks section */}
+      <div className="card" style={{padding:18,marginTop:14}}>
+        <div className="sec-hdr">
+          <h4>Stocks &amp; ETFs</h4>
         </div>
-        {/* Manual entries */}
-        <div className="card" style={{padding:18}}>
-          <div className="sec-hdr" style={{marginBottom:12}}>
-            <h4>Other Assets &amp; Liabilities</h4>
-          </div>
-          {manuals.map(m=>(
-            <div key={m.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid var(--g100)'}}>
-              <div style={{fontSize:13,color:m.type==='liability'?'var(--red)':'var(--g700)'}}>{m.label}</div>
-              <input value={m.value} onChange={e=>setManuals(p=>p.map(x=>x.id===m.id?{...x,value:e.target.value}:x))} placeholder="0" style={{width:90,padding:'4px 8px',border:'1.5px solid var(--g200)',borderRadius:7,fontSize:13,textAlign:'right'}}/>
-            </div>
-          ))}
-          <div style={{display:'flex',gap:6,marginTop:12}}>
-            <input className="sinput" value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="Label" style={{fontSize:12}}/>
-            <input className="sinput" value={newVal} onChange={e=>setNewVal(e.target.value)} placeholder="$" style={{width:80,fontSize:12}}/>
-            <select value={newType} onChange={e=>setNewType(e.target.value)} className="sinput" style={{width:90,fontSize:12}}>
-              <option value="asset">Asset</option>
-              <option value="liability">Liability</option>
-            </select>
-            <button className="btn btn-blue btn-sm" onClick={addManual}>+</button>
-          </div>
+        <div style={{display:'flex',gap:8,marginBottom:12}}>
+          <input className="sinput" value={stockInput} onChange={e=>setStockInput(e.target.value)}
+            placeholder="AAPL:10 (ticker:shares)" onKeyDown={e=>e.key==='Enter'&&addStock()} style={{fontSize:13}}/>
+          <button className="btn btn-blue btn-sm" onClick={addStock}>Add</button>
         </div>
+        {stocks.length===0&&<div style={{fontSize:12,color:'var(--g400)',textAlign:'center',padding:'8px 0'}}>No holdings — add by ticker:shares</div>}
+        {stocks.map(s=>(
+          <div key={s.ticker} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid var(--g100)'}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:700}}>{s.ticker}</div>
+              <div style={{fontSize:11,color:'var(--g400)'}}>{s.shares} shares · {fmt$(s.price)}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:14,fontWeight:700}}>{fmt$k(s.shares*s.price)}</div>
+              <div style={{fontSize:11,color:clr(s.change)}}>{s.change>=0?'+':''}{s.change.toFixed(1)}%</div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* Manual override - barely visible */}
+      <button className="manual-link" onClick={()=>setShowManual(p=>!p)}>
+        {showManual?'Hide manual entries':'+ Add manual entry'}
+      </button>
+      {showManual&&<div className="card" style={{padding:16,marginTop:8}}>
+        {manuals.map(m=>(
+          <div key={m.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--g100)'}}>
+            <div style={{fontSize:13,color:m.type==='liability'?'var(--red)':'var(--g700)'}}>{m.label}</div>
+            <input value={m.value} onChange={e=>setManuals(p=>p.map(x=>x.id===m.id?{...x,value:e.target.value}:x))}
+              placeholder="0" style={{width:80,padding:'4px 8px',border:'1.5px solid var(--g200)',borderRadius:7,fontSize:13,textAlign:'right'}}/>
+          </div>
+        ))}
+        <div style={{display:'flex',gap:6,marginTop:10}}>
+          <input className="sinput" value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="Label" style={{fontSize:12}}/>
+          <input className="sinput" value={newVal} onChange={e=>setNewVal(e.target.value)} placeholder="$" style={{width:70,fontSize:12}}/>
+          <select value={newType} onChange={e=>setNewType(e.target.value)} className="sinput" style={{width:90,fontSize:12}}>
+            <option value="asset">Asset</option>
+            <option value="liability">Liability</option>
+          </select>
+          <button className="btn btn-blue btn-sm" onClick={()=>{if(newLabel&&newVal){setManuals(p=>[...p,{id:Date.now(),label:newLabel,value:newVal,type:newType}]);setNewLabel('');setNewVal('');}}}>+</button>
+        </div>
+      </div>}
     </div>
   );
 }
 
-// ── DISCOVER TAB ──────────────────────────────────────────────────────────────
-function DiscoverTab({user}){
-  const [users,setUsers]=useState([]);
+// ── SEARCH TAB ────────────────────────────────────────────────────────────────
+function SearchTab({currentUser,onViewProfile}){
+  const [q,setQ]=useState('');
+  const [results,setResults]=useState([]);
+  const [loading,setLoading]=useState(false);
   const [following,setFollowing]=useState(new Set());
 
   useEffect(()=>{
-    fetch('/api/users/discover',{credentials:'include'}).then(r=>r.json()).then(d=>{
-      setUsers(d);
-      setFollowing(new Set(d.filter(u=>u.is_following).map(u=>u.id)));
-    }).catch(()=>{});
-  },[]);
+    if(q.length<2){setResults([]);return;}
+    const t=setTimeout(async()=>{
+      setLoading(true);
+      try{
+        const r=await fetch(`/api/users/search?q=${encodeURIComponent(q)}`,{credentials:'include'});
+        const d=await r.json();setResults(d);
+        setFollowing(new Set(d.filter(u=>u.is_following).map(u=>u.id)));
+      }catch(e){}
+      setLoading(false);
+    },300);
+    return()=>clearTimeout(t);
+  },[q]);
 
-  const toggle=async(uid)=>{
+  const toggle=async(uid,e)=>{
+    e.stopPropagation();
     const isF=following.has(uid);
     await fetch(`/api/${isF?'un':''}follow/${uid}`,{method:'POST',credentials:'include'});
     setFollowing(p=>{const n=new Set(p);isF?n.delete(uid):n.add(uid);return n;});
@@ -1701,24 +1767,39 @@ function DiscoverTab({user}){
 
   return(
     <div className="page page-in">
-      <div style={{marginBottom:20}}>
-        <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>Discover Investors</h3>
-        <p style={{fontSize:13,color:'var(--g500)',marginTop:4}}>Follow top performers to track their portfolios</p>
+      <div className="search-input-wrap">
+        <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input className="search-inp" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, username, or ticker…" autoComplete="off"/>
       </div>
-      {users.length===0&&<div style={{textAlign:'center',padding:'60px 20px',color:'var(--g400)'}}>
+      {q.length<2&&<div style={{textAlign:'center',padding:'48px 20px',color:'var(--g400)'}}>
         <div style={{fontSize:36,marginBottom:8}}>🔍</div>
-        <div style={{fontWeight:600}}>No other users yet</div>
+        <div style={{fontWeight:600,fontSize:15}}>Find investors</div>
+        <div style={{fontSize:13,marginTop:4}}>Search by name, username, or 4-letter ticker</div>
       </div>}
-      {users.map(u=>{
+      {loading&&<div style={{textAlign:'center',padding:'32px',color:'var(--g400)',fontSize:13}}>Searching…</div>}
+      {!loading&&q.length>=2&&results.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--g400)',fontSize:13}}>No results for "{q}"</div>}
+      {results.map(u=>{
         const isF=following.has(u.id);
+        const history=useMemo(()=>{try{const h=u.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
+        const chartData=history.map(h=>+h.price);
         return(
-          <div key={u.id} className="disc-row">
-            <div className="av" style={{background:u.avatar_color||'#1a56db',fontSize:12}}>{initials(u.full_name||u.username)}</div>
+          <div key={u.id} className="user-result" onClick={()=>onViewProfile(u.id)}>
+            <div style={{width:42,height:42,borderRadius:50,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:'#fff',background:u.avatar_color||'#1a56db',flexShrink:0,boxShadow:'0 2px 8px rgba(0,0,0,.2)',borderRadius:'50%'}}>{initials(u.full_name||u.username)}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div className="disc-name">{u.full_name||u.username}</div>
-              <div className="disc-sub">{u.portfolio_name||u.username} · {u.property_count||0} properties · {fmt$k(u.total_value)}</div>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                <span className="ur-name">{u.full_name||u.username}</span>
+                <span className="ticker-badge">{u.ticker}</span>
+              </div>
+              <div className="ur-sub">{u.portfolio_name||u.username} · {u.property_count||0} properties</div>
+              <div style={{fontSize:11,color:'var(--g500)',marginTop:1}}>{fmt$k(u.total_value)} portfolio · {fmt$(u.monthly_cashflow)}/mo</div>
             </div>
-            <button className={`follow-btn${isF?' on':''}`} onClick={()=>toggle(u.id)}>{isF?'Following':'Follow'}</button>
+            {chartData.length>2&&<div style={{width:60,height:32,flexShrink:0,margin:'0 8px'}}><MiniChart data={chartData} color={u.avatar_color||'#1a56db'} height={32}/></div>}
+            <div style={{flexShrink:0,textAlign:'right'}}>
+              <div className="ur-price">${(+u.share_price||1).toFixed(2)}</div>
+              <button className={`follow-btn btn btn-sm${isF?' following':''}`}
+                style={{marginTop:4,padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:700,border:`1.5px solid ${isF?'transparent':'var(--blue)'}`,background:isF?'var(--blue)':'transparent',color:isF?'#fff':'var(--blue)',cursor:'pointer'}}
+                onClick={e=>toggle(u.id,e)}>{isF?'Following':'Follow'}</button>
+            </div>
           </div>
         );
       })}
@@ -1726,51 +1807,109 @@ function DiscoverTab({user}){
   );
 }
 
-// ── FEED TAB ──────────────────────────────────────────────────────────────────
-function FeedTab({user}){
-  const [feed,setFeed]=useState([]);
+// ── PUBLIC PROFILE VIEW ───────────────────────────────────────────────────────
+function PublicProfileView({uid,currentUser,onBack}){
+  const [profile,setProfile]=useState(null);
+  const [following,setFollowing]=useState(false);
+  const isOwn=currentUser?.id===uid;
 
   useEffect(()=>{
-    fetch('/api/following',{credentials:'include'}).then(r=>r.json()).then(setFeed).catch(()=>{});
-  },[]);
+    fetch(`/api/users/${uid}/public`,{credentials:'include'}).then(r=>r.json()).then(d=>{setProfile(d);}).catch(()=>{});
+    if(!isOwn){
+      fetch(`/api/users/${uid}/following-status`,{credentials:'include'}).then(r=>r.json()).then(d=>setFollowing(d.following)).catch(()=>{});
+    }
+  },[uid]);
+
+  const toggle=async()=>{
+    await fetch(`/api/${following?'un':''}follow/${uid}`,{method:'POST',credentials:'include'});
+    setFollowing(f=>!f);
+  };
+
+  if(!profile)return<div style={{textAlign:'center',padding:60,color:'var(--g400)'}}>Loading…</div>;
+
+  const history=useMemo(()=>{try{const h=profile.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
+  const chartData=history.map(h=>+h.price);
+  const tv=+profile.total_value||0;
+  const te=+profile.total_equity||0;
+  const mcf=+profile.monthly_cashflow||0;
+  const props=profile.properties||[];
+  const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
+  const totalDown=props.reduce((s,p)=>s+(+p.down_payment||0),0);
+  const coc=totalDown>0?(mcf*12/totalDown*100):0;
 
   return(
     <div className="page page-in">
-      <div style={{marginBottom:20}}>
-        <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px'}}>Following</h3>
-        <p style={{fontSize:13,color:'var(--g500)',marginTop:4}}>Portfolios you track</p>
+      {onBack&&<button className="back-btn" style={{marginBottom:14}} onClick={onBack}>← Back to search</button>}
+      {isOwn&&<div className="pub-preview-banner">👁 This is how your profile appears to others</div>}
+
+      {/* Header */}
+      <div className="profile-header">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div className="profile-av" style={{background:profile.avatar_color||'#1a56db'}}>{initials(profile.full_name||profile.username)}</div>
+          {!isOwn&&<button className={`btn btn-sm${following?' btn-blue':' btn-outline'}`} onClick={toggle}>{following?'Following':'Follow'}</button>}
+        </div>
+        <div className="profile-name">{profile.full_name||profile.username}</div>
+        <div className="profile-handle">
+          <span className="ticker-badge" style={{marginRight:6}}>{profile.ticker}</span>
+          {profile.portfolio_name||profile.username}
+          {profile.location&&<span style={{color:'var(--g400)',marginLeft:6}}>· {profile.location}</span>}
+        </div>
+        {profile.bio&&<div className="profile-bio">{profile.bio}</div>}
       </div>
-      {feed.length===0&&<div style={{textAlign:'center',padding:'60px 20px',color:'var(--g400)'}}>
-        <div style={{fontSize:36,marginBottom:8}}>📰</div>
-        <div style={{fontWeight:600}}>No one followed yet</div>
-        <div style={{fontSize:13,marginTop:4}}>Go to Discover to follow investors</div>
-      </div>}
-      {feed.map(u=>(
-        <div key={u.id} className="feed-item">
-          <div className="feed-hdr">
-            <div className="av" style={{background:u.avatar_color||'#1a56db',fontSize:12}}>{initials(u.full_name||u.username)}</div>
-            <div>
-              <div className="feed-name">{u.full_name||u.username}</div>
-              <div style={{display:'flex',gap:6,marginTop:2}}>
-                <span className="pill pill-blue">{u.ticker}</span>
-                <span className="feed-time">Updated recently</span>
-              </div>
-            </div>
+
+      {/* Share price chart */}
+      {chartData.length>1&&<div className="share-price-card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+          <div>
+            <div className="lbl">Share Price</div>
+            <div style={{fontSize:26,fontWeight:800,letterSpacing:'-.5px'}}>${(+profile.share_price||1).toFixed(2)}</div>
           </div>
-          <div className="feed-grid">
-            <div className="feed-cell"><div className="feed-cell-lbl">Portfolio Value</div><div className="feed-cell-val">{fmt$k(u.total_value)}</div></div>
-            <div className="feed-cell"><div className="feed-cell-lbl">Monthly CF</div><div className="feed-cell-val" style={{color:clr(u.monthly_cashflow)}}>{fmt$(u.monthly_cashflow)}</div></div>
-            <div className="feed-cell"><div className="feed-cell-lbl">Share Price</div><div className="feed-cell-val">${(+u.share_price||1).toFixed(2)}</div></div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:10,color:'var(--g400)',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>Health Score</div>
+            <div style={{fontSize:22,fontWeight:800}}>{profile.health_score||0}</div>
           </div>
         </div>
-      ))}
+        <MiniChart data={chartData} color={profile.avatar_color||'#1a56db'} height={72}/>
+      </div>}
+
+      {/* Key stats */}
+      <div className="grid2" style={{marginBottom:12}}>
+        <div className="stat"><div className="stat-lbl">Portfolio Value</div><div className="stat-val">{fmt$k(tv)}</div></div>
+        <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
+        <div className="stat"><div className="stat-lbl">Monthly CF</div><div className="stat-val" style={{color:clr(mcf)}}>{fmt$(mcf)}</div></div>
+        <div className="stat"><div className="stat-lbl">Annual CF</div><div className="stat-val">{fmt$k(mcf*12)}</div></div>
+        <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
+        <div className="stat"><div className="stat-lbl">Cash-on-Cash</div><div className="stat-val">{coc.toFixed(1)}%</div></div>
+      </div>
+
+      {/* Properties */}
+      {props.length>0&&<>
+        <div className="sec-hdr"><h4>{props.length} {props.length===1?'Property':'Properties'}</h4></div>
+        {props.map((p,i)=>{
+          const val=+p.zestimate||+p.purchase_price||0;
+          return(
+            <div key={i} className="glass-row" style={{padding:'12px 13px',display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:38,height:38,borderRadius:10,background:(profile.avatar_color||'#1a56db')+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🏠</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:700}}>{p.name}</div>
+                <div style={{fontSize:11,color:'var(--g400)'}}>{p.location}</div>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontSize:14,fontWeight:800}}>{fmt$k(val)}</div>
+                {p.bedrooms>0&&<div style={{fontSize:11,color:'var(--g400)'}}>{p.bedrooms}bd</div>}
+              </div>
+            </div>
+          );
+        })}
+      </>}
     </div>
   );
 }
 
-// ── SETTINGS TAB ─────────────────────────────────────────────────────────────
-function SettingsTab({user,onUpdate,onLogout}){
-  const [f,setF]=useState({full_name:user.full_name||'',portfolio_name:user.portfolio_name||'',bio:user.bio||'',accent_color:user.accent_color||'#1a56db'});
+// ── PROFILE TAB (your own) ────────────────────────────────────────────────────
+function ProfileTab({user,portfolio,props,onUpdate,onLogout}){
+  const [view,setView]=useState('settings'); // settings | public
+  const [f,setF]=useState({full_name:user.full_name||'',portfolio_name:user.portfolio_name||'',bio:user.bio||'',location:user.location||'',accent_color:user.accent_color||'#1a56db'});
   const [msg,setMsg]=useState('');
   const [err,setErr]=useState('');
   const COLORS=['#1a56db','#7c3aed','#059669','#d92d20','#f59e0b','#0891b2','#db2777','#ea580c'];
@@ -1787,36 +1926,36 @@ function SettingsTab({user,onUpdate,onLogout}){
 
   return(
     <div className="page page-in">
-      <div style={{maxWidth:520}}>
-        <h3 style={{fontSize:20,fontWeight:800,letterSpacing:'-.3px',marginBottom:20}}>Settings</h3>
-        {err&&<div className="err">{err}</div>}
-        {msg&&<div className="success">{msg}</div>}
-        <div className="card" style={{padding:22,marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:16}}>Profile</div>
-          <div className="form-row">
-            <label className="label">Full name</label>
-            <input className="sinput" value={f.full_name} onChange={e=>setF(p=>({...p,full_name:e.target.value}))}/>
-          </div>
-          <div className="form-row">
-            <label className="label">Portfolio name</label>
-            <input className="sinput" value={f.portfolio_name} onChange={e=>setF(p=>({...p,portfolio_name:e.target.value}))}/>
-          </div>
-          <div className="form-row">
-            <label className="label">Bio</label>
-            <input className="sinput" value={f.bio} onChange={e=>setF(p=>({...p,bio:e.target.value}))} placeholder="Real estate investor..."/>
-          </div>
+      <div className="sub-tabs" style={{marginBottom:16}}>
+        <button className={`sub-tab${view==='settings'?' on':''}`} onClick={()=>setView('settings')}>Settings</button>
+        <button className={`sub-tab${view==='public'?' on':''}`} onClick={()=>setView('public')}>Public Profile</button>
+      </div>
+
+      {view==='public'&&<PublicProfileView uid={user.id} currentUser={user} onBack={null}/>}
+
+      {view==='settings'&&<div style={{maxWidth:500}}>
+        {err&&<div className="alert alert-err">{err}</div>}
+        {msg&&<div className="alert alert-ok">{msg}</div>}
+        <div className="card" style={{padding:20,marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>Profile Info</div>
+          {[['Full name','full_name','Brandon Bonomo'],['Portfolio name','portfolio_name','BLB Realty'],['Location','location','Houston, TX'],['Bio','bio','Real estate investor…']].map(([lbl,k,ph])=>(
+            <div key={k} className="form-row">
+              <label style={{fontSize:10,fontWeight:700,color:'var(--g500)',textTransform:'uppercase',letterSpacing:.5,marginBottom:4,display:'block'}}>{lbl}</label>
+              <input className="sinput" value={f[k]} onChange={e=>setF(p=>({...p,[k]:e.target.value}))} placeholder={ph}/>
+            </div>
+          ))}
         </div>
-        <div className="card" style={{padding:22,marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>Accent Color</div>
+        <div className="card" style={{padding:20,marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>Accent Color</div>
           <div className="swatch-row">
             {COLORS.map(c=><div key={c} className={`swatch${f.accent_color===c?' on':''}`} style={{background:c}} onClick={()=>setF(p=>({...p,accent_color:c}))}/>)}
           </div>
         </div>
         <div style={{display:'flex',gap:10}}>
           <button className="btn btn-blue" onClick={save}>Save Changes</button>
-          <button className="btn btn-danger" onClick={onLogout}>Sign Out</button>
+          <button className="btn btn-danger" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST',credentials:'include'});onLogout();}}>Sign Out</button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -1829,11 +1968,10 @@ function MainApp({user:initUser,onLogout}){
   const [portfolio,setPortfolio]=useState({});
   const [showAdd,setShowAdd]=useState(false);
   const [editProp,setEditProp]=useState(null);
+  const [viewingProfile,setViewingProfile]=useState(null);
   const accent=user.accent_color||'#1a56db';
 
-  useEffect(()=>{
-    document.documentElement.style.setProperty('--blue',accent);
-  },[accent]);
+  useEffect(()=>{document.documentElement.style.setProperty('--blue',accent);},[accent]);
 
   const loadData=useCallback(async()=>{
     try{
@@ -1841,75 +1979,68 @@ function MainApp({user:initUser,onLogout}){
         fetch(`/api/portfolio/${user.id}`,{credentials:'include'}).then(r=>r.json()),
         fetch(`/api/properties/${user.id}`,{credentials:'include'}).then(r=>r.json())
       ]);
-      setPortfolio(pf||{});
-      setProps(Array.isArray(pr)?pr:[]);
+      setPortfolio(pf||{});setProps(Array.isArray(pr)?pr:[]);
     }catch(e){}
   },[user.id]);
 
   useEffect(()=>{loadData();},[loadData]);
 
   const NAV=[
-    {id:'portfolio',label:'Portfolio',path:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
-    {id:'cashflow',label:'Cash Flow',path:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
-    {id:'performance',label:'Performance',path:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
-    {id:'projections',label:'Projections',path:'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'},
-    {id:'networth',label:'Net Worth',path:'M9 7h6m0 10H9m3-3v3m-7 1h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z'},
-    {id:'discover',label:'Discover',path:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
-    {id:'feed',label:'Feed',path:'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z'},
-    {id:'settings',label:'Settings',path:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'},
+    {id:'portfolio',label:'Portfolio',icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
+    {id:'performance',label:'Analytics',icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
+    {id:'networth',label:'Net Worth',icon:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
+    {id:'search',label:'Search',icon:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
+    {id:'profile',label:'Profile',icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'},
   ];
 
-  const PAGE_TITLES={portfolio:'Portfolio',cashflow:'Cash Flow',performance:'Performance',projections:'Projections',networth:'Net Worth',discover:'Discover',feed:'Feed',settings:'Settings'};
-
+  const PAGE_TITLES={portfolio:'Portfolio',performance:'Analytics',networth:'Net Worth',search:'Search',profile:'Profile'};
   const tabProps={user,props,portfolio,onRefresh:loadData};
 
   return(
     <div className="shell">
-      <div className="sidebar">
-        <div className="sb-logo">
-          <span>🐦</span> Property Pigeon
+      <div className="topbar">
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:20}}>🐦</span>
+          <span className="topbar-title">{viewingProfile?'Profile':PAGE_TITLES[tab]}</span>
         </div>
-        <nav className="nav">
-          {NAV.map(n=>(
-            <div key={n.id} className={`ni${tab===n.id?' on':''}`} onClick={()=>setTab(n.id)}>
-              <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d={n.path}/>
-              </svg>
-              {n.label}
-            </div>
-          ))}
-        </nav>
-        <div className="sb-foot">
-          <div className="user-chip" onClick={()=>setTab('settings')}>
-            <div className="av" style={{background:accent}}>{initials(user.full_name||user.username)}</div>
-            <div>
-              <div className="uname">{user.full_name||user.username}</div>
-              <div className="uticker">{user.ticker||user.username}</div>
-            </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {tab==='portfolio'&&!viewingProfile&&<button className="btn btn-blue btn-sm" onClick={()=>setShowAdd(true)}>+ Add</button>}
+          <div className="topbar-av" style={{background:accent}} onClick={()=>setTab('profile')}>{initials(user.full_name||user.username)}</div>
+        </div>
+      </div>
+
+      <div className="page-area">
+        {viewingProfile
+          ?<PublicProfileView uid={viewingProfile} currentUser={user} onBack={()=>setViewingProfile(null)}/>
+          :<>
+            {tab==='portfolio'&&<PortfolioTab {...tabProps} onAddProp={()=>setShowAdd(true)} onEditProp={setEditProp}/>}
+            {tab==='performance'&&<PerformanceTab {...tabProps}/>}
+            {tab==='networth'&&<NetWorthTab {...tabProps}/>}
+            {tab==='search'&&<SearchTab currentUser={user} onViewProfile={uid=>{setViewingProfile(uid);}}/>}
+            {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} props={props} onUpdate={u=>setUser(u)} onLogout={onLogout}/>}
+          </>
+        }
+      </div>
+
+      <nav className="bottom-nav">
+        {NAV.map(n=>(
+          <div key={n.id} className={`nav-tab${tab===n.id&&!viewingProfile?' on':''}`} onClick={()=>{setViewingProfile(null);setTab(n.id);}}>
+            <svg fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d={n.icon}/>
+            </svg>
+            <span>{n.label}</span>
+            <div className="nav-dot"/>
           </div>
-        </div>
-      </div>
-      <div className="content">
-        <div className="topbar">
-          <h3>{PAGE_TITLES[tab]}</h3>
-          {tab==='portfolio'&&<button className="btn btn-blue btn-sm" onClick={()=>setShowAdd(true)}>+ Add Property</button>}
-        </div>
-        {tab==='portfolio'&&<PortfolioTab {...tabProps} onAddProp={()=>setShowAdd(true)} onEditProp={setEditProp}/>}
-        {tab==='cashflow'&&<CashflowTab {...tabProps}/>}
-        {tab==='performance'&&<PerformanceTab {...tabProps}/>}
-        {tab==='projections'&&<ProjectionsTab {...tabProps}/>}
-        {tab==='networth'&&<NetWorthTab {...tabProps}/>}
-        {tab==='discover'&&<DiscoverTab {...tabProps}/>}
-        {tab==='feed'&&<FeedTab {...tabProps}/>}
-        {tab==='settings'&&<SettingsTab user={user} onUpdate={u=>{setUser(u);}} onLogout={async()=>{await fetch('/api/auth/logout',{method:'POST',credentials:'include'});onLogout();}}/>}
-      </div>
-      {showAdd&&<AddPropModal uid={user.id} onClose={()=>setShowAdd(false)} onSave={p=>{setProps(prev=>[p,...prev]);loadData();}}/>}
+        ))}
+      </nav>
+
+      {showAdd&&<AddPropModal uid={user.id} onClose={()=>setShowAdd(false)} onSave={p=>{setProps(prev=>[p,...prev]);loadData();setShowAdd(false);}}/>}
       {editProp&&<EditPropModal prop={editProp} onClose={()=>setEditProp(null)} onSave={p=>{setProps(prev=>prev.map(x=>x.id===p.id?p:x));setEditProp(null);loadData();}} onDelete={id=>{setProps(prev=>prev.filter(x=>x.id!==id));setEditProp(null);loadData();}}/>}
     </div>
   );
 }
 
-// ── ROOT ───────────────────────────────────────────────────────────────────────
+// ── ROOT ──────────────────────────────────────────────────────────────────────
 function App(){
   const [user,setUser]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -1918,17 +2049,16 @@ function App(){
     fetch('/api/auth/me',{credentials:'include'})
       .then(r=>r.ok?r.json():null)
       .then(d=>{if(d?.user)setUser(d.user);})
-      .catch(()=>{})
-      .finally(()=>setLoading(false));
+      .catch(()=>{}).finally(()=>setLoading(false));
   },[]);
 
   if(loading)return(
     <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#dce8ff,#f0e8ff)'}}>
       <div style={{textAlign:'center'}}>
-        <div style={{fontSize:44,marginBottom:12,animation:'spin 2s linear infinite'}}>🐦</div>
-        <div style={{fontWeight:600,color:'#6b7280'}}>Loading…</div>
+        <div style={{fontSize:48,animation:'spin 2s linear infinite'}}>🐦</div>
+        <div style={{fontWeight:600,color:'var(--g500)',marginTop:12}}>Loading…</div>
       </div>
-      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
@@ -1936,11 +2066,93 @@ function App(){
   return <MainApp user={user} onLogout={()=>setUser(null)}/>;
 }
 
-const _root=ReactDOM.createRoot(document.getElementById('root'));
-_root.render(<App/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>"""
+
+
+
+@app.route('/api/debug/test-insert')
+def test_insert():
+    """Test what columns exist in properties table"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='properties' AND table_schema='public' ORDER BY ordinal_position")
+            cols = [r[0] for r in cur.fetchall()]
+            cur.close()
+        return jsonify({'properties_columns': cols, 'count': len(cols)})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+
+@app.route('/api/users/search')
+def search_users():
+    q = request.args.get('q','').strip()
+    if not q: return jsonify([])
+    with get_db() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,u.avatar_color,u.bio,u.is_public,
+                   pm.total_value,pm.total_equity,pm.monthly_cashflow,pm.annual_cashflow,
+                   pm.property_count,pm.health_score,pm.share_price,pm.price_history
+            FROM users u LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
+            WHERE u.is_public=true AND (
+                LOWER(u.username) LIKE %s OR LOWER(u.ticker) LIKE %s OR LOWER(u.full_name) LIKE %s
+            )
+            ORDER BY pm.total_value DESC NULLS LAST LIMIT 20
+        """, (f'%{q.lower()}%', f'%{q.lower()}%', f'%{q.lower()}%'))
+        users = [dict(r) for r in cur.fetchall()]
+        cur.close()
+    for u in users:
+        if u.get('price_history') and isinstance(u['price_history'], str):
+            try: u['price_history'] = json.loads(u['price_history'])
+            except: u['price_history'] = []
+    return jsonify(users)
+
+@app.route('/api/users/<int:uid>/public')
+def user_public(uid):
+    with get_db() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,u.avatar_color,u.bio,u.location,u.is_public,
+                   pm.total_value,pm.total_equity,pm.monthly_cashflow,pm.annual_cashflow,
+                   pm.property_count,pm.health_score,pm.share_price,pm.price_history,pm.updated_at
+            FROM users u LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
+            WHERE u.id=%s
+        """, (uid,))
+        u = cur.fetchone()
+        if not u: cur.close(); return jsonify({'error':'Not found'}),404
+        u = dict(u)
+        cur.execute("""
+            SELECT name,location,purchase_price,zestimate,bedrooms,monthly_revenue,
+                   mortgage,property_tax,insurance,hoa,equity
+            FROM properties WHERE user_id=%s ORDER BY zestimate DESC NULLS LAST
+        """, (uid,))
+        u['properties'] = [dict(r) for r in cur.fetchall()]
+        cur.close()
+    if not u.get('is_public'):
+        req_uid = session.get('user_id')
+        if req_uid != uid: return jsonify({'error':'Private profile'}),403
+    u.pop('password_hash', None); u.pop('totp_secret', None)
+    if u.get('price_history') and isinstance(u['price_history'], str):
+        try: u['price_history'] = json.loads(u['price_history'])
+        except: u['price_history'] = []
+    if u.get('updated_at'): u['updated_at'] = u['updated_at'].isoformat()
+    return jsonify(u)
+
+@app.route('/api/users/<int:uid>/following-status')
+def following_status(uid):
+    req_uid = session.get('user_id')
+    if not req_uid: return jsonify({'following': False})
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM follows WHERE follower_id=%s AND following_id=%s",(req_uid,uid))
+        following = cur.fetchone() is not None; cur.close()
+    return jsonify({'following': following})
 
 # ── SERVE ──────────────────────────────────────────────────────────────────────
 @app.route('/', defaults={'path': ''})
