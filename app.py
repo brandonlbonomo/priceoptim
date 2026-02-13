@@ -652,7 +652,7 @@ def zillow_zestimate():
             continue
 
     if len(html) < 1000:
-        return jsonify({'error': 'Zillow is blocking this request. Open the property page in your browser first, then paste the URL.'})
+        return jsonify({'error': 'Zillow is blocking server requests from cloud hosting (this is a Zillow anti-bot restriction on cloud IPs). See the Redfin alternative below.', 'blocked': True})
 
     result = {}
 
@@ -765,6 +765,72 @@ def zillow_zestimate():
     result['fields_found'] = [k for k in ['zestimate','address','bedrooms','bathrooms','sqft','year_built','monthly_tax','hoa'] if k in result]
     return jsonify(result)
 
+
+
+@app.route('/api/redfin/lookup', methods=['POST'])
+def redfin_lookup():
+    """Scrape Redfin for property data - Redfin is less aggressive about blocking"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    url = (request.json or {}).get('url','').strip()
+    if not url: return jsonify({'error': 'URL required'}), 400
+    # Allow both zillow and redfin
+    if 'redfin.com' not in url and 'zillow.com' not in url:
+        return jsonify({'error': 'Must be a Redfin or Zillow URL'}), 400
+    import gzip as _gzip
+    result = {}
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.9',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate',
+        })
+        resp = urllib.request.urlopen(req, timeout=15)
+        raw = resp.read()
+        try: html = _gzip.decompress(raw).decode('utf-8','ignore')
+        except: html = raw.decode('utf-8','ignore')
+
+        if 'redfin.com' in url:
+            # Redfin price
+            pm = re.search(r'"price":(\d+)', html) or re.search(r'\$([0-9,]+)(?:\s*</span>)', html)
+            if pm:
+                v = pm.group(1).replace(',','')
+                try:
+                    fv = int(float(v))
+                    if 10000 < fv < 50000000: result['zestimate'] = fv
+                except: pass
+            # Redfin address
+            am = re.search(r'"streetLine":"([^"]+)"', html)
+            cm = re.search(r'"city":"([^"]+)"', html)
+            sm = re.search(r'"state":"([^"]+)"', html)
+            zm = re.search(r'"zip":"([^"]+)"', html)
+            if am:
+                addr = am.group(1)
+                if cm: addr += f", {cm.group(1)}"
+                if sm: addr += f", {sm.group(1)}"
+                if zm: addr += f" {zm.group(1)}"
+                result['address'] = addr
+            beds = re.search(r'"beds":(\d+)', html)
+            baths = re.search(r'"baths":([\d.]+)', html)
+            sqft = re.search(r'"sqFt":(\d+)', html) or re.search(r'"livingArea":(\d+)', html)
+            yr = re.search(r'"yearBuilt":(\d{4})', html)
+            if beds: result['bedrooms'] = beds.group(1)
+            if baths: result['bathrooms'] = baths.group(1)
+            if sqft: result['sqft'] = sqft.group(1)
+            if yr: result['year_built'] = yr.group(1)
+            tax = re.search(r'"taxesDue":([\d.]+)', html) or re.search(r'"propertyTaxes":([\d.]+)', html)
+            if tax:
+                try: result['monthly_tax'] = round(float(tax.group(1))/12)
+                except: pass
+
+        result['source'] = 'redfin' if 'redfin.com' in url else 'zillow'
+        if not result.get('zestimate') and not result.get('address'):
+            return jsonify({'error': f'Could not parse data from this page. The site may be blocking requests. Try Redfin.com for better results.'}), 422
+        return jsonify(result)
+    except Exception as e:
+        print(f'Redfin lookup error: {e}')
+        return jsonify({'error': f'Failed: {str(e)}'}), 500
 
 # ── ATTOM ──────────────────────────────────────────────────────────────────────
 ATTOM_KEY = os.environ.get('ATTOM_API_KEY','')
@@ -901,7 +967,8 @@ HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>Property Pigeon</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=SF+Pro+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -923,8 +990,8 @@ HTML = r"""<!DOCTYPE html>
   --accent:#2563eb;
 }
 html,body{height:100%;overflow:hidden;background:#f0f4ff;}
-body{font-family:'Syne',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
-input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
+input,button,select,textarea{font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;}
 *::selection{background:rgba(37,99,235,.15);}
 
 /* ── ANIMATED BG ─────────────────────────────────────────────────────── */
@@ -946,7 +1013,7 @@ input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
 ::-webkit-scrollbar-track{background:transparent;}
 
 /* ── TYPOGRAPHY ──────────────────────────────────────────────────────── */
-.mono{font-family:'DM Mono',monospace;}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
 .lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
 .big-num{font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
 .med-num{font-size:22px;font-weight:700;letter-spacing:-.5px;}
@@ -1103,13 +1170,13 @@ input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
 .cf-row:hover{background:rgba(255,255,255,.72);}
 .cf-row.cf-total{background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);}
 .cf-lbl{font-size:13px;font-weight:500;}
-.cf-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.cf-val{font-size:13px;font-weight:700;font-family:'JetBrains Mono',ui-monospace,monospace;}
 
 /* ── SLIDERS ─────────────────────────────────────────────────────────── */
 .slider-block{margin-bottom:20px;}
 .slider-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
 .slider-name{font-size:13px;font-weight:600;}
-.slider-val{font-size:16px;font-weight:800;color:var(--accent);font-family:'DM Mono',monospace;}
+.slider-val{font-size:16px;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',ui-monospace,monospace;}
 .slider-track{position:relative;height:6px;border-radius:99px;background:var(--line2);}
 .slider-fill{position:absolute;left:0;top:0;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--blue-l));pointer-events:none;}
 .slider-input{position:absolute;inset:0;width:100%;opacity:0;height:24px;top:-9px;cursor:pointer;-webkit-appearance:none;appearance:none;}
@@ -1124,8 +1191,8 @@ input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
 .proj-table{width:100%;border-collapse:collapse;font-size:12px;}
 .proj-table th{padding:9px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--line2);}
 .proj-table th:first-child{text-align:left;}
-.proj-table td{padding:8px 12px;text-align:right;border-bottom:1px solid rgba(0,0,0,.03);font-family:'DM Mono',monospace;font-size:11.5px;transition:.1s;}
-.proj-table td:first-child{text-align:left;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;}
+.proj-table td{padding:8px 12px;text-align:right;border-bottom:1px solid rgba(0,0,0,.03);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;transition:.1s;}
+.proj-table td:first-child{text-align:left;font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12px;font-weight:700;}
 .proj-table tr:hover td{background:rgba(37,99,235,.03);}
 .proj-table tr.milestone td{background:rgba(37,99,235,.05);font-weight:600;}
 .proj-table tr.milestone td:first-child{color:var(--blue);}
@@ -1144,7 +1211,7 @@ input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
   transition:all .2s cubic-bezier(.34,1.56,.64,1);
 }
 .user-card:hover{background:rgba(255,255,255,.92);transform:translateY(-2px);box-shadow:var(--sh2);}
-.ticker-pill{display:inline-flex;align-items:center;padding:3px 9px;background:rgba(37,99,235,.1);color:var(--blue);border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;font-family:'DM Mono',monospace;}
+.ticker-pill{display:inline-flex;align-items:center;padding:3px 9px;background:rgba(37,99,235,.1);color:var(--blue);border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;font-family:'JetBrains Mono',ui-monospace,monospace;}
 
 /* ── PROFILE (PUBLIC) ────────────────────────────────────────────────── */
 .profile-cover{height:130px;border-radius:var(--r2) var(--r2) 0 0;position:relative;overflow:hidden;}
@@ -1280,23 +1347,23 @@ function MiniLine({data=[],color='#2563eb',height=72,fill=true}){
 }
 
 // ── BAR CHART ────────────────────────────────────────────────────────────────
-function BarChart({data=[],labels=[],color='#2563eb',height=140}){
+function BarChart({data=[],labels=[],color='#2563eb',height=120}){
   const ref=useRef();const inst=useRef();
   useEffect(()=>{
-    if(!ref.current)return;
-    if(inst.current)inst.current.destroy();
-    if(data.length<2)return;
+    if(!ref.current||data.length<1)return;
+    if(inst.current){inst.current.destroy();inst.current=null;}
     inst.current=new Chart(ref.current,{type:'bar',
-      data:{labels,datasets:[{data,backgroundColor:data.map(v=>+v>=0?color+'cc':color2+'cc'),borderRadius:5,
-        borderSkipped:false}]},
-      options:{responsive:true,maintainAspectRatio:false,
+      data:{labels,datasets:[{data,
+        backgroundColor:data.map(v=>+v>=0?color+'bb':color2+'bb'),
+        borderRadius:4,borderSkipped:false,maxBarThickness:40}]},
+      options:{responsive:false,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt$k(ctx.parsed.y)}}},
-        scales:{x:{display:true,grid:{display:false},ticks:{font:{size:9},color:'rgba(0,0,0,.35)',maxRotation:0}},
-          y:{display:true,grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'rgba(0,0,0,.35)',callback:v=>fmt$k(v)}}},
-        animation:{duration:600,easing:'easeInOutCubic'}}});
+        scales:{x:{display:true,grid:{display:false},ticks:{font:{size:9},color:'rgba(0,0,0,.4)',maxRotation:0}},
+          y:{display:true,grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:9},color:'rgba(0,0,0,.4)',callback:v=>fmt$k(v)}}},
+        animation:{duration:500}}});
     return()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
   },[JSON.stringify(data),JSON.stringify(labels),color]);
-  return <canvas ref={ref} style={{width:'100%',height}}/>;
+  return <div style={{width:'100%',height,position:'relative'}}><canvas ref={ref} style={{position:'absolute',inset:0,width:'100%!important',height:'100%!important'}}/></div>;
 }
 const color2='#f43f5e';
 
@@ -1421,20 +1488,30 @@ function AddPropSheet({uid,onClose,onSave}){
   const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',zestimate:'',bedrooms:'',bathrooms:'',sqft:'',year_built:'',zillow_url:''});
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
 
-  const fetchZillow=async()=>{
-    if(!url.includes('zillow.com')){setErr('Please paste a zillow.com URL');return;}
+  const fetchListing=async()=>{
+    const isRedfin=url.includes('redfin.com');
+    const isZillow=url.includes('zillow.com');
+    if(!isZillow&&!isRedfin){setErr('Please paste a Zillow or Redfin URL');return;}
     setLoading(true);setErr('');
     try{
-      const r=await fetch('/api/zillow/zestimate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url})});
+      const endpoint=isRedfin?'/api/redfin/lookup':'/api/zillow/zestimate';
+      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url})});
       let d;try{d=await r.json();}catch{d={};}
-      if(d.error&&!d.zestimate){setErr(d.error||'Zillow fetch failed');setLoading(false);return;}
-      setF(p=>({...p,name:d.address||'',location:d.address||'',zestimate:d.zestimate||'',
-        purchase_price:d.zestimate||'',property_tax:d.monthly_tax||'',
-        bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',sqft:d.sqft||'',
-        year_built:d.year_built||'',zillow_url:url}));
-      setMsg(`Zestimate: ${fmt$(d.zestimate)}`);
+      if(d.blocked){
+        setErr('Zillow is blocking cloud requests. Paste a Redfin URL instead — same property, just go to redfin.com');
+        setLoading(false);return;
+      }
+      if(d.error&&!d.zestimate&&!d.address){setErr(d.error||'Could not fetch — try pasting a Redfin URL');setLoading(false);return;}
+      setF(p=>({...p,
+        name:d.address||'',location:d.address||'',
+        zestimate:d.zestimate||'',purchase_price:d.zestimate||'',
+        property_tax:d.monthly_tax||'',
+        bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',
+        sqft:d.sqft||'',year_built:d.year_built||'',
+        zillow_url:url}));
+      setMsg(d.zestimate?`Value: ${fmt$(d.zestimate)}`:'Address found — fill in remaining details');
       setStep('form');
-    }catch{setErr('Failed — please try again');}
+    }catch(e){setErr('Network error: '+e.message);}
     setLoading(false);
   };
 
@@ -1470,14 +1547,14 @@ function AddPropSheet({uid,onClose,onSave}){
           <h3>Add Property</h3>
           <p className="sheet-sub">Paste a Zillow listing URL to auto-fill</p>
           <div className="zillow-cta">
-            <h4>🏠 Auto-fill from Zillow</h4>
-            <p>Find your property on zillow.com, copy the URL from your browser address bar, and paste it below. We'll pull the Zestimate, address, bedrooms, taxes, and more.</p>
+            <h4>🏠 Auto-fill from Zillow or Redfin</h4>
+            <p>Paste a property URL from <strong>zillow.com</strong> or <strong>redfin.com</strong> to auto-populate value, address, bedrooms, and taxes. If Zillow doesn't work, try the same address on Redfin.</p>
           </div>
-          {err&&<div className="alert alert-err">{err}</div>}
-          <div className="form-row"><label>Zillow URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/..." onKeyDown={e=>e.key==='Enter'&&fetchZillow()}/></div>
+          {err&&<div className="alert alert-err" style={{cursor:'pointer'}} onClick={()=>setErr('')}>✕ {err}</div>}
+          <div className="form-row"><label>Zillow or Redfin URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/... or redfin.com/..." onKeyDown={e=>e.key==='Enter'&&fetchListing()}/></div>
           <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-prime" onClick={fetchZillow} disabled={loading}>{loading?'Fetching details…':'Auto-fill from Zillow'}</button>
+            <button className="btn btn-prime" onClick={fetchListing} disabled={loading}>{loading?'Fetching…':'Auto-fill'}</button>
           </div>
           <button className="manual-link" onClick={()=>setStep('form')}>Enter manually instead</button>
         </>}
@@ -1692,7 +1769,6 @@ function PerfPane({user,props,portfolio}){
     </div>}
     <div className="sec-hdr">
       <h4 style={{fontSize:14}}>Month-over-Month</h4>
-      <button className="btn btn-prime btn-sm" onClick={saveSnap}>Save Snapshot</button>
     </div>
     {snaps.length===0&&<div className="empty"><div className="empty-icon">📊</div><div className="empty-title">No history yet</div><div className="empty-sub">Save a snapshot to start tracking over time</div></div>}
     {snaps.length>0&&<div className="glass-card" style={{padding:0,overflow:'hidden'}}>
@@ -1710,13 +1786,13 @@ function PerfPane({user,props,portfolio}){
             return(
               <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)'}}>
                 <td style={{padding:'10px 13px',fontWeight:700,fontSize:13}}>{monthName(s.snapshot_month)}</td>
-                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'DM Mono',fontWeight:600}}>{fmt$k(s.total_value)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono',fontWeight:600}}>{fmt$k(s.total_value)}</td>
                 <td style={{padding:'10px 13px',textAlign:'right'}}>
                   {isYoY!==null?<span style={{fontSize:11,fontWeight:700,color:clr(isYoY)}}>{arrow(isYoY)}{Math.abs(isYoY/+arr[i+12].total_value*100).toFixed(1)}%</span>:<span style={{color:'var(--dim)',fontSize:11}}>—</span>}
                 </td>
-                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'DM Mono'}}>{fmt$k(s.total_equity)}</td>
-                <td style={{padding:'10px 13px',textAlign:'right',color:'var(--green)',fontFamily:'DM Mono'}}>{fmt$(s.gross_revenue)}</td>
-                <td style={{padding:'10px 13px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow),fontFamily:'DM Mono'}}>{fmt$s(s.net_cashflow)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono'}}>{fmt$k(s.total_equity)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',color:'var(--green)',fontFamily:'JetBrains Mono'}}>{fmt$(s.gross_revenue)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow),fontFamily:'JetBrains Mono'}}>{fmt$s(s.net_cashflow)}</td>
               </tr>
             );
           })}</tbody>
@@ -1913,9 +1989,9 @@ function NetWorthTab({user,portfolio,props}){
         {stocks.length===0&&<div style={{fontSize:12,color:'var(--dim)',textAlign:'center',padding:'12px 0'}}>No holdings — type AAPL:10 and press Add</div>}
         {stocks.map(s=>(
           <div key={s.ticker} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(0,0,0,.05)'}}>
-            <div><div style={{fontSize:14,fontWeight:800,fontFamily:'DM Mono'}}>{s.ticker}</div><div style={{fontSize:11,color:'var(--muted)'}}>{s.shares} shares @ {fmt$(s.price)}</div></div>
+            <div><div style={{fontSize:14,fontWeight:800,fontFamily:'JetBrains Mono'}}>{s.ticker}</div><div style={{fontSize:11,color:'var(--muted)'}}>{s.shares} shares @ {fmt$(s.price)}</div></div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:15,fontWeight:700,fontFamily:'DM Mono'}}>{fmt$k(s.shares*s.price)}</div>
+              <div style={{fontSize:15,fontWeight:700,fontFamily:'JetBrains Mono'}}>{fmt$k(s.shares*s.price)}</div>
               <div style={{fontSize:11,fontWeight:700,color:clr(s.change)}}>{arrow(s.change)}{Math.abs(s.change).toFixed(1)}%</div>
             </div>
           </div>
@@ -2009,7 +2085,7 @@ function SearchTab({currentUser,onViewProfile}){
             </div>
             {chartData.length>2&&<div style={{width:56,height:30,flexShrink:0}}><MiniLine data={chartData} color={u.avatar_color||'#2563eb'} height={30} fill={false}/></div>}
             <div style={{flexShrink:0,textAlign:'right',minWidth:64}}>
-              <div style={{fontSize:15,fontWeight:800,fontFamily:'DM Mono'}}>${(+u.share_price||1).toFixed(2)}</div>
+              <div style={{fontSize:15,fontWeight:800,fontFamily:'JetBrains Mono'}}>${(+u.share_price||1).toFixed(2)}</div>
               <button className={`btn-follow${isF?' on':''}`} style={{marginTop:5,fontSize:11}} onClick={e=>toggleFollow(u.id,e)}>{isF?'Following':'Follow'}</button>
             </div>
           </div>
@@ -2074,7 +2150,7 @@ function PublicProfile({uid,currentUser,onBack}){
           {/* Share price watermark on cover */}
           <div style={{position:'absolute',right:16,bottom:12,textAlign:'right'}}>
             <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.8}}>Share Price</div>
-            <div style={{fontSize:22,fontWeight:800,color:'#fff',fontFamily:'DM Mono',letterSpacing:-.5}}>${(+profile.share_price||1).toFixed(2)}</div>
+            <div style={{fontSize:22,fontWeight:800,color:'#fff',fontFamily:'JetBrains Mono',letterSpacing:-.5}}>${(+profile.share_price||1).toFixed(2)}</div>
           </div>
         </div>
         <div className="profile-card">
@@ -2105,7 +2181,7 @@ function PublicProfile({uid,currentUser,onBack}){
       {chartData.length>1&&<div className="glass-card" style={{padding:18,marginBottom:12}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
           <div className="lbl">Share Price History</div>
-          <div style={{fontFamily:'DM Mono',fontWeight:800,fontSize:18}}>${(+profile.share_price||1).toFixed(2)}</div>
+          <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:18}}>${(+profile.share_price||1).toFixed(2)}</div>
         </div>
         <MiniLine data={chartData} color={accent} height={80}/>
       </div>}
@@ -2147,8 +2223,17 @@ function PublicProfile({uid,currentUser,onBack}){
 }
 
 // ── PROFILE TAB ───────────────────────────────────────────────────────────────
-function ProfileTab({user,portfolio,props,onUpdate,onLogout}){
-  const [view,setView]=useState('public');
+function ProfileTab({user}){
+  return(
+    <div className="page page-in">
+      <PublicProfile uid={user.id} currentUser={user} onBack={null}/>
+    </div>
+  );
+}
+
+
+// ── SETTINGS SHEET ────────────────────────────────────────────────────────────
+function SettingsSheet({user,onClose,onUpdate,onLogout}){
   const [f,setF]=useState({full_name:user.full_name||'',portfolio_name:user.portfolio_name||'',bio:user.bio||'',location:user.location||'',accent_color:user.accent_color||'#2563eb'});
   const [msg,setMsg]=useState('');const [err,setErr]=useState('');
   const COLORS=['#2563eb','#6366f1','#10b981','#f43f5e','#f59e0b','#0891b2','#db2777','#ea580c'];
@@ -2159,37 +2244,33 @@ function ProfileTab({user,portfolio,props,onUpdate,onLogout}){
       const r=await fetch('/api/user/settings',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(f)});
       const d=await r.json();
       if(!r.ok){setErr(d.error||'Failed');return;}
-      onUpdate(d.user);setMsg('Saved!');setTimeout(()=>setMsg(''),2500);
+      onUpdate(d.user);setMsg('Saved!');setTimeout(()=>setMsg(''),2000);
     }catch{setErr('Failed');}
   };
 
   return(
-    <div className="page page-in" style={{paddingTop:14}}>
-      <div className="subnav" style={{marginBottom:16}}>
-        <button className={`subnav-btn${view==='public'?' on':''}`} onClick={()=>setView('public')}>My Profile</button>
-        <button className={`subnav-btn${view==='settings'?' on':''}`} onClick={()=>setView('settings')}>Settings</button>
-      </div>
-
-      {view==='public'&&<PublicProfile uid={user.id} currentUser={user} onBack={null}/>}
-
-      {view==='settings'&&<div style={{maxWidth:480}}>
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="sheet">
+        <div className="sheet-handle"/>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+          <div style={{width:48,height:48,borderRadius:'50%',background:f.accent_color||'#2563eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:800,color:'#fff'}}>{initials(user.full_name||user.username)}</div>
+          <div><div style={{fontSize:17,fontWeight:800}}>{user.full_name||user.username}</div><div style={{fontSize:12,color:'var(--muted)',fontFamily:'JetBrains Mono'}}>{user.ticker}</div></div>
+        </div>
         {err&&<div className="alert alert-err">{err}</div>}
         {msg&&<div className="alert alert-ok">✓ {msg}</div>}
-        <div className="glass-card" style={{padding:22,marginBottom:12}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:16}}>Profile Info</div>
-          {[['Full name','full_name','Brandon Bonomo'],['Portfolio name','portfolio_name','BLB Realty'],['Location','location','Houston, TX'],['Bio','bio','Real estate investor…']].map(([lbl,k,ph])=>(
-            <div key={k} className="form-row"><label>{lbl}</label><input className="sinput" value={f[k]} onChange={e=>setF(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></div>
-          ))}
-        </div>
-        <div className="glass-card" style={{padding:22,marginBottom:16}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>Accent Color</div>
+        <div className="form-row"><label>Full name</label><input className="sinput" value={f.full_name} onChange={e=>setF(p=>({...p,full_name:e.target.value}))} placeholder="Brandon Bonomo"/></div>
+        <div className="form-row"><label>Portfolio name</label><input className="sinput" value={f.portfolio_name} onChange={e=>setF(p=>({...p,portfolio_name:e.target.value}))} placeholder="BLB Realty"/></div>
+        <div className="form-row"><label>Location</label><input className="sinput" value={f.location} onChange={e=>setF(p=>({...p,location:e.target.value}))} placeholder="Houston, TX"/></div>
+        <div className="form-row"><label>Bio</label><input className="sinput" value={f.bio} onChange={e=>setF(p=>({...p,bio:e.target.value}))} placeholder="Real estate investor…"/></div>
+        <div className="form-row" style={{marginBottom:20}}>
+          <label>Accent color</label>
           <div className="swatch-row">{COLORS.map(c=><div key={c} className={`swatch${f.accent_color===c?' on':''}`} style={{background:c}} onClick={()=>setF(p=>({...p,accent_color:c}))}/>)}</div>
         </div>
-        <div style={{display:'flex',gap:10}}>
-          <button className="btn btn-prime" onClick={save}>Save Changes</button>
-          <button className="btn btn-danger" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST',credentials:'include'});onLogout();}}>Sign Out</button>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-prime" style={{flex:1}} onClick={save}>Save</button>
+          <button className="btn btn-danger" onClick={async()=>{if(confirm('Sign out?')){await fetch('/api/auth/logout',{method:'POST',credentials:'include'});onLogout();}}}>Sign Out</button>
         </div>
-      </div>}
+      </div>
     </div>
   );
 }
@@ -2203,6 +2284,7 @@ function MainApp({user:initUser,onLogout}){
   const [showAdd,setShowAdd]=useState(false);
   const [editProp,setEditProp]=useState(null);
   const [profileUID,setProfileUID]=useState(null);
+  const [showSettings,setShowSettings]=useState(false);
   const accent=user.accent_color||'#2563eb';
 
   useEffect(()=>{document.documentElement.style.setProperty('--accent',accent);},[accent]);
@@ -2240,7 +2322,7 @@ function MainApp({user:initUser,onLogout}){
         </div>
         <div className="topbar-right">
           {tab==='portfolio'&&!profileUID&&<button className="btn btn-prime btn-sm" onClick={()=>setShowAdd(true)}>+ Add</button>}
-          <div className="av-btn" style={{background:accent}} onClick={()=>{setProfileUID(null);setTab('profile');}}>{initials(user.full_name||user.username)}</div>
+          <div className="av-btn" style={{background:accent}} onClick={()=>setShowSettings(true)}>{initials(user.full_name||user.username)}</div>
         </div>
       </div>
 
@@ -2252,7 +2334,7 @@ function MainApp({user:initUser,onLogout}){
             {tab==='analytics'&&<AnalyticsTab {...tp}/>}
             {tab==='networth'&&<NetWorthTab {...tp}/>}
             {tab==='search'&&<SearchTab currentUser={user} onViewProfile={uid=>{setProfileUID(uid);}}/>}
-            {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} props={props} onUpdate={u=>{setUser(u);}} onLogout={onLogout}/>}
+            {tab==='profile'&&<ProfileTab user={user}/>}
           </>
         }
       </div>
@@ -2267,6 +2349,7 @@ function MainApp({user:initUser,onLogout}){
         ))}
       </nav>
 
+      {showSettings&&<SettingsSheet user={user} onClose={()=>setShowSettings(false)} onUpdate={u=>setUser(u)} onLogout={onLogout}/>}
       {showAdd&&<AddPropSheet uid={user.id} onClose={()=>setShowAdd(false)} onSave={p=>{setProps(v=>[p,...v]);loadData();setShowAdd(false);}}/>}
       {editProp&&<EditPropSheet prop={editProp} onClose={()=>setEditProp(null)} onSave={p=>{setProps(v=>v.map(x=>x.id===p.id?p:x));setEditProp(null);loadData();}} onDelete={id=>{setProps(v=>v.filter(x=>x.id!==id));setEditProp(null);loadData();}}/>}
     </div>
@@ -2294,6 +2377,107 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </body>
 </html>"""
 
+
+
+@app.route('/api/users/search')
+def search_users():
+    q = request.args.get('q','').strip()
+    if not q or len(q) < 2: return jsonify([])
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,
+                       u.avatar_color,u.bio,u.location,
+                       pm.total_value,pm.total_equity,pm.monthly_cashflow,
+                       pm.health_score,pm.share_price,pm.price_history,pm.property_count
+                FROM users u
+                LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
+                WHERE u.is_public=true
+                  AND (LOWER(u.username) LIKE %s OR LOWER(u.ticker) LIKE %s OR LOWER(u.full_name) LIKE %s)
+                ORDER BY pm.total_value DESC NULLS LAST LIMIT 20
+            """, (f'%{q.lower()}%','%'+q.lower()+'%','%'+q.lower()+'%'))
+            users = [dict(r) for r in cur.fetchall()]
+            cur.close()
+        # Check following status
+        uid = session.get('user_id')
+        if uid and users:
+            ids = [u['id'] for u in users]
+            with get_db() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT following_id FROM follows WHERE follower_id=%s AND following_id=ANY(%s)",(uid,ids))
+                following_ids = {r[0] for r in cur.fetchall()}; cur.close()
+            for u in users:
+                u['is_following'] = u['id'] in following_ids
+        return jsonify(users)
+    except Exception as e:
+        print(f'search_users error: {e}')
+        return jsonify([])
+
+@app.route('/api/users/<int:uid>/public')
+def user_public(uid):
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,
+                       u.avatar_color,u.bio,u.location,u.is_public,
+                       pm.total_value,pm.total_equity,pm.monthly_cashflow,pm.annual_cashflow,
+                       pm.property_count,pm.health_score,pm.share_price,pm.price_history,pm.updated_at
+                FROM users u
+                LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
+                WHERE u.id=%s
+            """, (uid,))
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                return jsonify({'error':'User not found'}), 404
+            u = dict(row)
+            # Get properties (safe column selection)
+            try:
+                cur.execute("""
+                    SELECT name,location,purchase_price,
+                           COALESCE(zestimate, purchase_price, 0) as zestimate,
+                           COALESCE(bedrooms,0) as bedrooms,
+                           COALESCE(monthly_revenue,0) as monthly_revenue,
+                           COALESCE(mortgage,0) as mortgage,
+                           COALESCE(property_tax,0) as property_tax,
+                           COALESCE(insurance,0) as insurance,
+                           COALESCE(hoa,0) as hoa,
+                           COALESCE(equity,0) as equity
+                    FROM properties WHERE user_id=%s ORDER BY purchase_price DESC NULLS LAST
+                """, (uid,))
+            except Exception:
+                cur.execute("SELECT name,location,purchase_price FROM properties WHERE user_id=%s", (uid,))
+            u['properties'] = [dict(r) for r in cur.fetchall()]
+            cur.close()
+        # Privacy check — own profile always visible
+        req_uid = session.get('user_id')
+        if req_uid != uid and not u.get('is_public'):
+            return jsonify({'error':'Private profile'}), 403
+        u.pop('password_hash', None); u.pop('totp_secret', None)
+        if u.get('price_history') and isinstance(u['price_history'], str):
+            try: u['price_history'] = json.loads(u['price_history'])
+            except: u['price_history'] = []
+        if u.get('updated_at'): u['updated_at'] = str(u['updated_at'])
+        return jsonify(u)
+    except Exception as e:
+        print(f'user_public error: {e}')
+        import traceback; traceback.print_exc()
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+@app.route('/api/users/<int:uid>/following-status')
+def following_status(uid):
+    req_uid = session.get('user_id')
+    if not req_uid: return jsonify({'following': False})
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM follows WHERE follower_id=%s AND following_id=%s", (req_uid, uid))
+            following = cur.fetchone() is not None; cur.close()
+        return jsonify({'following': following})
+    except Exception as e:
+        return jsonify({'following': False})
 
 # ── SERVE ──────────────────────────────────────────────────────────────────────
 @app.route('/', defaults={'path': ''})
