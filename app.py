@@ -498,38 +498,60 @@ def properties(uid):
             return jsonify(props)
         else:
             d = request.json or {}
-            exp = sum(float(d.get(k,0)) for k in ['mortgage','insurance','hoa','property_tax'])
-            eq = float(d.get('zestimate') or d.get('purchase_price',0)) - (float(d.get('purchase_price',0)) - float(d.get('down_payment',0)))
-            # Try full insert with all columns; fall back to core columns if new ones don't exist yet
             try:
-                cur.execute("""
-                    INSERT INTO properties (user_id,name,location,purchase_price,down_payment,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,zestimate,zpid,bedrooms,bathrooms,sqft,year_built,zillow_url,equity)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
-                """, (uid, d.get('name','Property'), d.get('location',''),
-                      float(d.get('purchase_price',0)), float(d.get('down_payment',0)),
-                      float(d.get('mortgage',0)), float(d.get('insurance',0)),
-                      float(d.get('hoa',0)), float(d.get('property_tax',0)),
-                      float(d.get('monthly_revenue',0)), exp,
-                      float(d.get('zestimate') or d.get('purchase_price',0)),
-                      d.get('zpid',''), int(d.get('bedrooms',0) or 0),
-                      float(d.get('bathrooms',0) or 0), int(d.get('sqft',0) or 0),
-                      int(d.get('year_built',0) or 0), d.get('zillow_url',''), max(0,eq)))
-            except Exception as col_err:
-                conn.rollback()
-                # Fallback: core columns only (matches original DB schema)
-                cur.execute("""
-                    INSERT INTO properties (user_id,name,location,purchase_price,down_payment,equity,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
-                """, (uid, d.get('name','Property'), d.get('location',''),
-                      float(d.get('purchase_price',0)), float(d.get('down_payment',0)),
-                      max(0,eq), float(d.get('mortgage',0)), float(d.get('insurance',0)),
-                      float(d.get('hoa',0)), float(d.get('property_tax',0)),
-                      float(d.get('monthly_revenue',0)), exp))
-            prop = dict(cur.fetchone())
-            conn.commit(); cur.close()
-            update_metrics(uid)
-            if prop.get('created_at'): prop['created_at'] = prop['created_at'].isoformat()
-            return jsonify(prop), 201
+                exp = sum(float(d.get(k,0) or 0) for k in ['mortgage','insurance','hoa','property_tax'])
+                pp = float(d.get('purchase_price',0) or 0)
+                dp = float(d.get('down_payment',0) or 0)
+                zest = float(d.get('zestimate') or d.get('purchase_price') or 0)
+                eq = zest - (pp - dp)
+                name = str(d.get('name') or d.get('location') or 'Property')
+                location = str(d.get('location') or '')
+                saved = False
+                # Try full insert first
+                try:
+                    cur.execute("""
+                        INSERT INTO properties (user_id,name,location,purchase_price,down_payment,
+                          mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses,
+                          zestimate,zpid,bedrooms,bathrooms,sqft,year_built,zillow_url,equity)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    """, (uid, name, location, pp, dp,
+                          float(d.get('mortgage',0) or 0), float(d.get('insurance',0) or 0),
+                          float(d.get('hoa',0) or 0), float(d.get('property_tax',0) or 0),
+                          float(d.get('monthly_revenue',0) or 0), exp, zest,
+                          str(d.get('zpid','') or ''),
+                          int(float(d.get('bedrooms',0) or 0)),
+                          float(d.get('bathrooms',0) or 0),
+                          int(float(d.get('sqft',0) or 0)),
+                          int(float(d.get('year_built',0) or 0)),
+                          str(d.get('zillow_url','') or ''), max(0,eq)))
+                    saved = True
+                except Exception as e1:
+                    print(f'Full insert failed ({e1}), trying fallback')
+                    conn.rollback()
+                    # Fallback to minimal schema
+                    cur.execute("""
+                        INSERT INTO properties (user_id,name,location,purchase_price,down_payment,
+                          equity,mortgage,insurance,hoa,property_tax,monthly_revenue,monthly_expenses)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *
+                    """, (uid, name, location, pp, dp, max(0,eq),
+                          float(d.get('mortgage',0) or 0), float(d.get('insurance',0) or 0),
+                          float(d.get('hoa',0) or 0), float(d.get('property_tax',0) or 0),
+                          float(d.get('monthly_revenue',0) or 0), exp))
+                    saved = True
+                prop = dict(cur.fetchone())
+                conn.commit()
+                cur.close()
+                try: update_metrics(uid)
+                except Exception as me: print(f'Metrics update failed: {me}')
+                if prop.get('created_at'): prop['created_at'] = prop['created_at'].isoformat()
+                return jsonify(prop), 201
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                try: conn.rollback()
+                except: pass
+                try: cur.close()
+                except: pass
+                return jsonify({'error': str(e), 'type': type(e).__name__}), 400
 
 @app.route('/api/property/<int:pid>', methods=['PUT','DELETE'])
 def property_detail(pid):
@@ -831,6 +853,147 @@ def redfin_lookup():
     except Exception as e:
         print(f'Redfin lookup error: {e}')
         return jsonify({'error': f'Failed: {str(e)}'}), 500
+
+
+@app.route('/api/rentcast/lookup', methods=['POST'])
+def rentcast_lookup():
+    """RentCast API - address-based property value + rent estimate"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    api_key = os.environ.get('RENTCAST_API_KEY','')
+    data = request.json or {}
+    address = data.get('address','').strip()
+    if not address: return jsonify({'error': 'Address required'}), 400
+    if not api_key: return jsonify({'error': 'RENTCAST_API_KEY not configured — see setup instructions'}), 422
+
+    result = {}
+    headers = {'X-Api-Key': api_key, 'Accept': 'application/json'}
+    encoded_addr = urllib.parse.quote(address)
+
+    try:
+        # 1. Property value estimate
+        val_url = f'https://api.rentcast.io/v1/avm/value?address={encoded_addr}'
+        req = urllib.request.Request(val_url, headers=headers)
+        try:
+            resp = urllib.request.urlopen(req, timeout=10)
+            val_data = json.loads(resp.read())
+            if val_data.get('price'): result['zestimate'] = int(val_data['price'])
+            if val_data.get('priceLow'): result['value_low'] = int(val_data['priceLow'])
+            if val_data.get('priceHigh'): result['value_high'] = int(val_data['priceHigh'])
+            sp = val_data.get('subjectProperty', {})
+            if sp.get('bedrooms'): result['bedrooms'] = str(sp['bedrooms'])
+            if sp.get('bathrooms'): result['bathrooms'] = str(sp['bathrooms'])
+            if sp.get('squareFootage'): result['sqft'] = str(int(sp['squareFootage']))
+            if sp.get('yearBuilt'): result['year_built'] = str(sp['yearBuilt'])
+            if sp.get('propertyType'): result['property_type'] = sp['propertyType']
+            if sp.get('formattedAddress'): result['address'] = sp['formattedAddress']
+            elif sp.get('addressLine1'):
+                a = sp['addressLine1']
+                if sp.get('city'): a += f", {sp['city']}"
+                if sp.get('state'): a += f", {sp['state']}"
+                if sp.get('zipCode'): a += f" {sp['zipCode']}"
+                result['address'] = a
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8','ignore')
+            print(f'RentCast value error: {e.code} {body}')
+            if e.code == 401: return jsonify({'error': 'Invalid RentCast API key'}), 401
+            if e.code == 404: return jsonify({'error': f'Property not found: {address}. Check the address format (e.g. "123 Main St, Houston, TX 77001")'}), 404
+            if e.code == 429: return jsonify({'error': 'RentCast API rate limit reached — upgrade plan at rentcast.io'}), 429
+
+        # 2. Rent estimate (separate call)
+        if result.get('zestimate'):
+            rent_url = f'https://api.rentcast.io/v1/avm/rent/long-term?address={encoded_addr}'
+            req2 = urllib.request.Request(rent_url, headers=headers)
+            try:
+                resp2 = urllib.request.urlopen(req2, timeout=10)
+                rent_data = json.loads(resp2.read())
+                if rent_data.get('rent'): result['rent_estimate'] = int(rent_data['rent'])
+                if rent_data.get('rentLow'): result['rent_low'] = int(rent_data['rentLow'])
+                if rent_data.get('rentHigh'): result['rent_high'] = int(rent_data['rentHigh'])
+            except: pass
+
+        # 3. Property records for tax data
+        prop_url = f'https://api.rentcast.io/v1/properties?address={encoded_addr}&limit=1'
+        req3 = urllib.request.Request(prop_url, headers=headers)
+        try:
+            resp3 = urllib.request.urlopen(req3, timeout=10)
+            prop_list = json.loads(resp3.read())
+            if isinstance(prop_list, list) and prop_list:
+                pr = prop_list[0]
+                if pr.get('lastSalePrice') and not result.get('zestimate'):
+                    result['last_sale_price'] = int(pr['lastSalePrice'])
+                if pr.get('lastSaleDate'): result['last_sale_date'] = pr['lastSaleDate']
+                if not result.get('bedrooms') and pr.get('bedrooms'): result['bedrooms'] = str(pr['bedrooms'])
+                if not result.get('bathrooms') and pr.get('bathrooms'): result['bathrooms'] = str(pr['bathrooms'])
+                if not result.get('sqft') and pr.get('squareFootage'): result['sqft'] = str(int(pr['squareFootage']))
+                if not result.get('year_built') and pr.get('yearBuilt'): result['year_built'] = str(pr['yearBuilt'])
+        except: pass
+
+        if not result:
+            return jsonify({'error': 'No data found for this address'}), 404
+
+        result['source'] = 'rentcast'
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': f'RentCast lookup failed: {str(e)}'}), 500
+
+
+@app.route('/api/properties/<int:pid>/refresh-value', methods=['POST'])
+def refresh_property_value(pid):
+    """Re-fetch RentCast value for an existing property"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    api_key = os.environ.get('RENTCAST_API_KEY','')
+    if not api_key: return jsonify({'error': 'RENTCAST_API_KEY not set'}), 422
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM properties WHERE id=%s AND user_id=%s", (pid, uid))
+            prop = cur.fetchone()
+            cur.close()
+        if not prop: return jsonify({'error': 'Property not found'}), 404
+        address = prop.get('location') or prop.get('name','')
+        if not address: return jsonify({'error': 'No address on file'}), 400
+        headers = {'X-Api-Key': api_key, 'Accept': 'application/json'}
+        encoded = urllib.parse.quote(address)
+        req = urllib.request.Request(f'https://api.rentcast.io/v1/avm/value?address={encoded}', headers=headers)
+        resp = urllib.request.urlopen(req, timeout=10)
+        d = json.loads(resp.read())
+        new_val = int(d.get('price', 0))
+        if not new_val: return jsonify({'error': 'No value returned'}), 422
+        # Also get rent estimate
+        new_rent = None
+        try:
+            req2 = urllib.request.Request(f'https://api.rentcast.io/v1/avm/rent/long-term?address={encoded}', headers=headers)
+            resp2 = urllib.request.urlopen(req2, timeout=10)
+            rd = json.loads(resp2.read())
+            new_rent = int(rd.get('rent', 0)) or None
+        except: pass
+        # Update property
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            try:
+                if new_rent:
+                    cur.execute("UPDATE properties SET zestimate=%s, last_value_refresh=NOW() WHERE id=%s AND user_id=%s RETURNING *", (new_val, pid, uid))
+                else:
+                    cur.execute("UPDATE properties SET zestimate=%s, last_value_refresh=NOW() WHERE id=%s AND user_id=%s RETURNING *", (new_val, pid, uid))
+            except:
+                cur.execute("UPDATE properties SET purchase_price=%s WHERE id=%s AND user_id=%s RETURNING *", (new_val, pid, uid))
+            updated = dict(cur.fetchone())
+            conn.commit(); cur.close()
+        try: update_metrics(uid)
+        except: pass
+        if updated.get('created_at'): updated['created_at'] = updated['created_at'].isoformat()
+        updated['new_value'] = new_val
+        updated['new_rent'] = new_rent
+        return jsonify(updated)
+    except urllib.error.HTTPError as e:
+        return jsonify({'error': f'RentCast error {e.code}'}), e.code
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 # ── ATTOM ──────────────────────────────────────────────────────────────────────
 ATTOM_KEY = os.environ.get('ATTOM_API_KEY','')
@@ -1480,96 +1643,177 @@ function AuthScreen({onLogin}){
 
 // ── ADD PROPERTY SHEET ────────────────────────────────────────────────────────
 function AddPropSheet({uid,onClose,onSave}){
-  const [step,setStep]=useState('zillow');
-  const [url,setUrl]=useState('');
+  const [step,setStep]=useState('address'); // address | review | manual
+  const [address,setAddress]=useState('');
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState('');
-  const [msg,setMsg]=useState('');
-  const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',zestimate:'',bedrooms:'',bathrooms:'',sqft:'',year_built:'',zillow_url:''});
+  const [rentcastKey,setRentcastKey]=useState(false);
+  const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',
+    mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',
+    zestimate:'',bedrooms:'',bathrooms:'',sqft:'',year_built:'',zillow_url:''});
+  const [fetched,setFetched]=useState(null); // rentcast result
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
 
-  const fetchListing=async()=>{
-    const isRedfin=url.includes('redfin.com');
-    const isZillow=url.includes('zillow.com');
-    if(!isZillow&&!isRedfin){setErr('Please paste a Zillow or Redfin URL');return;}
+  // Check if RentCast key is configured
+  useEffect(()=>{
+    fetch('/api/rentcast/lookup',{method:'POST',headers:{'Content-Type':'application/json'},
+      credentials:'include',body:JSON.stringify({address:'test'})})
+      .then(r=>r.json()).then(d=>{
+        setRentcastKey(!d.error?.includes('RENTCAST_API_KEY not configured'));
+      }).catch(()=>{});
+  },[]);
+
+  const lookup=async()=>{
+    if(!address.trim()){setErr('Enter a property address');return;}
     setLoading(true);setErr('');
     try{
-      const endpoint=isRedfin?'/api/redfin/lookup':'/api/zillow/zestimate';
-      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url})});
-      let d;try{d=await r.json();}catch{d={};}
-      if(d.blocked){
-        setErr('Zillow is blocking cloud requests. Paste a Redfin URL instead — same property, just go to redfin.com');
+      const r=await fetch('/api/rentcast/lookup',{method:'POST',
+        headers:{'Content-Type':'application/json'},credentials:'include',
+        body:JSON.stringify({address:address.trim()})});
+      const d=await r.json();
+      if(!r.ok||d.error){
+        setErr(d.error||'Lookup failed');
         setLoading(false);return;
       }
-      if(d.error&&!d.zestimate&&!d.address){setErr(d.error||'Could not fetch — try pasting a Redfin URL');setLoading(false);return;}
+      setFetched(d);
       setF(p=>({...p,
-        name:d.address||'',location:d.address||'',
-        zestimate:d.zestimate||'',purchase_price:d.zestimate||'',
-        property_tax:d.monthly_tax||'',
-        bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',
-        sqft:d.sqft||'',year_built:d.year_built||'',
-        zillow_url:url}));
-      setMsg(d.zestimate?`Value: ${fmt$(d.zestimate)}`:'Address found — fill in remaining details');
-      setStep('form');
-    }catch(e){setErr('Network error: '+e.message);}
+        name:d.address||address,
+        location:d.address||address,
+        zestimate:d.zestimate||'',
+        purchase_price:d.zestimate||'',
+        monthly_revenue:d.rent_estimate||'',
+        bedrooms:d.bedrooms||'',
+        bathrooms:d.bathrooms||'',
+        sqft:d.sqft||'',
+        year_built:d.year_built||'',
+      }));
+      setStep('review');
+    }catch(e){setErr('Network error');}
     setLoading(false);
   };
 
   const save=async()=>{
-    const name=f.name||f.location||'Property';
-    if(!name){setErr('Property name required');return;}
+    const name=f.name||f.location||address||'Property';
     setLoading(true);setErr('');
     try{
       const body={...f,name};
-      console.log('Saving property:', JSON.stringify(body));
-      const r=await fetch(`/api/properties/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
+      const r=await fetch(`/api/properties/${uid}`,{method:'POST',
+        headers:{'Content-Type':'application/json'},credentials:'include',
+        body:JSON.stringify(body)});
       const text=await r.text();
-      let d;try{d=JSON.parse(text);}catch{d={error:text};}
-      console.log('Save response:', r.status, text.slice(0,200));
+      let d;try{d=JSON.parse(text);}catch{d={error:text.slice(0,200)};}
       if(!r.ok){setErr(d.error||`Save failed (${r.status})`);setLoading(false);return;}
       onSave(d);onClose();
-    }catch(e){setErr('Network error: '+e.message);console.error('Save error:',e);}
+    }catch(e){setErr('Save error: '+e.message);}
     setLoading(false);
   };
 
   const Inp=(lbl,k,type='text',ph='')=>(
-    <div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]} onChange={set(k)} placeholder={ph}/></div>
-  );
-  const Inp2=(a,b)=>(
-    <div className="form-2">{Inp(...a)}{Inp(...b)}</div>
+    <div className="form-row"><label>{lbl}</label>
+      <input className="sinput" type={type} value={f[k]} onChange={set(k)} placeholder={ph}/>
+    </div>
   );
 
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="sheet">
         <div className="sheet-handle"/>
-        {step==='zillow'&&<>
+
+        {step==='address'&&<>
           <h3>Add Property</h3>
-          <p className="sheet-sub">Paste a Zillow listing URL to auto-fill</p>
-          <div className="zillow-cta">
-            <h4>🏠 Auto-fill from Zillow or Redfin</h4>
-            <p>Paste a property URL from <strong>zillow.com</strong> or <strong>redfin.com</strong> to auto-populate value, address, bedrooms, and taxes. If Zillow doesn't work, try the same address on Redfin.</p>
+          <p className="sheet-sub">Enter the property address to look up current value, rent estimate, and details</p>
+
+          {!rentcastKey&&<div className="alert alert-info" style={{marginBottom:14}}>
+            💡 <span><strong>Set up RentCast API</strong> for live value estimates.<br/>
+            1. Create free account at <strong>rentcast.io</strong> (50 free calls/mo)<br/>
+            2. Copy your API key from the dashboard<br/>
+            3. Add to Render: Settings → Environment → <code>RENTCAST_API_KEY</code></span>
+          </div>}
+
+          {err&&<div className="alert alert-err" onClick={()=>setErr('')}>✕ {err}</div>}
+
+          <div className="form-row" style={{marginBottom:8}}>
+            <label>Property Address</label>
+            <input className="sinput" value={address} onChange={e=>setAddress(e.target.value)}
+              placeholder="123 Main St, Houston, TX 77001"
+              onKeyDown={e=>e.key==='Enter'&&lookup()}
+              autoFocus style={{fontSize:15}}/>
           </div>
-          {err&&<div className="alert alert-err" style={{cursor:'pointer'}} onClick={()=>setErr('')}>✕ {err}</div>}
-          <div className="form-row"><label>Zillow or Redfin URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/... or redfin.com/..." onKeyDown={e=>e.key==='Enter'&&fetchListing()}/></div>
+          <div style={{fontSize:11,color:'var(--muted)',marginBottom:16}}>
+            Include street, city, state, and ZIP for best results
+          </div>
+
           <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-prime" onClick={fetchListing} disabled={loading}>{loading?'Fetching…':'Auto-fill'}</button>
+            <button className="btn btn-prime" onClick={lookup} disabled={loading||!rentcastKey}>
+              {loading?'Looking up…':'Look Up Property'}
+            </button>
           </div>
-          <button className="manual-link" onClick={()=>setStep('form')}>Enter manually instead</button>
+          <button className="manual-link" onClick={()=>setStep('manual')}>Skip lookup — enter manually</button>
         </>}
-        {step==='form'&&<>
-          <button className="back-btn" onClick={()=>setStep('zillow')}>← Back to Zillow</button>
-          <h3>Property Details</h3>
-          <p className="sheet-sub">{msg||'Fill in the details below'}</p>
-          {err&&<div className="alert alert-err">{err}</div>}
+
+        {step==='review'&&<>
+          <button className="back-btn" onClick={()=>setStep('address')}>← Back</button>
+          <h3>Confirm Details</h3>
+          <p className="sheet-sub">{fetched?.address||address}</p>
+
+          {fetched&&<div style={{background:'rgba(16,185,129,.07)',border:'1px solid rgba(16,185,129,.2)',borderRadius:12,padding:'14px 16px',marginBottom:16}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+              {fetched.zestimate&&<div><div style={{fontSize:10,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>Est. Value</div><div style={{fontSize:15,fontWeight:800,color:'var(--green)'}}>${(fetched.zestimate/1000).toFixed(0)}K</div></div>}
+              {fetched.rent_estimate&&<div><div style={{fontSize:10,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>Est. Rent</div><div style={{fontSize:15,fontWeight:800,color:'#2563eb'}}>${fetched.rent_estimate?.toLocaleString()}/mo</div></div>}
+              {fetched.bedrooms&&<div><div style={{fontSize:10,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>Beds/Baths</div><div style={{fontSize:15,fontWeight:800}}>{fetched.bedrooms}bd/{fetched.bathrooms}ba</div></div>}
+            </div>
+            {(fetched.value_low||fetched.rent_low)&&<div style={{fontSize:11,color:'var(--muted)',marginTop:10}}>
+              {fetched.value_low&&<span>Value range: ${(fetched.value_low/1000).toFixed(0)}K – ${(fetched.value_high/1000).toFixed(0)}K</span>}
+              {fetched.rent_low&&<span style={{marginLeft:12}}>Rent range: ${fetched.rent_low?.toLocaleString()} – ${fetched.rent_high?.toLocaleString()}</span>}
+            </div>}
+            <div style={{fontSize:10,color:'var(--dim)',marginTop:6}}>Source: RentCast AVM · Updates daily</div>
+          </div>}
+
+          {err&&<div className="alert alert-err" onClick={()=>setErr('')}>✕ {err}</div>}
+
+          <div className="form-2">
+            <div className="form-row"><label>Purchase price ($)</label><input className="sinput" type="number" value={f.purchase_price} onChange={set('purchase_price')}/></div>
+            <div className="form-row"><label>Down payment ($)</label><input className="sinput" type="number" value={f.down_payment} onChange={set('down_payment')}/></div>
+          </div>
+          <div className="form-2">
+            <div className="form-row"><label>Monthly rent ($)</label><input className="sinput" type="number" value={f.monthly_revenue} onChange={set('monthly_revenue')}/></div>
+            <div className="form-row"><label>Mortgage /mo ($)</label><input className="sinput" type="number" value={f.mortgage} onChange={set('mortgage')}/></div>
+          </div>
+          <div className="form-2">
+            <div className="form-row"><label>Property tax /mo ($)</label><input className="sinput" type="number" value={f.property_tax} onChange={set('property_tax')}/></div>
+            <div className="form-row"><label>Insurance /mo ($)</label><input className="sinput" type="number" value={f.insurance} onChange={set('insurance')}/></div>
+          </div>
+
+          <div className="sheet-foot">
+            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-prime" onClick={save} disabled={loading}>{loading?'Saving…':'Add Property'}</button>
+          </div>
+        </>}
+
+        {step==='manual'&&<>
+          <button className="back-btn" onClick={()=>setStep('address')}>← Back</button>
+          <h3>Manual Entry</h3>
+          <p className="sheet-sub">Enter property details manually</p>
+          {err&&<div className="alert alert-err" onClick={()=>setErr('')}>✕ {err}</div>}
           {Inp('Property name','name','text','22 B Street')}
-          {Inp('Location','location','text','Houston, TX 77002')}
-          {Inp2(['Purchase price ($)','purchase_price','number'],['Down payment ($)','down_payment','number'])}
-          {Inp2(['Current value / Zestimate ($)','zestimate','number'],['Monthly rent ($)','monthly_revenue','number'])}
-          {Inp2(['Mortgage /mo ($)','mortgage','number'],['Property tax /mo ($)','property_tax','number'])}
-          {Inp2(['Insurance /mo ($)','insurance','number'],['HOA /mo ($)','hoa','number'])}
-          {Inp2(['Bedrooms','bedrooms','number'],['Bathrooms','bathrooms','number'])}
+          {Inp('Location','location','text','Houston, TX 77001')}
+          <div className="form-2">
+            <div className="form-row">{Inp('Purchase price ($)','purchase_price','number')}</div>
+            <div className="form-row">{Inp('Down payment ($)','down_payment','number')}</div>
+          </div>
+          <div className="form-2">
+            <div className="form-row">{Inp('Current value ($)','zestimate','number')}</div>
+            <div className="form-row">{Inp('Monthly rent ($)','monthly_revenue','number')}</div>
+          </div>
+          <div className="form-2">
+            <div className="form-row">{Inp('Mortgage /mo ($)','mortgage','number')}</div>
+            <div className="form-row">{Inp('Property tax /mo ($)','property_tax','number')}</div>
+          </div>
+          <div className="form-2">
+            <div className="form-row">{Inp('Insurance /mo ($)','insurance','number')}</div>
+            <div className="form-row">{Inp('HOA /mo ($)','hoa','number')}</div>
+          </div>
           <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-prime" onClick={save} disabled={loading}>{loading?'Saving…':'Add Property'}</button>
@@ -1630,7 +1874,7 @@ function EditPropSheet({prop,onClose,onSave,onDelete}){
 }
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
-function PortfolioTab({user,props,portfolio,onAdd,onEdit}){
+function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
   const tv=+portfolio.total_value||0,te=+portfolio.total_equity||0,mcf=+portfolio.monthly_cashflow||0,hs=+portfolio.health_score||0;
   const accent=user.accent_color||'#2563eb';
   const history=useMemo(()=>{try{const h=portfolio.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
@@ -1687,6 +1931,8 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit}){
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.3px'}}>{fmt$k(val)}</div>
               <div style={{fontSize:12,fontWeight:700,color:clr(cf)}}>{cf>=0?'+':''}{fmt$(cf)}/mo</div>
+              <div style={{fontSize:10,color:'var(--dim)',marginTop:3,cursor:'pointer'}}
+                onClick={e=>{e.stopPropagation();onRefreshValue&&onRefreshValue(p.id);}}>↻ refresh</div>
             </div>
           </div>
         );
@@ -2330,7 +2576,19 @@ function MainApp({user:initUser,onLogout}){
         {profileUID
           ?<PublicProfile uid={profileUID} currentUser={user} onBack={()=>setProfileUID(null)}/>
           :<>
-            {tab==='portfolio'&&<PortfolioTab {...tp} onAdd={()=>setShowAdd(true)} onEdit={setEditProp}/>}
+            {tab==='portfolio'&&<PortfolioTab {...tp} onAdd={()=>setShowAdd(true)} onEdit={setEditProp}
+              onRefreshValue={async pid=>{
+                try{
+                  const r=await fetch(`/api/properties/${pid}/refresh-value`,{method:'POST',credentials:'include'});
+                  const d=await r.json();
+                  if(d.new_value){loadData();alert(`Updated: $${d.new_value.toLocaleString()}`);}
+                  else if(d.error){
+                    if(d.error.includes('RENTCAST_API_KEY'))alert('Set RENTCAST_API_KEY in Render environment to enable live value refresh.');
+                    else alert('Refresh: '+d.error);
+                  }
+                }catch(e){alert('Refresh failed: '+e.message);}
+              }}
+            />}
             {tab==='analytics'&&<AnalyticsTab {...tp}/>}
             {tab==='networth'&&<NetWorthTab {...tp}/>}
             {tab==='search'&&<SearchTab currentUser={user} onViewProfile={uid=>{setProfileUID(uid);}}/>}
