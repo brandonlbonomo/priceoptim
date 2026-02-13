@@ -995,8 +995,172 @@ def refresh_property_value(pid):
         import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-# ── ATTOM ──────────────────────────────────────────────────────────────────────
-ATTOM_KEY = os.environ.get('ATTOM_API_KEY','')
+
+@app.route('/api/attom/lookup', methods=['POST'])
+def attom_lookup():
+    """ATTOM API - property AVM + details. Free trial at api.developer.attomdata.com"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    api_key = os.environ.get('ATTOM_API_KEY','')
+    if not api_key: return jsonify({'error': 'ATTOM_API_KEY not configured'}), 422
+    data = request.json or {}
+    address = data.get('address','').strip()
+    if not address: return jsonify({'error': 'Address required'}), 400
+
+    # Parse address into parts
+    parts = address.split(',')
+    address1 = parts[0].strip() if parts else address
+    address2 = ','.join(parts[1:]).strip() if len(parts)>1 else ''
+    encoded1 = urllib.parse.quote(address1)
+    encoded2 = urllib.parse.quote(address2)
+
+    headers = {'apikey': api_key, 'Accept': 'application/json'}
+    result = {}
+    try:
+        # ATTOM AVM endpoint
+        avm_url = f'https://api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail?address1={encoded1}&address2={encoded2}'
+        req = urllib.request.Request(avm_url, headers=headers)
+        resp = urllib.request.urlopen(req, timeout=10)
+        d = json.loads(resp.read())
+        prop = d.get('property',[{}])[0] if d.get('property') else {}
+        avm = prop.get('avm',{})
+        if avm.get('amount',{}).get('value'):
+            result['zestimate'] = int(avm['amount']['value'])
+        if avm.get('amount',{}).get('low'):
+            result['value_low'] = int(avm['amount']['low'])
+        if avm.get('amount',{}).get('high'):
+            result['value_high'] = int(avm['amount']['high'])
+        building = prop.get('building',{})
+        rooms = building.get('rooms',{})
+        if rooms.get('beds'): result['bedrooms'] = str(rooms['beds'])
+        if rooms.get('bathstotal'): result['bathrooms'] = str(rooms['bathstotal'])
+        size = building.get('size',{})
+        if size.get('livingsize'): result['sqft'] = str(int(size['livingsize']))
+        if building.get('yearbuilt'): result['year_built'] = str(building['yearbuilt'])
+        addr = prop.get('address',{})
+        if addr.get('line1'):
+            a = addr['line1']
+            if addr.get('locality'): a += f", {addr['locality']}"
+            if addr.get('countrySubd'): a += f", {addr['countrySubd']}"
+            if addr.get('postal1'): a += f" {addr['postal1']}"
+            result['address'] = a
+        tax = prop.get('assessment',{}).get('tax',{})
+        if tax.get('taxamt'): result['monthly_tax'] = round(float(tax['taxamt'])/12)
+        result['source'] = 'attom'
+        return jsonify(result)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8','ignore')
+        print(f'ATTOM error {e.code}: {body[:200]}')
+        if e.code == 401: return jsonify({'error': 'Invalid ATTOM API key'}), 401
+        if e.code == 404: return jsonify({'error': f'Property not found in ATTOM: {address}'}), 404
+        return jsonify({'error': f'ATTOM error {e.code}'}), e.code
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/property/blended-lookup', methods=['POST'])
+def blended_lookup():
+    """Calls RentCast + ATTOM in parallel and returns a blended/best estimate"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    address = (request.json or {}).get('address','').strip()
+    if not address: return jsonify({'error': 'Address required'}), 400
+
+    results = []
+    sources = []
+
+    # Try RentCast
+    rc_key = os.environ.get('RENTCAST_API_KEY','')
+    if rc_key:
+        try:
+            encoded = urllib.parse.quote(address)
+            headers = {'X-Api-Key': rc_key, 'Accept': 'application/json'}
+            req = urllib.request.Request(f'https://api.rentcast.io/v1/avm/value?address={encoded}', headers=headers)
+            resp = urllib.request.urlopen(req, timeout=10)
+            d = json.loads(resp.read())
+            if d.get('price'):
+                rc_result = {'value': int(d['price']), 'source': 'RentCast'}
+                if d.get('priceLow'): rc_result['low'] = int(d['priceLow'])
+                if d.get('priceHigh'): rc_result['high'] = int(d['priceHigh'])
+                sp = d.get('subjectProperty',{})
+                rc_result.update({k: sp.get(k) for k in ['bedrooms','bathrooms','squareFootage','yearBuilt','propertyType','formattedAddress'] if sp.get(k)})
+                results.append(rc_result)
+                sources.append('RentCast')
+            # Also get rent estimate
+            try:
+                req2 = urllib.request.Request(f'https://api.rentcast.io/v1/avm/rent/long-term?address={encoded}', headers=headers)
+                resp2 = urllib.request.urlopen(req2, timeout=8)
+                rd = json.loads(resp2.read())
+                if rd.get('rent'): rc_result['rent_estimate'] = int(rd['rent'])
+                if rd.get('rentLow'): rc_result['rent_low'] = int(rd['rentLow'])
+                if rd.get('rentHigh'): rc_result['rent_high'] = int(rd['rentHigh'])
+            except: pass
+        except Exception as e:
+            print(f'RentCast blended error: {e}')
+
+    # Try ATTOM
+    at_key = os.environ.get('ATTOM_API_KEY','')
+    if at_key:
+        try:
+            parts = address.split(',')
+            a1 = urllib.parse.quote(parts[0].strip())
+            a2 = urllib.parse.quote(','.join(parts[1:]).strip()) if len(parts)>1 else ''
+            headers = {'apikey': at_key, 'Accept': 'application/json'}
+            req = urllib.request.Request(f'https://api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail?address1={a1}&address2={a2}', headers=headers)
+            resp = urllib.request.urlopen(req, timeout=10)
+            d = json.loads(resp.read())
+            prop = (d.get('property') or [{}])[0]
+            avm_val = prop.get('avm',{}).get('amount',{}).get('value')
+            if avm_val:
+                at_result = {'value': int(avm_val), 'source': 'ATTOM'}
+                avm = prop.get('avm',{}).get('amount',{})
+                if avm.get('low'): at_result['low'] = int(avm['low'])
+                if avm.get('high'): at_result['high'] = int(avm['high'])
+                bldg = prop.get('building',{})
+                rooms = bldg.get('rooms',{})
+                if rooms.get('beds'): at_result['bedrooms'] = rooms['beds']
+                if rooms.get('bathstotal'): at_result['bathrooms'] = rooms['bathstotal']
+                if bldg.get('size',{}).get('livingsize'): at_result['squareFootage'] = int(bldg['size']['livingsize'])
+                if bldg.get('yearbuilt'): at_result['yearBuilt'] = bldg['yearbuilt']
+                tax = prop.get('assessment',{}).get('tax',{})
+                if tax.get('taxamt'): at_result['monthly_tax'] = round(float(tax['taxamt'])/12)
+                results.append(at_result)
+                sources.append('ATTOM')
+        except Exception as e:
+            print(f'ATTOM blended error: {e}')
+
+    if not results:
+        return jsonify({'error': 'No API keys configured. Add RENTCAST_API_KEY (required) and optionally ATTOM_API_KEY in Render environment variables.'}), 422
+
+    # Blend values - average if both available
+    values = [r['value'] for r in results if r.get('value')]
+    blended_value = int(sum(values)/len(values)) if values else None
+
+    # Use best available data (prefer RentCast for rent, ATTOM for tax)
+    primary = results[0]
+    output = {
+        'zestimate': blended_value,
+        'value_sources': sources,
+        'values_by_source': {r['source']: r['value'] for r in results if r.get('value')},
+        'address': primary.get('formattedAddress') or address,
+        'bedrooms': str(primary.get('bedrooms','')) if primary.get('bedrooms') else None,
+        'bathrooms': str(primary.get('bathrooms','')) if primary.get('bathrooms') else None,
+        'sqft': str(int(primary.get('squareFootage',0))) if primary.get('squareFootage') else None,
+        'year_built': str(primary.get('yearBuilt','')) if primary.get('yearBuilt') else None,
+        'rent_estimate': primary.get('rent_estimate'),
+        'rent_low': primary.get('rent_low'),
+        'rent_high': primary.get('rent_high'),
+        'monthly_tax': primary.get('monthly_tax'),
+        'source': ' + '.join(sources),
+    }
+    # Value range (min of lows, max of highs)
+    lows = [r['low'] for r in results if r.get('low')]
+    highs = [r['high'] for r in results if r.get('high')]
+    if lows: output['value_low'] = min(lows)
+    if highs: output['value_high'] = max(highs)
+    return jsonify(output)
+
 
 @app.route('/api/property/lookup')
 def attom_lookup():
@@ -1647,21 +1811,11 @@ function AddPropSheet({uid,onClose,onSave}){
   const [address,setAddress]=useState('');
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState('');
-  const [rentcastKey,setRentcastKey]=useState(false);
   const [f,setF]=useState({name:'',location:'',purchase_price:'',down_payment:'',
     mortgage:'',insurance:'',hoa:'',property_tax:'',monthly_revenue:'',
     zestimate:'',bedrooms:'',bathrooms:'',sqft:'',year_built:'',zillow_url:''});
   const [fetched,setFetched]=useState(null); // rentcast result
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
-
-  // Check if RentCast key is configured
-  useEffect(()=>{
-    fetch('/api/rentcast/lookup',{method:'POST',headers:{'Content-Type':'application/json'},
-      credentials:'include',body:JSON.stringify({address:'test'})})
-      .then(r=>r.json()).then(d=>{
-        setRentcastKey(!d.error?.includes('RENTCAST_API_KEY not configured'));
-      }).catch(()=>{});
-  },[]);
 
   const lookup=async()=>{
     if(!address.trim()){setErr('Enter a property address');return;}
@@ -1672,7 +1826,12 @@ function AddPropSheet({uid,onClose,onSave}){
         body:JSON.stringify({address:address.trim()})});
       const d=await r.json();
       if(!r.ok||d.error){
-        setErr(d.error||'Lookup failed');
+        const msg = d.error||'Lookup failed';
+        if(msg.includes('RENTCAST_API_KEY')){
+          setErr('RentCast API key not set. Add RENTCAST_API_KEY to Render environment variables, or enter manually below.');
+        } else {
+          setErr(msg);
+        }
         setLoading(false);return;
       }
       setFetched(d);
@@ -1686,6 +1845,7 @@ function AddPropSheet({uid,onClose,onSave}){
         bathrooms:d.bathrooms||'',
         sqft:d.sqft||'',
         year_built:d.year_built||'',
+        property_tax:d.monthly_tax||'',
       }));
       setStep('review');
     }catch(e){setErr('Network error');}
@@ -1723,13 +1883,6 @@ function AddPropSheet({uid,onClose,onSave}){
           <h3>Add Property</h3>
           <p className="sheet-sub">Enter the property address to look up current value, rent estimate, and details</p>
 
-          {!rentcastKey&&<div className="alert alert-info" style={{marginBottom:14}}>
-            💡 <span><strong>Set up RentCast API</strong> for live value estimates.<br/>
-            1. Create free account at <strong>rentcast.io</strong> (50 free calls/mo)<br/>
-            2. Copy your API key from the dashboard<br/>
-            3. Add to Render: Settings → Environment → <code>RENTCAST_API_KEY</code></span>
-          </div>}
-
           {err&&<div className="alert alert-err" onClick={()=>setErr('')}>✕ {err}</div>}
 
           <div className="form-row" style={{marginBottom:8}}>
@@ -1745,7 +1898,7 @@ function AddPropSheet({uid,onClose,onSave}){
 
           <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-prime" onClick={lookup} disabled={loading||!rentcastKey}>
+            <button className="btn btn-prime" onClick={lookup} disabled={loading}>
               {loading?'Looking up…':'Look Up Property'}
             </button>
           </div>
@@ -1767,7 +1920,12 @@ function AddPropSheet({uid,onClose,onSave}){
               {fetched.value_low&&<span>Value range: ${(fetched.value_low/1000).toFixed(0)}K – ${(fetched.value_high/1000).toFixed(0)}K</span>}
               {fetched.rent_low&&<span style={{marginLeft:12}}>Rent range: ${fetched.rent_low?.toLocaleString()} – ${fetched.rent_high?.toLocaleString()}</span>}
             </div>}
-            <div style={{fontSize:10,color:'var(--dim)',marginTop:6}}>Source: RentCast AVM · Updates daily</div>
+            <div style={{fontSize:10,color:'var(--dim)',marginTop:6}}>
+              Sources: {fetched?.source||'RentCast'} AVM
+              {fetched?.values_by_source&&Object.keys(fetched.values_by_source).length>1&&
+                <span> · Blended avg of {Object.entries(fetched.values_by_source).map(([s,v])=>`${s}: $${(v/1000).toFixed(0)}K`).join(' + ')}</span>
+              }
+            </div>
           </div>}
 
           {err&&<div className="alert alert-err" onClick={()=>setErr('')}>✕ {err}</div>}
