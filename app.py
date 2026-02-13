@@ -899,274 +899,443 @@ HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <title>Property Pigeon</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
-  --blue:#1a56db;--green:#059669;--red:#d92d20;--purple:#7c3aed;--amber:#f59e0b;
-  --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
-  --g400:#9ca3af;--g500:#6b7280;--g700:#374151;--g900:#111827;
-  --glass:rgba(255,255,255,0.68);--glassh:rgba(255,255,255,0.88);
-  --gb:rgba(255,255,255,0.82);
-  --gsh:0 8px 32px rgba(31,38,135,.1),0 2px 8px rgba(31,38,135,.06);
-  --gsh2:0 16px 48px rgba(31,38,135,.15),0 4px 16px rgba(31,38,135,.08);
-  --blur:blur(24px) saturate(180%);--r:12px;--r2:18px;
-  --nav-h:68px;--top-h:52px;
-  --safe-b:env(safe-area-inset-bottom, 0px);
+  --ink:#0a0c10;--ink2:#1c2030;--muted:#6b7280;--dim:#9ca3af;
+  --line:rgba(255,255,255,.1);--line2:rgba(0,0,0,.08);
+  --blue:#2563eb;--blue-l:#3b82f6;--green:#10b981;--red:#f43f5e;--gold:#f59e0b;
+  --glass:rgba(255,255,255,.65);--glassh:rgba(255,255,255,.88);--glassb:rgba(255,255,255,.75);
+  --blur:blur(28px) saturate(200%);--blur2:blur(16px) saturate(180%);
+  --sh:0 4px 24px rgba(0,0,0,.07),0 1px 4px rgba(0,0,0,.04);
+  --sh2:0 16px 48px rgba(0,0,0,.12),0 4px 16px rgba(0,0,0,.06);
+  --sh3:0 32px 80px rgba(0,0,0,.18),0 8px 24px rgba(0,0,0,.08);
+  --r:14px;--r2:20px;--r3:28px;
+  --nav:64px;--top:54px;
+  --sb:env(safe-area-inset-bottom,0px);
+  --accent:#2563eb;
 }
-html,body{height:100%;overflow:hidden;-webkit-font-smoothing:antialiased;}
-body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#dce8ff 0%,#eef2ff 25%,#e6f7ef 55%,#f0e8ff 100%);background-attachment:fixed;color:var(--g900);}
-input,button,select,textarea{font-family:inherit;}
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,.14);border-radius:99px;}
+html,body{height:100%;overflow:hidden;background:#f0f4ff;}
+body{font-family:'Syne',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;}
+input,button,select,textarea{font-family:'Syne',system-ui,sans-serif;}
+*::selection{background:rgba(37,99,235,.15);}
+
+/* ── ANIMATED BG ─────────────────────────────────────────────────────── */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;}
+.bg::before{content:'';position:absolute;inset:-40%;
+  background:radial-gradient(ellipse 80% 60% at 20% 20%,#c7d9ff 0%,transparent 50%),
+             radial-gradient(ellipse 60% 80% at 80% 80%,#d1fae5 0%,transparent 50%),
+             radial-gradient(ellipse 70% 50% at 50% 60%,#ede9fe 0%,transparent 60%),
+             #f0f4ff;
+  animation:bgshift 20s ease-in-out infinite alternate;}
+.bg::after{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(99,102,241,.025) 49px),
+             repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(99,102,241,.025) 49px);}
+@keyframes bgshift{0%{transform:scale(1) rotate(0deg)}100%{transform:scale(1.1) rotate(3deg)}}
+
+/* ── SCROLLBARS ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:99px;}
 ::-webkit-scrollbar-track{background:transparent;}
 
-/* ── AUTH ───────────────────────────────────────────────────────────────── */
-.auth-wrap{display:flex;height:100vh;height:100dvh;}
-.auth-panel{width:360px;flex-shrink:0;padding:56px 44px;display:flex;flex-direction:column;justify-content:center;background:var(--blue);position:relative;overflow:hidden;}
-.auth-panel::after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,.1) 0%,transparent 60%);pointer-events:none;}
-.auth-bird{font-size:48px;margin-bottom:20px;}
-.auth-panel h1{font-size:28px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:10px;}
-.auth-panel p{font-size:14px;color:rgba(255,255,255,.78);line-height:1.65;}
-.auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:28px;}
-.auth-card{width:100%;max-width:400px;background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.9);border-radius:24px;padding:34px;box-shadow:var(--gsh2),inset 0 1px 0 rgba(255,255,255,.95);}
-.auth-logo{font-size:10px;font-weight:700;color:var(--g400);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;}
-.auth-card h2{font-size:23px;font-weight:800;letter-spacing:-.4px;margin-bottom:3px;}
-.auth-sub{font-size:13px;color:var(--g500);margin-bottom:22px;}
-.field{margin-bottom:13px;}
-.field label{display:block;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
-.field input{width:100%;padding:10px 12px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
-.field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
-.field .hint{font-size:11px;margin-top:3px;font-weight:600;}
-.hint-ok{color:var(--green);}
-.hint-bad{color:var(--red);}
-.btn-primary{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;margin-top:2px;}
-.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(26,86,219,.3);}
-.btn-primary:active{transform:scale(.97);}
-.btn-link{background:none;border:none;font-size:13px;color:var(--blue);cursor:pointer;display:block;width:100%;text-align:center;padding:10px;margin-top:4px;}
-.btn-link:hover{text-decoration:underline;}
-.alert{border-radius:9px;padding:10px 13px;font-size:13px;margin-bottom:13px;}
-.alert-err{background:rgba(217,45,32,.06);border:1px solid rgba(217,45,32,.2);color:#b91c1c;}
-.alert-ok{background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);color:var(--green);}
-.alert-warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);color:#92400e;}
-.alert-info{background:rgba(26,86,219,.05);border:1px solid rgba(26,86,219,.15);color:var(--blue);}
+/* ── TYPOGRAPHY ──────────────────────────────────────────────────────── */
+.mono{font-family:'DM Mono',monospace;}
+.lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.big-num{font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
+.med-num{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+.sm-num{font-size:15px;font-weight:700;}
 
-/* ── SHELL ──────────────────────────────────────────────────────────────── */
-.shell{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
+/* ── GLASS SURFACES ──────────────────────────────────────────────────── */
+.glass{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.7);box-shadow:var(--sh);}
+.glass-h{background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.9);box-shadow:var(--sh2);}
+.glass-card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.72);border-radius:var(--r2);box-shadow:var(--sh);transition:all .22s cubic-bezier(.34,1.56,.64,1);}
+.glass-card:hover{transform:translateY(-3px) scale(1.005);box-shadow:var(--sh2);border-color:rgba(255,255,255,.9);}
+
+/* ── AUTH ─────────────────────────────────────────────────────────────── */
+.auth-wrap{display:flex;height:100dvh;overflow:hidden;}
+.auth-side{width:340px;flex-shrink:0;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:40px;}
+.auth-side-bg{position:absolute;inset:0;background:linear-gradient(160deg,#1e3a8a 0%,#1d4ed8 40%,#2563eb 70%,#3b82f6 100%);}
+.auth-side-bg::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+.auth-side-content{position:relative;z-index:2;}
+.auth-bird{font-size:52px;margin-bottom:18px;display:block;filter:drop-shadow(0 8px 24px rgba(0,0,0,.3));animation:float 4s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.auth-brand{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:8px;}
+.auth-tagline{font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;max-width:240px;}
+.auth-main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto;}
+.auth-card{width:100%;max-width:400px;background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.92);border-radius:var(--r3);padding:36px;box-shadow:var(--sh3),inset 0 1px 0 rgba(255,255,255,.9);}
+.auth-eyebrow{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;}
+.auth-card h2{font-size:26px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.auth-input{width:100%;padding:11px 14px;border:1.5px solid rgba(0,0,0,.1);border-radius:11px;font-size:14px;background:rgba(255,255,255,.8);transition:all .2s;outline:none;color:var(--ink);}
+.auth-input:focus{border-color:var(--blue);background:rgba(255,255,255,.95);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.auth-submit{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue),var(--blue-l));color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;position:relative;overflow:hidden;transition:all .2s;letter-spacing:.2px;}
+.auth-submit::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);pointer-events:none;}
+.auth-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,.4);}
+.auth-submit:active{transform:scale(.97);}
+.auth-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.auth-switch{background:none;border:none;font-size:13px;color:var(--blue);cursor:pointer;display:block;width:100%;text-align:center;padding:11px;margin-top:6px;font-weight:500;}
+.auth-switch:hover{text-decoration:underline;}
+.hint-ok{font-size:11px;font-weight:600;color:var(--green);margin-top:4px;}
+.hint-bad{font-size:11px;font-weight:600;color:var(--red);margin-top:4px;}
+
+/* ── ALERTS ──────────────────────────────────────────────────────────── */
+.alert{border-radius:11px;padding:11px 14px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px;}
+.alert-err{background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.2);color:#be123c;}
+.alert-ok{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);color:#047857;}
+.alert-info{background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);color:#1d4ed8;}
+
+/* ── SHELL ───────────────────────────────────────────────────────────── */
+.shell{display:flex;flex-direction:column;height:100dvh;overflow:hidden;position:relative;}
+
+/* ── TOPBAR ──────────────────────────────────────────────────────────── */
 .topbar{
-  flex-shrink:0;height:var(--top-h);
-  display:flex;align-items:center;justify-content:space-between;padding:0 18px;
+  flex-shrink:0;height:var(--top);padding:0 18px;
+  display:flex;align-items:center;justify-content:space-between;
   background:rgba(255,255,255,.6);
-  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-bottom:1px solid rgba(255,255,255,.65);
-  position:relative;z-index:10;
+  backdrop-filter:var(--blur2);-webkit-backdrop-filter:var(--blur2);
+  border-bottom:1px solid rgba(255,255,255,.55);
+  position:relative;z-index:30;
 }
-.topbar-title{font-size:17px;font-weight:800;letter-spacing:-.3px;}
-.topbar-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.topbar-logo{font-size:18px;font-weight:800;letter-spacing:-.3px;background:linear-gradient(135deg,var(--blue),var(--blue-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-.2px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.av-btn{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.25);transition:.2s;border:2px solid rgba(255,255,255,.6);}
+.av-btn:hover{transform:scale(1.08);}
+
+/* ── PAGE AREA ───────────────────────────────────────────────────────── */
 .page-area{flex:1;overflow:hidden;position:relative;}
-.page{height:100%;overflow-y:auto;padding:18px 16px;padding-bottom:calc(var(--nav-h) + 12px + var(--safe-b));}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.page-in{animation:fadeUp .18s ease;}
+.page{height:100%;overflow-y:auto;padding:16px 16px calc(var(--nav) + 20px + var(--sb));overscroll-behavior:contain;}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+.page-in{animation:slideUp .25s cubic-bezier(.25,.46,.45,.94) both;}
+.page-in-r{animation:slideIn .25s cubic-bezier(.25,.46,.45,.94) both;}
 
-/* ── BOTTOM NAV ─────────────────────────────────────────────────────────── */
+/* ── BOTTOM NAV ──────────────────────────────────────────────────────── */
 .bottom-nav{
-  flex-shrink:0;
-  position:fixed;bottom:0;left:0;right:0;
-  height:calc(var(--nav-h) + var(--safe-b));
-  padding-bottom:var(--safe-b);
-  background:rgba(255,255,255,.72);
+  position:fixed;bottom:0;left:0;right:0;z-index:40;
+  height:calc(var(--nav) + var(--sb));padding-bottom:var(--sb);
+  background:rgba(255,255,255,.75);
   backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-top:1px solid rgba(255,255,255,.75);
-  display:flex;align-items:stretch;justify-content:space-around;
-  z-index:50;
-  box-shadow:0 -4px 24px rgba(31,38,135,.08);
+  border-top:1px solid rgba(255,255,255,.7);
+  display:flex;align-items:center;justify-content:space-around;
+  box-shadow:0 -8px 32px rgba(0,0,0,.07);
 }
-.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .15s;padding:0 4px;-webkit-tap-highlight-color:transparent;}
-.nav-tab svg{width:22px;height:22px;transition:.15s;}
-.nav-tab span{font-size:10px;font-weight:600;transition:.15s;color:var(--g400);}
-.nav-tab svg{stroke:var(--g400);}
-.nav-tab.on svg{stroke:var(--blue);}
-.nav-tab.on span{color:var(--blue);}
-.nav-tab.on .nav-dot{background:var(--blue);}
-.nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;margin-top:-2px;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .18s;padding:6px 4px;position:relative;-webkit-tap-highlight-color:transparent;}
+.nav-item svg{width:22px;height:22px;stroke:var(--dim);transition:all .2s;}
+.nav-item span{font-size:9.5px;font-weight:600;color:var(--dim);transition:all .2s;letter-spacing:.3px;}
+.nav-item.on svg{stroke:var(--accent);}
+.nav-item.on span{color:var(--accent);}
+.nav-pip{width:4px;height:4px;border-radius:50%;background:transparent;margin-top:1px;transition:.2s;}
+.nav-item.on .nav-pip{background:var(--accent);}
+.nav-item:active{transform:scale(.88);}
 
-/* ── SUB TABS (inside Performance) ──────────────────────────────────────── */
-.sub-tabs{display:flex;gap:4px;background:rgba(0,0,0,.05);border-radius:12px;padding:3px;margin-bottom:18px;}
-.sub-tab{flex:1;text-align:center;padding:7px 8px;border-radius:9px;font-size:12px;font-weight:600;color:var(--g500);cursor:pointer;transition:.15s;border:none;background:transparent;}
-.sub-tab.on{background:white;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+/* ── SUB NAV (inside tab) ────────────────────────────────────────────── */
+.subnav{display:flex;gap:3px;background:rgba(0,0,0,.05);border-radius:13px;padding:3px;margin-bottom:18px;}
+.subnav-btn{flex:1;text-align:center;padding:8px 4px;border-radius:10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .18s;border:none;background:transparent;}
+.subnav-btn.on{background:white;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.1);}
 
-/* ── CARDS ──────────────────────────────────────────────────────────────── */
-.card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);box-shadow:var(--gsh);transition:.2s;}
-.glass-row{background:rgba(255,255,255,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.75);border-radius:13px;margin-bottom:7px;transition:all .18s cubic-bezier(.34,1.56,.64,1);}
-.glass-row:hover{background:rgba(255,255,255,.88)!important;transform:translateY(-2px)!important;box-shadow:0 8px 24px rgba(26,86,219,.1)!important;}
-
-/* ── STATS ──────────────────────────────────────────────────────────────── */
+/* ── STAT CARDS ──────────────────────────────────────────────────────── */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.stat{background:rgba(255,255,255,.65);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.8);border-radius:var(--r);padding:14px 14px;transition:.2s;}
-.stat-lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
-.stat-val{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1.1;}
-.stat-sub{font-size:11px;color:var(--g500);margin-top:3px;}
+.scard{padding:14px 15px;border-radius:var(--r);background:rgba(255,255,255,.62);backdrop-filter:var(--blur2);-webkit-backdrop-filter:var(--blur2);border:1px solid rgba(255,255,255,.8);transition:all .2s;position:relative;overflow:hidden;}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:.4;}
+.scard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08);}
+.scard-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.scard-val{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1.1;}
+.scard-sub{font-size:11px;color:var(--dim);margin-top:4px;}
+.scard-delta{font-size:11px;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:3px;}
 
-/* ── HERO ───────────────────────────────────────────────────────────────── */
-.hero{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:20px;margin-bottom:14px;box-shadow:var(--gsh);}
-.lbl{font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.big{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;}
-.chart-wrap{height:68px;margin:10px 0 4px;}
+/* ── HERO ────────────────────────────────────────────────────────────── */
+.hero{border-radius:var(--r3);padding:24px 22px 20px;margin-bottom:14px;position:relative;overflow:hidden;}
+.hero-glass{background:rgba(255,255,255,.55);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.72);box-shadow:var(--sh2);}
+.hero-lbl{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px;}
+.hero-lbl-dark{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:6px;}
+.hero-val{font-size:40px;font-weight:800;letter-spacing:-2px;line-height:1;color:#fff;}
+.hero-val-dark{font-size:38px;font-weight:800;letter-spacing:-2px;line-height:1;}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.7);margin-top:6px;}
+.hero-sub-dark{font-size:13px;color:var(--muted);margin-top:6px;}
+.hero-chart{height:72px;margin:14px 0 4px;}
+.hero-gradient{background:linear-gradient(135deg,var(--accent) 0%,#6366f1 100%);}
 
-/* ── PROP ROWS ──────────────────────────────────────────────────────────── */
-.prop-row{display:flex;align-items:center;gap:12px;padding:12px 13px;cursor:pointer;}
-.prop-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+/* ── HEALTH RING ─────────────────────────────────────────────────────── */
+.ring-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;}
+.ring-inner{position:absolute;text-align:center;}
+
+/* ── PROPERTY ROWS ───────────────────────────────────────────────────── */
+.prop-row{
+  display:flex;align-items:center;gap:13px;padding:14px 15px;
+  border-radius:var(--r2);margin-bottom:8px;cursor:pointer;
+  background:rgba(255,255,255,.6);
+  backdrop-filter:var(--blur2);-webkit-backdrop-filter:var(--blur2);
+  border:1px solid rgba(255,255,255,.78);
+  transition:all .22s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;
+}
+.prop-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:.7;border-radius:0 2px 2px 0;}
+.prop-row:hover{background:rgba(255,255,255,.92);transform:translateX(4px) translateY(-2px);box-shadow:var(--sh2);}
+.prop-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 .prop-name{font-size:14px;font-weight:700;line-height:1.2;}
-.prop-loc{font-size:11px;color:var(--g400);margin-top:1px;}
-.prop-zest{font-size:11px;color:var(--blue);font-weight:600;margin-top:2px;}
-.prop-right{text-align:right;flex-shrink:0;}
-.prop-val{font-size:15px;font-weight:800;}
-.prop-cf{font-size:11px;margin-top:1px;}
+.prop-loc{font-size:11px;color:var(--muted);margin-top:2px;}
+.prop-meta{font-size:11px;color:var(--blue);font-weight:600;margin-top:3px;}
 
-/* ── CF ROWS ────────────────────────────────────────────────────────────── */
-.cf-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.5);margin-bottom:4px;}
-.cf-row.total-row{background:rgba(26,86,219,.06);border:1px solid rgba(26,86,219,.14);}
-.cf-lbl{font-size:13px;}
-.cf-val{font-size:13px;font-weight:700;}
+/* ── TIMELINE / SNAPSHOTS ────────────────────────────────────────────── */
+.snap-row{display:flex;align-items:center;padding:12px 15px;border-radius:12px;background:rgba(255,255,255,.5);margin-bottom:5px;gap:12px;cursor:pointer;transition:.18s;}
+.snap-row:hover{background:rgba(255,255,255,.82);transform:translateX(3px);}
+.snap-month{font-size:13px;font-weight:700;min-width:90px;}
+.snap-val{font-size:13px;font-weight:600;text-align:right;}
+.snap-delta{font-size:11px;font-weight:700;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:2px;}
+.delta-up{color:var(--green);}
+.delta-dn{color:var(--red);}
+.delta-flat{color:var(--muted);}
 
-/* ── SLIDERS ────────────────────────────────────────────────────────────── */
-.slider-row{margin-bottom:16px;}
-.slider-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+/* ── CF ROWS ─────────────────────────────────────────────────────────── */
+.cf-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.48);margin-bottom:5px;transition:.15s;}
+.cf-row:hover{background:rgba(255,255,255,.72);}
+.cf-row.cf-total{background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);}
+.cf-lbl{font-size:13px;font-weight:500;}
+.cf-val{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+
+/* ── SLIDERS ─────────────────────────────────────────────────────────── */
+.slider-block{margin-bottom:20px;}
+.slider-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
 .slider-name{font-size:13px;font-weight:600;}
-.slider-val{font-size:14px;font-weight:800;color:var(--blue);}
-input[type=range]{width:100%;height:4px;border-radius:99px;-webkit-appearance:none;appearance:none;background:var(--g200);outline:none;cursor:pointer;}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);box-shadow:0 2px 8px rgba(26,86,219,.4);border:2px solid #fff;transition:.1s;}
-input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--blue);box-shadow:0 2px 8px rgba(26,86,219,.4);border:2px solid #fff;cursor:pointer;}
+.slider-val{font-size:16px;font-weight:800;color:var(--accent);font-family:'DM Mono',monospace;}
+.slider-track{position:relative;height:6px;border-radius:99px;background:var(--line2);}
+.slider-fill{position:absolute;left:0;top:0;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--blue-l));pointer-events:none;}
+.slider-input{position:absolute;inset:0;width:100%;opacity:0;height:24px;top:-9px;cursor:pointer;-webkit-appearance:none;appearance:none;}
+.slider-thumb{
+  position:absolute;width:24px;height:24px;border-radius:50%;top:50%;transform:translate(-50%,-50%);
+  background:white;box-shadow:0 2px 12px rgba(37,99,235,.35),0 0 0 3px var(--accent);
+  pointer-events:none;transition:box-shadow .15s,transform .15s;
+}
+.slider-track:has(.slider-input:active) .slider-thumb{transform:translate(-50%,-50%) scale(1.15);box-shadow:0 4px 20px rgba(37,99,235,.5),0 0 0 4px var(--accent);}
 
-/* ── PROJ TABLE ─────────────────────────────────────────────────────────── */
+/* ── PROJ TABLE ──────────────────────────────────────────────────────── */
 .proj-table{width:100%;border-collapse:collapse;font-size:12px;}
-.proj-table th{padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--g200);white-space:nowrap;}
+.proj-table th{padding:9px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--line2);}
 .proj-table th:first-child{text-align:left;}
-.proj-table td{padding:7px 10px;text-align:right;border-bottom:1px solid rgba(0,0,0,.04);}
-.proj-table td:first-child{text-align:left;font-weight:700;}
-.proj-table tr.milestone-row td{background:rgba(26,86,219,.04);font-weight:600;}
+.proj-table td{padding:8px 12px;text-align:right;border-bottom:1px solid rgba(0,0,0,.03);font-family:'DM Mono',monospace;font-size:11.5px;transition:.1s;}
+.proj-table td:first-child{text-align:left;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;}
+.proj-table tr:hover td{background:rgba(37,99,235,.03);}
+.proj-table tr.milestone td{background:rgba(37,99,235,.05);font-weight:600;}
+.proj-table tr.milestone td:first-child{color:var(--blue);}
 
-/* ── SEARCH / PROFILE ───────────────────────────────────────────────────── */
-.search-input-wrap{position:relative;margin-bottom:16px;}
-.search-input-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--g400);}
-.search-inp{width:100%;padding:11px 12px 11px 36px;border:1.5px solid var(--g200);border-radius:12px;font-size:14px;background:rgba(255,255,255,.8);transition:.15s;}
-.search-inp:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
-.user-result{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:13px;background:rgba(255,255,255,.65);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.8);margin-bottom:8px;cursor:pointer;transition:.18s;}
-.user-result:hover{background:rgba(255,255,255,.9);transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,86,219,.08);}
-.ur-name{font-size:14px;font-weight:700;}
-.ur-sub{font-size:12px;color:var(--g500);margin-top:1px;}
-.ur-right{margin-left:auto;text-align:right;flex-shrink:0;}
-.ur-price{font-size:15px;font-weight:800;}
-.ur-delta{font-size:11px;margin-top:1px;}
-.ticker-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;background:rgba(26,86,219,.1);color:var(--blue);letter-spacing:.5px;}
+/* ── SEARCH ──────────────────────────────────────────────────────────── */
+.search-wrap{position:relative;margin-bottom:18px;}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;stroke:var(--dim);pointer-events:none;}
+.search-inp{width:100%;padding:12px 14px 12px 42px;border:1.5px solid rgba(255,255,255,.7);border-radius:var(--r2);font-size:14px;background:rgba(255,255,255,.78);backdrop-filter:var(--blur2);-webkit-backdrop-filter:var(--blur2);transition:all .2s;outline:none;color:var(--ink);box-shadow:var(--sh);}
+.search-inp:focus{border-color:var(--blue);background:rgba(255,255,255,.95);box-shadow:0 0 0 3px rgba(37,99,235,.1),var(--sh2);}
+.user-card{
+  display:flex;align-items:center;gap:13px;padding:14px 16px;
+  border-radius:var(--r2);margin-bottom:8px;cursor:pointer;
+  background:rgba(255,255,255,.62);
+  backdrop-filter:var(--blur2);-webkit-backdrop-filter:var(--blur2);
+  border:1px solid rgba(255,255,255,.8);
+  transition:all .2s cubic-bezier(.34,1.56,.64,1);
+}
+.user-card:hover{background:rgba(255,255,255,.92);transform:translateY(-2px);box-shadow:var(--sh2);}
+.ticker-pill{display:inline-flex;align-items:center;padding:3px 9px;background:rgba(37,99,235,.1);color:var(--blue);border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;font-family:'DM Mono',monospace;}
 
-/* ── PUBLIC PROFILE ─────────────────────────────────────────────────────── */
-.profile-header{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:20px;margin-bottom:14px;box-shadow:var(--gsh);}
-.profile-av{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2);}
-.profile-name{font-size:20px;font-weight:800;letter-spacing:-.4px;margin-top:10px;}
-.profile-handle{font-size:13px;color:var(--g500);margin-top:2px;}
-.profile-bio{font-size:13px;color:var(--g700);margin-top:8px;line-height:1.5;}
-.pub-preview-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:10px;margin-bottom:14px;font-size:12px;font-weight:600;color:var(--green);}
+/* ── PROFILE (PUBLIC) ────────────────────────────────────────────────── */
+.profile-cover{height:130px;border-radius:var(--r2) var(--r2) 0 0;position:relative;overflow:hidden;}
+.profile-cover-inner{position:absolute;inset:0;background:linear-gradient(135deg,var(--accent) 0%,#6366f1 100%);}
+.profile-cover-grain{position:absolute;inset:0;opacity:.4;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");}
+.profile-av-wrap{position:relative;margin:-32px 0 0 20px;margin-bottom:12px;}
+.profile-av{width:64px;height:64px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;box-shadow:var(--sh2);}
+.profile-card{border-radius:0 0 var(--r2) var(--r2);background:rgba(255,255,255,.7);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.8);border-top:none;padding:0 20px 20px;margin-bottom:14px;box-shadow:var(--sh);}
+.profile-name{font-size:22px;font-weight:800;letter-spacing:-.4px;}
+.profile-meta{font-size:13px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.profile-bio{font-size:13px;color:var(--ink2);margin-top:10px;line-height:1.6;}
 
-/* ── SHARE PRICE CHART ──────────────────────────────────────────────────── */
-.share-price-card{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--gb);border-radius:var(--r2);padding:18px;margin-bottom:14px;box-shadow:var(--gsh);}
-
-/* ── NET WORTH ──────────────────────────────────────────────────────────── */
-.nw-big{font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:1;}
-.nw-bar{height:10px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin:12px 0;}
-.nw-seg{border-radius:99px;transition:width .4s ease;}
-.plaid-cta{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:2px dashed rgba(26,86,219,.25);border-radius:var(--r2);padding:32px;text-align:center;cursor:pointer;transition:.2s;}
-.plaid-cta:hover{background:rgba(255,255,255,.85);border-style:solid;}
-.manual-link{background:none;border:none;font-size:11px;color:var(--g300);cursor:pointer;margin-top:12px;display:block;width:100%;text-align:center;}
-.manual-link:hover{color:var(--g500);}
-
-/* ── BTNS ───────────────────────────────────────────────────────────────── */
-.btn{padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;}
-.btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 4px 12px rgba(0,0,0,.1);}
-.btn:active:not(:disabled){transform:scale(.97);}
+/* ── BTNS ────────────────────────────────────────────────────────────── */
+.btn{padding:10px 18px;border-radius:11px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px;letter-spacing:.1px;}
+.btn:hover:not(:disabled){transform:translateY(-1px);}
+.btn:active:not(:disabled){transform:scale(.95);}
 .btn:disabled{opacity:.45;cursor:not-allowed;}
-.btn-blue{background:var(--blue);color:#fff;}
-.btn-ghost{background:rgba(0,0,0,.05);color:var(--g700);}
-.btn-outline{background:transparent;border:1.5px solid var(--g200);color:var(--g700);}
-.btn-danger{background:rgba(217,45,32,.07);color:#b91c1c;border:1.5px solid rgba(217,45,32,.2);}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px;}
+.btn-prime{background:linear-gradient(135deg,var(--accent),var(--blue-l));color:#fff;box-shadow:0 4px 16px rgba(37,99,235,.3);}
+.btn-prime:hover{box-shadow:0 8px 24px rgba(37,99,235,.4);}
+.btn-ghost{background:rgba(0,0,0,.05);color:var(--ink2);}
+.btn-ghost:hover{background:rgba(0,0,0,.09);}
+.btn-outline{background:transparent;border:1.5px solid rgba(0,0,0,.12);color:var(--ink2);}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue);}
+.btn-danger{background:rgba(244,63,94,.08);color:#be123c;border:1.5px solid rgba(244,63,94,.2);}
+.btn-danger:hover{background:rgba(244,63,94,.14);}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px;}
+.btn-follow{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;transition:all .18s;}
+.btn-follow.on{background:var(--accent);color:#fff;border-color:transparent;}
+.btn-follow:hover{transform:scale(1.04);}
 
-/* ── MODAL ──────────────────────────────────────────────────────────────── */
-.overlay{position:fixed;inset:0;background:rgba(10,15,40,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:0;}
-@media(min-width:600px){.overlay{align-items:center;padding:20px;}}
-@keyframes sheetUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
-.modal{background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.92);border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:24px 22px calc(22px + var(--safe-b));box-shadow:0 -8px 48px rgba(0,0,0,.18);animation:sheetUp .22s cubic-bezier(.34,1.56,.64,1);}
-@media(min-width:600px){.modal{border-radius:22px;max-height:90vh;padding:28px;}}
-.modal-handle{width:36px;height:4px;background:var(--g200);border-radius:99px;margin:0 auto 18px;}
-.modal h3{font-size:17px;font-weight:800;letter-spacing:-.2px;margin-bottom:4px;}
-.modal .msub{font-size:13px;color:var(--g500);margin-bottom:18px;}
-.modal-foot{display:flex;gap:8px;margin-top:20px;}
-.form-row{margin-bottom:12px;}
-.form-row label{display:block;font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.sinput{width:100%;padding:9px 11px;border:1.5px solid var(--g200);border-radius:9px;font-size:14px;background:rgba(255,255,255,.75);transition:.15s;}
-.sinput:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.1);}
+/* ── MODAL / SHEET ───────────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(10,12,24,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+@media(min-width:580px){.overlay{align-items:center;padding:20px;}}
+@keyframes sheetUp{from{opacity:0;transform:translateY(30px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.sheet{
+  background:var(--glassh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:var(--r3) var(--r3) 0 0;
+  width:100%;max-width:580px;max-height:92dvh;overflow-y:auto;
+  padding:10px 22px calc(28px + var(--sb));
+  box-shadow:0 -16px 60px rgba(0,0,0,.18);
+  animation:sheetUp .26s cubic-bezier(.34,1.56,.64,1);
+}
+@media(min-width:580px){.sheet{border-radius:var(--r3);max-height:88dvh;padding:28px;}}
+.sheet-handle{width:40px;height:4px;background:rgba(0,0,0,.12);border-radius:99px;margin:0 auto 20px;}
+.sheet h3{font-size:18px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px;}
+.sheet-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.sheet-foot{display:flex;gap:8px;margin-top:22px;}
+.form-row{margin-bottom:13px;}
+.form-row label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;}
+.form-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;}
+.sinput{width:100%;padding:10px 13px;border:1.5px solid rgba(0,0,0,.1);border-radius:10px;font-size:14px;background:rgba(255,255,255,.78);transition:all .18s;outline:none;color:var(--ink);}
+.sinput:focus{border-color:var(--blue);background:rgba(255,255,255,.98);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
 
-/* ── ZILLOW BOX ─────────────────────────────────────────────────────────── */
-.zillow-box{background:rgba(26,86,219,.05);border:1.5px solid rgba(26,86,219,.14);border-radius:12px;padding:16px;margin-bottom:14px;}
-.zillow-box h4{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px;}
-.zillow-box p{font-size:12px;color:var(--g500);line-height:1.5;}
-.back-btn{background:none;border:none;font-size:12px;color:var(--g400);cursor:pointer;display:flex;align-items:center;gap:3px;margin-bottom:12px;padding:0;}
-.back-btn:hover{color:var(--g700);}
+/* ── ZILLOW CTA ──────────────────────────────────────────────────────── */
+.zillow-cta{background:linear-gradient(135deg,rgba(37,99,235,.07),rgba(99,102,241,.07));border:1.5px solid rgba(37,99,235,.14);border-radius:var(--r);padding:18px;margin-bottom:18px;}
+.zillow-cta h4{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.zillow-cta p{font-size:12px;color:var(--muted);line-height:1.55;}
+.back-btn{background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;margin-bottom:14px;padding:0;font-weight:600;transition:.15s;}
+.back-btn:hover{color:var(--ink);}
+.manual-link{background:none;border:none;font-size:11px;color:var(--dim);cursor:pointer;display:block;width:100%;text-align:center;padding:10px;margin-top:8px;transition:.15s;}
+.manual-link:hover{color:var(--muted);}
 
-/* ── SWATCH ─────────────────────────────────────────────────────────────── */
+/* ── PLAID CTA ───────────────────────────────────────────────────────── */
+.plaid-cta{
+  border:2px dashed rgba(37,99,235,.2);border-radius:var(--r2);
+  padding:36px 24px;text-align:center;cursor:pointer;transition:all .2s;
+  background:rgba(255,255,255,.4);
+}
+.plaid-cta:hover{background:rgba(255,255,255,.75);border-style:solid;border-color:var(--blue);transform:translateY(-2px);box-shadow:var(--sh2);}
+
+/* ── NET WORTH BAR ───────────────────────────────────────────────────── */
+.nw-bar{height:8px;border-radius:99px;overflow:hidden;display:flex;gap:2px;margin:12px 0;}
+.nw-seg{border-radius:99px;min-width:4px;transition:width .5s cubic-bezier(.25,.46,.45,.94);}
+
+/* ── SWATCH ──────────────────────────────────────────────────────────── */
 .swatch-row{display:flex;gap:8px;flex-wrap:wrap;}
-.swatch{width:28px;height:28px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:.15s;}
-.swatch.on,.swatch:hover{border-color:rgba(0,0,0,.25);box-shadow:0 0 0 2px rgba(255,255,255,.8);}
+.swatch{width:30px;height:30px;border-radius:8px;cursor:pointer;transition:all .15s;position:relative;}
+.swatch::after{content:'';position:absolute;inset:-3px;border-radius:10px;border:2px solid transparent;transition:.15s;}
+.swatch.on::after,.swatch:hover::after{border-color:rgba(0,0,0,.3);}
+
+/* ── SECTION HEADER ──────────────────────────────────────────────────── */
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.sec-hdr h4{font-size:15px;font-weight:700;}
+.sec-hdr h4{font-size:15px;font-weight:700;letter-spacing:-.2px;}
+
+/* ── EMPTY STATES ────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:52px 20px;}
+.empty-icon{font-size:44px;margin-bottom:12px;opacity:.6;}
+.empty-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.empty-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px;}
 </style>
 </head>
 <body>
+<div class="bg"></div>
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
-const fmt$=v=>v==null?'—':'$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
-const fmt$k=v=>{if(v==null)return'—';const a=Math.abs(+v);return a>=1e6?'$'+(v/1e6).toFixed(1)+'M':a>=1e3?'$'+(v/1e3).toFixed(0)+'K':fmt$(v);};
-const clr=v=>+v>0?'#059669':+v<0?'#d92d20':'#6b7280';
-const initials=s=>(s||'').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'??';
 
-function MiniChart({data=[],color='#1a56db',height=68}){
-  const ref=useRef();
+// ── UTILS ────────────────────────────────────────────────────────────────────
+const fmt$=v=>v==null?'—':'$'+Math.abs(+v).toLocaleString('en-US',{maximumFractionDigits:0});
+const fmt$s=v=>v==null?'—':((+v<0?'-':'')+fmt$(v));
+const fmt$k=v=>{if(v==null)return'—';const a=Math.abs(+v);const s=+v<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(1)+'M':a>=1e3?s+'$'+(a/1e3).toFixed(0)+'K':fmt$s(v);};
+const clr=v=>+v>0?'var(--green)':+v<0?'var(--red)':'var(--muted)';
+const arrow=v=>+v>0?'↑':+v<0?'↓':'';
+const initials=s=>(s||'').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'??';
+const monthName=s=>{
+  if(!s)return'—';
+  const d=new Date(s+'T00:00:00');
+  return d.toLocaleString('en-US',{month:'long',year:'numeric'});
+};
+const monthShort=s=>{
+  if(!s)return'—';
+  const d=new Date(s+'T00:00:00');
+  return d.toLocaleString('en-US',{month:'short',year:'2-digit'});
+};
+const deltaStyle=v=>({color:+v>0?'var(--green)':+v<0?'var(--red)':'var(--muted)',display:'flex',alignItems:'center',gap:2,fontSize:11,fontWeight:700});
+
+// ── MINI LINE CHART ──────────────────────────────────────────────────────────
+function MiniLine({data=[],color='#2563eb',height=72,fill=true}){
+  const ref=useRef();const inst=useRef();
   useEffect(()=>{
-    if(!ref.current||data.length<2)return;
-    const ch=new Chart(ref.current,{type:'line',
-      data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2,fill:true,
-        backgroundColor:color+'1a',tension:0.4,pointRadius:0}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{enabled:false}},
-        scales:{x:{display:false},y:{display:false}},animation:{duration:300}}});
-    return()=>ch.destroy();
-  },[data.join(','),color]);
+    if(!ref.current)return;
+    if(inst.current)inst.current.destroy();
+    if(data.length<2)return;
+    inst.current=new Chart(ref.current,{type:'line',
+      data:{labels:data.map((_,i)=>i),datasets:[{data,borderColor:color,borderWidth:2.5,
+        fill,backgroundColor:fill?color+'18':'transparent',tension:.4,pointRadius:0,pointHoverRadius:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{display:false},y:{display:false}},animation:{duration:600,easing:'easeInOutCubic'}}});
+    return()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
+  },[JSON.stringify(data),color,fill]);
   return <canvas ref={ref} style={{width:'100%',height}}/>;
 }
 
-function HealthRing({score=0,size=72}){
-  const r=28,c=2*Math.PI*r,dash=c*(score/100);
-  const col=score>=70?'#059669':score>=40?'#f59e0b':'#d92d20';
+// ── BAR CHART ────────────────────────────────────────────────────────────────
+function BarChart({data=[],labels=[],color='#2563eb',height=140}){
+  const ref=useRef();const inst=useRef();
+  useEffect(()=>{
+    if(!ref.current)return;
+    if(inst.current)inst.current.destroy();
+    if(data.length<2)return;
+    inst.current=new Chart(ref.current,{type:'bar',
+      data:{labels,datasets:[{data,backgroundColor:data.map(v=>+v>=0?color+'cc':color2+'cc'),borderRadius:5,
+        borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt$k(ctx.parsed.y)}}},
+        scales:{x:{display:true,grid:{display:false},ticks:{font:{size:9},color:'rgba(0,0,0,.35)',maxRotation:0}},
+          y:{display:true,grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:9,family:'DM Mono'},color:'rgba(0,0,0,.35)',callback:v=>fmt$k(v)}}},
+        animation:{duration:600,easing:'easeInOutCubic'}}});
+    return()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
+  },[JSON.stringify(data),JSON.stringify(labels),color]);
+  return <canvas ref={ref} style={{width:'100%',height}}/>;
+}
+const color2='#f43f5e';
+
+// ── HEALTH RING ──────────────────────────────────────────────────────────────
+function HealthRing({score=0,size=76}){
+  const r=30,c=2*Math.PI*r,dash=c*(score/100);
+  const col=score>=70?'#10b981':score>=40?'#f59e0b':'#f43f5e';
   return(
-    <div style={{position:'relative',width:size,height:size,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
-      <svg width={size} height={size} viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="5"/>
-        <circle cx="32" cy="32" r={r} fill="none" stroke={col} strokeWidth="5"
-          strokeDasharray={`${dash} ${c-dash}`} strokeDashoffset={c*.25} strokeLinecap="round"/>
+    <div className="ring-wrap" style={{width:size,height:size}}>
+      <svg width={size} height={size} viewBox="0 0 72 72">
+        <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(0,0,0,.07)" strokeWidth="6"/>
+        <circle cx="36" cy="36" r={r} fill="none" stroke={col} strokeWidth="6"
+          strokeDasharray={`${dash} ${c-dash}`} strokeDashoffset={c*.25} strokeLinecap="round"
+          style={{transition:'stroke-dasharray .6s cubic-bezier(.25,.46,.45,.94)'}}/>
       </svg>
-      <div style={{position:'absolute',textAlign:'center'}}>
-        <div style={{fontSize:16,fontWeight:800,color:col,lineHeight:1}}>{score}</div>
-        <div style={{fontSize:8,fontWeight:700,textTransform:'uppercase',letterSpacing:.5,color:'var(--g500)'}}>score</div>
+      <div className="ring-inner">
+        <div style={{fontSize:17,fontWeight:800,color:col,lineHeight:1}}>{score}</div>
+        <div style={{fontSize:8,fontWeight:700,textTransform:'uppercase',letterSpacing:.6,color:'var(--muted)'}}>score</div>
+      </div>
+    </div>
+  );
+}
+
+// ── SMOOTH SLIDER ────────────────────────────────────────────────────────────
+function Slider({label,value,set,min,max,step,fmt}){
+  const pct=((value-min)/(max-min)*100).toFixed(1);
+  return(
+    <div className="slider-block">
+      <div className="slider-hdr">
+        <span className="slider-name">{label}</span>
+        <span className="slider-val">{fmt(value)}</span>
+      </div>
+      <div className="slider-track">
+        <div className="slider-fill" style={{width:pct+'%'}}/>
+        <div className="slider-thumb" style={{left:pct+'%'}}/>
+        <input type="range" className="slider-input" min={min} max={max} step={step} value={value}
+          onChange={e=>set(+e.target.value)}
+          onInput={e=>set(+e.target.value)}
+          style={{position:'absolute',inset:0,width:'100%',height:24,top:-9,cursor:'pointer',WebkitAppearance:'none',appearance:'none',background:'transparent',margin:0,padding:0}}/>
       </div>
     </div>
   );
@@ -1184,8 +1353,8 @@ function AuthScreen({onLogin}){
   useEffect(()=>{
     if(mode!=='signup'||f.ticker.length!==4){setTickerOk(null);return;}
     const t=setTimeout(async()=>{
-      try{const r=await fetch('/api/ticker/check/'+f.ticker);const d=await r.json();setTickerOk(d.available);}catch(e){}
-    },350);return()=>clearTimeout(t);
+      try{const r=await fetch('/api/ticker/check/'+f.ticker);const d=await r.json();setTickerOk(d.available);}catch{}
+    },400);return()=>clearTimeout(t);
   },[f.ticker,mode]);
 
   const submit=async e=>{
@@ -1197,41 +1366,44 @@ function AuthScreen({onLogin}){
       if(d.mfa_required){setMode('mfa');setLoading(false);return;}
       if(!r.ok){setErr(d.error||'Something went wrong');setLoading(false);return;}
       onLogin(d.user);
-    }catch(e){setErr('Network error');}
+    }catch{setErr('Network error — check connection');}
     setLoading(false);
   };
 
   return(
     <div className="auth-wrap">
-      <div className="auth-panel">
-        <div className="auth-bird">🐦</div>
-        <h1>Property Pigeon</h1>
-        <p>The social investment network for real estate investors. Track your portfolio, discover top performers, and connect.</p>
+      <div className="auth-side">
+        <div className="auth-side-bg"/>
+        <div className="auth-side-content">
+          <span className="auth-bird">🐦</span>
+          <div className="auth-brand">Property Pigeon</div>
+          <div className="auth-tagline">The social investment network for real estate investors. Track your portfolio, discover top performers.</div>
+        </div>
       </div>
       <div className="auth-main">
         <div className="auth-card">
-          <div className="auth-logo">Property Pigeon</div>
-          <h2>{mode==='login'?'Welcome back':mode==='mfa'?'Two-Factor Auth':'Create account'}</h2>
-          <p className="auth-sub">{mode==='login'?'Sign in to your account':mode==='mfa'?'Enter your authenticator code':'Join real estate investors worldwide'}</p>
-          {err&&<div className="alert alert-err">{err}</div>}
+          <div className="auth-eyebrow">Property Pigeon</div>
+          <h2>{mode==='login'?'Welcome back':mode==='mfa'?'Two-factor auth':'Create account'}</h2>
+          <p className="auth-sub">{mode==='login'?'Sign in to your account':mode==='mfa'?'Enter your 6-digit authenticator code':'Join real estate investors worldwide'}</p>
+          {err&&<div className="alert alert-err">⚠️ {err}</div>}
           <form onSubmit={submit}>
             {mode==='signup'&&<>
-              <div className="field"><label>Full name</label><input value={f.full_name} onChange={set('full_name')} placeholder="Brandon Bonomo" required/></div>
-              <div className="field"><label>Portfolio name</label><input value={f.portfolio_name} onChange={set('portfolio_name')} placeholder="BLB Realty" required/></div>
-              <div className="field">
-                <label>Ticker <span style={{textTransform:'none',letterSpacing:0,fontWeight:400,color:'var(--g400)'}}>— 4 letters, your public ID</span></label>
-                <input value={f.ticker} onChange={e=>setF(p=>({...p,ticker:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)}))} placeholder="BBLB" maxLength={4} style={{fontFamily:'monospace',letterSpacing:3}} required/>
-                {f.ticker.length===4&&tickerOk!==null&&<div className={`hint ${tickerOk?'hint-ok':'hint-bad'}`}>{tickerOk?'✓ Available':'✗ Already taken'}</div>}
+              <div className="auth-field"><label>Full name</label><input className="auth-input" value={f.full_name} onChange={set('full_name')} placeholder="Brandon Bonomo" required/></div>
+              <div className="auth-field"><label>Portfolio name</label><input className="auth-input" value={f.portfolio_name} onChange={set('portfolio_name')} placeholder="BLB Realty" required/></div>
+              <div className="auth-field">
+                <label>Ticker — 4 letters, your public ID</label>
+                <input className="auth-input mono" value={f.ticker} onChange={e=>setF(p=>({...p,ticker:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)}))} placeholder="BBLB" maxLength={4} style={{letterSpacing:4,fontSize:18}} required/>
+                {f.ticker.length===4&&tickerOk!==null&&<div className={tickerOk?'hint-ok':'hint-bad'}>{tickerOk?'✓ Available — grab it':'✗ Already taken — try another'}</div>}
               </div>
             </>}
-            {mode!=='mfa'&&<div className="field"><label>{mode==='login'?'Username or email':'Username'}</label><input value={f.username} onChange={set('username')} placeholder="brandonb" required/></div>}
-            {mode==='signup'&&<div className="field"><label>Email</label><input type="email" value={f.email} onChange={set('email')} required/></div>}
-            {mode!=='mfa'&&<div className="field"><label>Password</label><input type="password" value={f.password} onChange={set('password')} required/></div>}
-            {mode==='mfa'&&<div className="field"><label>6-digit code</label><input value={f.token||''} onChange={e=>setF(p=>({...p,token:e.target.value}))} placeholder="000000" maxLength={6} style={{fontFamily:'monospace',letterSpacing:6,fontSize:22,textAlign:'center'}}/></div>}
-            <button type="submit" className="btn-primary" disabled={loading}>{loading?'Please wait…':mode==='login'?'Sign in':mode==='mfa'?'Verify':'Create account'}</button>
+            {mode!=='mfa'&&<div className="auth-field"><label>{mode==='login'?'Username or email':'Username'}</label><input className="auth-input" value={f.username} onChange={set('username')} placeholder="brandonb" required/></div>}
+            {mode==='signup'&&<div className="auth-field"><label>Email</label><input className="auth-input" type="email" value={f.email} onChange={set('email')} required/></div>}
+            {mode!=='mfa'&&<div className="auth-field"><label>Password</label><input className="auth-input" type="password" value={f.password} onChange={set('password')} required/></div>}
+            {mode==='mfa'&&<div className="auth-field"><label>6-digit code</label><input className="auth-input mono" value={f.token||''} onChange={e=>setF(p=>({...p,token:e.target.value}))} placeholder="000 000" maxLength={6} style={{letterSpacing:8,fontSize:22,textAlign:'center'}}/></div>}
+            <button type="submit" className="auth-submit" disabled={loading}>{loading?'Please wait…':mode==='login'?'Sign in':mode==='mfa'?'Verify':'Create account'}</button>
           </form>
-          {mode!=='mfa'&&<button className="btn-link" onClick={()=>{setMode(m=>m==='login'?'signup':'login');setErr('');}}>
-            {mode==='login'?'New here? Create an account':'Have an account? Sign in'}
+          {mode!=='mfa'&&<button className="auth-switch" onClick={()=>{setMode(m=>m==='login'?'signup':'login');setErr('');}}>
+            {mode==='login'?'New here? Create an account':'Already have an account? Sign in'}
           </button>}
         </div>
       </div>
@@ -1239,8 +1411,8 @@ function AuthScreen({onLogin}){
   );
 }
 
-// ── ADD PROPERTY MODAL ────────────────────────────────────────────────────────
-function AddPropModal({uid,onClose,onSave}){
+// ── ADD PROPERTY SHEET ────────────────────────────────────────────────────────
+function AddPropSheet({uid,onClose,onSave}){
   const [step,setStep]=useState('zillow');
   const [url,setUrl]=useState('');
   const [loading,setLoading]=useState(false);
@@ -1250,68 +1422,80 @@ function AddPropModal({uid,onClose,onSave}){
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
 
   const fetchZillow=async()=>{
-    if(!url.includes('zillow.com')){setErr('Must be a Zillow URL');return;}
+    if(!url.includes('zillow.com')){setErr('Please paste a zillow.com URL');return;}
     setLoading(true);setErr('');
     try{
       const r=await fetch('/api/zillow/zestimate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({url})});
-      const d=await r.json();
-      if(d.error&&!d.zestimate){setErr(d.error);setLoading(false);return;}
-      setF(p=>({...p,name:d.address||'',location:d.address||'',zestimate:d.zestimate||'',purchase_price:d.zestimate||'',property_tax:d.monthly_tax||'',bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',sqft:d.sqft||'',year_built:d.year_built||'',zillow_url:url}));
-      setMsg(`Zestimate: ${fmt$(d.zestimate)}`);setStep('form');
-    }catch(e){setErr('Failed — try again');}
+      let d;try{d=await r.json();}catch{d={};}
+      if(d.error&&!d.zestimate){setErr(d.error||'Zillow fetch failed');setLoading(false);return;}
+      setF(p=>({...p,name:d.address||'',location:d.address||'',zestimate:d.zestimate||'',
+        purchase_price:d.zestimate||'',property_tax:d.monthly_tax||'',
+        bedrooms:d.bedrooms||'',bathrooms:d.bathrooms||'',sqft:d.sqft||'',
+        year_built:d.year_built||'',zillow_url:url}));
+      setMsg(`Zestimate: ${fmt$(d.zestimate)}`);
+      setStep('form');
+    }catch{setErr('Failed — please try again');}
     setLoading(false);
   };
 
   const save=async()=>{
-    if(!f.name&&!f.location){setErr('Property name required');return;}
-    if(!f.name)setF(p=>({...p,name:p.location||'Property'}));
+    const name=f.name||f.location||'Property';
+    if(!name){setErr('Property name required');return;}
     setLoading(true);setErr('');
     try{
-      const body={...f,name:f.name||f.location||'Property'};
+      const body={...f,name};
+      console.log('Saving property:', JSON.stringify(body));
       const r=await fetch(`/api/properties/${uid}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
-      const d=await r.json();
-      if(!r.ok){setErr(d.error||'Failed to save');setLoading(false);return;}
+      const text=await r.text();
+      let d;try{d=JSON.parse(text);}catch{d={error:text};}
+      console.log('Save response:', r.status, text.slice(0,200));
+      if(!r.ok){setErr(d.error||`Save failed (${r.status})`);setLoading(false);return;}
       onSave(d);onClose();
-    }catch(e){setErr('Failed to save');}
+    }catch(e){setErr('Network error: '+e.message);console.error('Save error:',e);}
     setLoading(false);
   };
 
-  const inp=(lbl,k,type='text',ph='')=>(
+  const Inp=(lbl,k,type='text',ph='')=>(
     <div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]} onChange={set(k)} placeholder={ph}/></div>
+  );
+  const Inp2=(a,b)=>(
+    <div className="form-2">{Inp(...a)}{Inp(...b)}</div>
   );
 
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-handle"/>
+      <div className="sheet">
+        <div className="sheet-handle"/>
         {step==='zillow'&&<>
-          <h3>Add Property</h3><p className="msub">Paste a Zillow listing URL</p>
-          <div className="zillow-box">
+          <h3>Add Property</h3>
+          <p className="sheet-sub">Paste a Zillow listing URL to auto-fill</p>
+          <div className="zillow-cta">
             <h4>🏠 Auto-fill from Zillow</h4>
-            <p>Find your property on zillow.com and paste the URL below to auto-populate all details.</p>
+            <p>Find your property on zillow.com, copy the URL from your browser address bar, and paste it below. We'll pull the Zestimate, address, bedrooms, taxes, and more.</p>
           </div>
           {err&&<div className="alert alert-err">{err}</div>}
-          <div className="form-row"><label>Zillow URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/..."/></div>
-          <div className="modal-foot">
+          <div className="form-row"><label>Zillow URL</label><input className="sinput" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://www.zillow.com/homedetails/..." onKeyDown={e=>e.key==='Enter'&&fetchZillow()}/></div>
+          <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-blue" onClick={fetchZillow} disabled={loading}>{loading?'Fetching…':'Get Details'}</button>
+            <button className="btn btn-prime" onClick={fetchZillow} disabled={loading}>{loading?'Fetching details…':'Auto-fill from Zillow'}</button>
           </div>
           <button className="manual-link" onClick={()=>setStep('form')}>Enter manually instead</button>
         </>}
         {step==='form'&&<>
-          <button className="back-btn" onClick={()=>setStep('zillow')}>← Back</button>
-          <h3>Property Details</h3><p className="msub">{msg||'Fill in the details below'}</p>
+          <button className="back-btn" onClick={()=>setStep('zillow')}>← Back to Zillow</button>
+          <h3>Property Details</h3>
+          <p className="sheet-sub">{msg||'Fill in the details below'}</p>
           {err&&<div className="alert alert-err">{err}</div>}
-          {inp('Property name','name','text','22 B Street')}
-          {inp('Location','location','text','Houston, TX')}
-          <div className="form-row2">{inp('Purchase price ($)','purchase_price','number')}{inp('Down payment ($)','down_payment','number')}</div>
-          <div className="form-row2">{inp('Current value / Zestimate ($)','zestimate','number')}{inp('Monthly rent ($)','monthly_revenue','number')}</div>
-          <div className="form-row2">{inp('Mortgage /mo ($)','mortgage','number')}{inp('Property tax /mo ($)','property_tax','number')}</div>
-          <div className="form-row2">{inp('Insurance /mo ($)','insurance','number')}{inp('HOA /mo ($)','hoa','number')}</div>
-          <div className="form-row2">{inp('Beds','bedrooms','number')}{inp('Baths','bathrooms','number')}</div>
-          <div className="modal-foot">
+          {Inp('Property name','name','text','22 B Street')}
+          {Inp('Location','location','text','Houston, TX 77002')}
+          {Inp2(['Purchase price ($)','purchase_price','number'],['Down payment ($)','down_payment','number'])}
+          {Inp2(['Current value / Zestimate ($)','zestimate','number'],['Monthly rent ($)','monthly_revenue','number'])}
+          {Inp2(['Mortgage /mo ($)','mortgage','number'],['Property tax /mo ($)','property_tax','number'])}
+          {Inp2(['Insurance /mo ($)','insurance','number'],['HOA /mo ($)','hoa','number'])}
+          {Inp2(['Bedrooms','bedrooms','number'],['Bathrooms','bathrooms','number'])}
+          <div className="sheet-foot">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-blue" onClick={save} disabled={loading}>{loading?'Saving…':'Add Property'}</button>
+            <button className="btn btn-prime" onClick={save} disabled={loading}>{loading?'Saving…':'Add Property'}</button>
           </div>
         </>}
       </div>
@@ -1319,12 +1503,14 @@ function AddPropModal({uid,onClose,onSave}){
   );
 }
 
-// ── EDIT PROPERTY MODAL ───────────────────────────────────────────────────────
-function EditPropModal({prop,onClose,onSave,onDelete}){
+// ── EDIT PROPERTY SHEET ───────────────────────────────────────────────────────
+function EditPropSheet({prop,onClose,onSave,onDelete}){
   const [f,setF]=useState({...prop});
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState('');
   const set=k=>e=>setF(p=>({...p,[k]:e.target.value}));
+  const Inp=(lbl,k,type='text')=>(<div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]||''} onChange={set(k)}/></div>);
+  const Inp2=(a,b)=>(<div className="form-2">{Inp(...a)}{Inp(...b)}</div>);
 
   const save=async()=>{
     setLoading(true);setErr('');
@@ -1333,34 +1519,33 @@ function EditPropModal({prop,onClose,onSave,onDelete}){
       const d=await r.json();
       if(!r.ok){setErr(d.error||'Failed');setLoading(false);return;}
       onSave(d);onClose();
-    }catch(e){setErr('Failed');}
+    }catch{setErr('Failed');}
     setLoading(false);
   };
 
   const del=async()=>{
-    if(!confirm('Delete this property?'))return;
+    if(!confirm(`Delete "${prop.name}"?`))return;
     await fetch(`/api/property/${prop.id}`,{method:'DELETE',credentials:'include'});
     onDelete(prop.id);onClose();
   };
 
-  const inp=(lbl,k,type='text')=>(<div className="form-row"><label>{lbl}</label><input className="sinput" type={type} value={f[k]||''} onChange={set(k)}/></div>);
-
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-handle"/>
-        <h3>Edit Property</h3><p className="msub">{prop.name}</p>
+      <div className="sheet">
+        <div className="sheet-handle"/>
+        <h3>Edit Property</h3>
+        <p className="sheet-sub">{prop.name}</p>
         {err&&<div className="alert alert-err">{err}</div>}
-        {inp('Property name','name')}{inp('Location','location')}
-        <div className="form-row2">{inp('Purchase price','purchase_price','number')}{inp('Down payment','down_payment','number')}</div>
-        <div className="form-row2">{inp('Current value','zestimate','number')}{inp('Monthly rent','monthly_revenue','number')}</div>
-        <div className="form-row2">{inp('Mortgage /mo','mortgage','number')}{inp('Property tax /mo','property_tax','number')}</div>
-        <div className="form-row2">{inp('Insurance /mo','insurance','number')}{inp('HOA /mo','hoa','number')}</div>
-        <div className="modal-foot">
+        {Inp('Property name','name')}{Inp('Location','location')}
+        {Inp2(['Purchase price','purchase_price','number'],['Down payment','down_payment','number'])}
+        {Inp2(['Current value ($)','zestimate','number'],['Monthly rent ($)','monthly_revenue','number'])}
+        {Inp2(['Mortgage /mo ($)','mortgage','number'],['Property tax /mo ($)','property_tax','number'])}
+        {Inp2(['Insurance /mo ($)','insurance','number'],['HOA /mo ($)','hoa','number'])}
+        <div className="sheet-foot">
           <button className="btn btn-danger btn-sm" onClick={del}>Delete</button>
           <div style={{flex:1}}/>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-blue" onClick={save} disabled={loading}>{loading?'Saving…':'Save'}</button>
+          <button className="btn btn-prime" onClick={save} disabled={loading}>{loading?'Saving…':'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -1368,61 +1553,63 @@ function EditPropModal({prop,onClose,onSave,onDelete}){
 }
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
-function PortfolioTab({user,props,portfolio,onAddProp,onEditProp}){
-  const tv=+portfolio.total_value||0;
-  const te=+portfolio.total_equity||0;
-  const mcf=+portfolio.monthly_cashflow||0;
-  const hs=+portfolio.health_score||0;
-  const history=useMemo(()=>{
-    try{const h=portfolio.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}
-  },[portfolio.price_history]);
+function PortfolioTab({user,props,portfolio,onAdd,onEdit}){
+  const tv=+portfolio.total_value||0,te=+portfolio.total_equity||0,mcf=+portfolio.monthly_cashflow||0,hs=+portfolio.health_score||0;
+  const accent=user.accent_color||'#2563eb';
+  const history=useMemo(()=>{try{const h=portfolio.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
   const chartData=history.map(h=>+h.price);
-  const accent=user.accent_color||'#1a56db';
   const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
 
   return(
     <div className="page page-in">
-      <div className="hero">
+      {/* Hero */}
+      <div className="hero hero-gradient" style={{background:`linear-gradient(135deg,${accent} 0%,${accent}cc 100%)`}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
-            <div className="lbl">Portfolio Value</div>
-            <div className="big" style={{color:accent}}>{fmt$k(tv)}</div>
-            <div style={{fontSize:12,color:'var(--g500)',marginTop:4}}>{props.length} {props.length===1?'property':'properties'} · Equity {fmt$k(te)}</div>
+            <div className="hero-lbl">Portfolio Value</div>
+            <div className="hero-val">{fmt$k(tv)}</div>
+            <div className="hero-sub">{props.length} {props.length===1?'property':'properties'} · Equity {fmt$k(te)}</div>
           </div>
           <HealthRing score={hs}/>
         </div>
-        {chartData.length>1&&<div className="chart-wrap"><MiniChart data={chartData} color={accent}/></div>}
+        {chartData.length>1&&<div className="hero-chart"><MiniLine data={chartData} color="rgba(255,255,255,.9)" height={72}/></div>}
+        <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600}}>Cap Rate {capRate.toFixed(1)}%</span>
+          <span style={{color:'rgba(255,255,255,.4)'}}>·</span>
+          <span style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,color:mcf>=0?'#6ee7b7':'#fca5a5'}}>CF {mcf>=0?'+':''}{fmt$(mcf)}/mo</span>
+        </div>
       </div>
-      <div className="grid2" style={{marginBottom:12}}>
-        <div className="stat"><div className="stat-lbl">Monthly CF</div><div className="stat-val" style={{color:clr(mcf)}}>{fmt$(mcf)}</div></div>
-        <div className="stat"><div className="stat-lbl">Annual CF</div><div className="stat-val">{fmt$k(mcf*12)}</div></div>
-        <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
-        <div className="stat"><div className="stat-lbl">Health Score</div><div className="stat-val">{hs}</div></div>
+
+      {/* Stats */}
+      <div className="grid2" style={{marginBottom:14}}>
+        <div className="scard"><div className="scard-lbl">Monthly Cash Flow</div><div className="scard-val" style={{color:clr(mcf)}}>{fmt$s(mcf)}</div><div className="scard-sub">Annual {fmt$k(mcf*12)}</div></div>
+        <div className="scard"><div className="scard-lbl">Total Equity</div><div className="scard-val">{fmt$k(te)}</div><div className="scard-sub">{tv>0?((te/tv)*100).toFixed(0)+'% LTV':''}</div></div>
+        <div className="scard"><div className="scard-lbl">Cap Rate</div><div className="scard-val">{capRate.toFixed(2)}%</div></div>
+        <div className="scard"><div className="scard-lbl">Share Price</div><div className="scard-val mono">${(+portfolio.share_price||1).toFixed(2)}</div></div>
       </div>
-      <div className="sec-hdr">
-        <h4>Properties</h4>
-        <button className="btn btn-blue btn-sm" onClick={onAddProp}>+ Add</button>
-      </div>
-      {props.length===0&&<div style={{textAlign:'center',padding:'40px 20px',color:'var(--g400)'}}>
-        <div style={{fontSize:36,marginBottom:8}}>🏠</div>
-        <div style={{fontWeight:600}}>No properties yet</div>
-        <div style={{fontSize:13,marginTop:4,marginBottom:16}}>Add your first property to get started</div>
-        <button className="btn btn-blue" onClick={onAddProp}>+ Add Property</button>
+
+      {/* Properties */}
+      <div className="sec-hdr"><h4>Properties</h4><button className="btn btn-prime btn-sm" onClick={onAdd}>+ Add</button></div>
+      {props.length===0&&<div className="empty">
+        <div className="empty-icon">🏠</div>
+        <div className="empty-title">No properties yet</div>
+        <div className="empty-sub">Add your first property to start tracking your portfolio</div>
+        <button className="btn btn-prime" onClick={onAdd}>Add First Property</button>
       </div>}
       {props.map(p=>{
         const val=+p.zestimate||+p.purchase_price||0;
         const cf=+p.monthly_revenue-(+p.mortgage+ +p.insurance+ +p.hoa+ +p.property_tax);
         return(
-          <div key={p.id} className="glass-row prop-row" onClick={()=>onEditProp(p)}>
-            <div className="prop-icon" style={{background:accent+'18'}}>{p.bedrooms>0?'🏠':'🏢'}</div>
+          <div key={p.id} className="prop-row" onClick={()=>onEdit(p)} style={{'--accent':accent}}>
+            <div className="prop-icon" style={{background:accent+'18'}}>{+p.bedrooms>0?'🏠':'🏢'}</div>
             <div style={{flex:1,minWidth:0}}>
               <div className="prop-name">{p.name}</div>
               <div className="prop-loc">{p.location}</div>
-              {+p.zestimate>0&&<div className="prop-zest">Zestimate {fmt$(p.zestimate)}</div>}
+              {+p.zestimate>0&&<div className="prop-meta">{fmt$(p.zestimate)} Zestimate</div>}
             </div>
-            <div className="prop-right">
-              <div className="prop-val">{fmt$k(val)}</div>
-              <div className="prop-cf" style={{color:clr(cf)}}>{cf>=0?'+':''}{fmt$(cf)}/mo</div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.3px'}}>{fmt$k(val)}</div>
+              <div style={{fontSize:12,fontWeight:700,color:clr(cf)}}>{cf>=0?'+':''}{fmt$(cf)}/mo</div>
             </div>
           </div>
         );
@@ -1431,86 +1618,115 @@ function PortfolioTab({user,props,portfolio,onAddProp,onEditProp}){
   );
 }
 
-// ── PERFORMANCE PARENT (with sub-tabs) ───────────────────────────────────────
-function PerformanceTab({user,props,portfolio}){
+// ── ANALYTICS TAB (Performance + Cashflow + Projections) ─────────────────────
+function AnalyticsTab({user,props,portfolio}){
   const [sub,setSub]=useState('performance');
   return(
     <div className="page page-in" style={{paddingTop:14}}>
-      <div className="sub-tabs">
+      <div className="subnav">
         {[['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
-          <button key={id} className={`sub-tab${sub===id?' on':''}`} onClick={()=>setSub(id)}>{lbl}</button>
+          <button key={id} className={`subnav-btn${sub===id?' on':''}`} onClick={()=>setSub(id)}>{lbl}</button>
         ))}
       </div>
-      {sub==='performance'&&<PerfContent user={user} props={props} portfolio={portfolio}/>}
-      {sub==='cashflow'&&<CashflowContent props={props}/>}
-      {sub==='projections'&&<ProjectionsContent props={props} portfolio={portfolio}/>}
+      {sub==='performance'&&<PerfPane user={user} props={props} portfolio={portfolio}/>}
+      {sub==='cashflow'&&<CashflowPane props={props}/>}
+      {sub==='projections'&&<ProjectionsPane props={props} portfolio={portfolio} user={user}/>}
     </div>
   );
 }
 
-function PerfContent({user,props,portfolio}){
+function PerfPane({user,props,portfolio}){
   const [snaps,setSnaps]=useState([]);
   const uid=user.id;
-  const tv=+portfolio.total_value||0;
-  const te=+portfolio.total_equity||0;
-  const mcf=+portfolio.monthly_cashflow||0;
+  const tv=+portfolio.total_value||0,te=+portfolio.total_equity||0,mcf=+portfolio.monthly_cashflow||0;
   const totalDown=props.reduce((s,p)=>s+(+p.down_payment||0),0);
   const coc=totalDown>0?(mcf*12/totalDown*100):0;
   const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
 
   useEffect(()=>{
-    fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'})
+    fetch(`/api/performance/portfolio/${uid}?months=24`,{credentials:'include'})
       .then(r=>r.json()).then(d=>setSnaps(d.snapshots||[])).catch(()=>{});
   },[uid]);
 
   const saveSnap=async()=>{
     await fetch('/api/performance/snapshot',{method:'POST',credentials:'include'});
-    const r=await fetch(`/api/performance/portfolio/${uid}?months=12`,{credentials:'include'});
+    const r=await fetch(`/api/performance/portfolio/${uid}?months=24`,{credentials:'include'});
     const d=await r.json();setSnaps(d.snapshots||[]);
   };
 
-  const chartVals=snaps.map(s=>+s.total_value);
+  // YoY comparison
+  const yoyData=useMemo(()=>{
+    if(snaps.length<13)return null;
+    const latest=snaps[snaps.length-1];
+    const yearAgo=snaps[snaps.length-13];
+    if(!latest||!yearAgo)return null;
+    return{
+      valueChg:+latest.total_value - +yearAgo.total_value,
+      equityChg:+latest.total_equity - +yearAgo.total_equity,
+      cfChg:+latest.net_cashflow - +yearAgo.net_cashflow,
+      valuePct:yearAgo.total_value>0?((+latest.total_value/+yearAgo.total_value-1)*100):0,
+    };
+  },[snaps]);
+
+  const chartData=snaps.map(s=>+s.total_value);
+  const chartLabels=snaps.map(s=>monthShort(s.snapshot_month));
+  const accent=user.accent_color||'#2563eb';
 
   return(<>
     <div className="grid2" style={{marginBottom:12}}>
-      <div className="stat"><div className="stat-lbl">Portfolio Value</div><div className="stat-val">{fmt$k(tv)}</div></div>
-      <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
-      <div className="stat"><div className="stat-lbl">Cash-on-Cash</div><div className="stat-val" style={{color:clr(coc)}}>{coc.toFixed(1)}%</div></div>
-      <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
+      <div className="scard"><div className="scard-lbl">Portfolio Value</div><div className="scard-val">{fmt$k(tv)}</div>
+        {yoyData&&<div className="scard-delta" style={deltaStyle(yoyData.valuePct)}>{arrow(yoyData.valuePct)}{Math.abs(yoyData.valuePct).toFixed(1)}% YoY</div>}
+      </div>
+      <div className="scard"><div className="scard-lbl">Total Equity</div><div className="scard-val">{fmt$k(te)}</div>
+        {yoyData&&<div className="scard-delta" style={deltaStyle(yoyData.equityChg)}>{arrow(yoyData.equityChg)}{fmt$k(Math.abs(yoyData.equityChg))} YoY</div>}
+      </div>
+      <div className="scard"><div className="scard-lbl">Cash-on-Cash</div><div className="scard-val" style={{color:clr(coc)}}>{coc.toFixed(1)}%</div></div>
+      <div className="scard"><div className="scard-lbl">Cap Rate</div><div className="scard-val">{capRate.toFixed(1)}%</div></div>
     </div>
-    {chartVals.length>1&&<div className="card" style={{padding:18,marginBottom:12}}>
-      <div className="lbl" style={{marginBottom:8}}>Value History ({snaps.length}mo)</div>
-      <MiniChart data={chartVals} color={user.accent_color||'#1a56db'} height={80}/>
+    {chartData.length>1&&<div className="glass-card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:10}}>Portfolio Value History</div>
+      <MiniLine data={chartData} color={accent} height={90}/>
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:10,color:'var(--muted)',fontWeight:600}}>
+        {chartLabels.filter((_,i)=>i%Math.ceil(chartLabels.length/5)===0).map((l,i)=><span key={i}>{l}</span>)}
+      </div>
     </div>}
     <div className="sec-hdr">
-      <h4 style={{fontSize:13}}>Monthly Snapshots</h4>
-      <button className="btn btn-blue btn-sm" onClick={saveSnap}>Save Now</button>
+      <h4 style={{fontSize:14}}>Month-over-Month</h4>
+      <button className="btn btn-prime btn-sm" onClick={saveSnap}>Save Snapshot</button>
     </div>
-    {snaps.length===0&&<div style={{textAlign:'center',padding:'32px 20px',color:'var(--g400)',fontSize:13}}>No snapshots yet — tap Save Now to start tracking</div>}
-    {snaps.length>0&&<div className="card" style={{padding:0,overflow:'hidden'}}>
+    {snaps.length===0&&<div className="empty"><div className="empty-icon">📊</div><div className="empty-title">No history yet</div><div className="empty-sub">Save a snapshot to start tracking over time</div></div>}
+    {snaps.length>0&&<div className="glass-card" style={{padding:0,overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
-          <thead><tr style={{borderBottom:'1px solid var(--g200)'}}>
-            {['Month','Value','Equity','Revenue','Net CF'].map(h=>(
-              <th key={h} style={{padding:'8px 12px',textAlign:h==='Month'?'left':'right',fontWeight:700,color:'var(--g500)',fontSize:10,textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
+          <thead><tr style={{borderBottom:'1px solid rgba(0,0,0,.06)',background:'rgba(0,0,0,.02)'}}>
+            {['Month','Value','Δ YoY','Equity','Revenue','Net CF'].map(h=>(
+              <th key={h} style={{padding:'10px 13px',textAlign:h==='Month'?'left':'right',fontWeight:700,color:'var(--muted)',fontSize:10,textTransform:'uppercase',letterSpacing:.6,whiteSpace:'nowrap'}}>{h}</th>
             ))}
           </tr></thead>
-          <tbody>{[...snaps].reverse().slice(0,12).map((s,i)=>(
-            <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-              <td style={{padding:'8px 12px',fontWeight:600}}>{s.snapshot_month}</td>
-              <td style={{padding:'8px 12px',textAlign:'right'}}>{fmt$k(s.total_value)}</td>
-              <td style={{padding:'8px 12px',textAlign:'right'}}>{fmt$k(s.total_equity)}</td>
-              <td style={{padding:'8px 12px',textAlign:'right',color:'var(--green)'}}>{fmt$(s.gross_revenue)}</td>
-              <td style={{padding:'8px 12px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow)}}>{fmt$(s.net_cashflow)}</td>
-            </tr>
-          ))}</tbody>
+          <tbody>{[...snaps].reverse().map((s,i,arr)=>{
+            const prev=arr[i+1];
+            const valDelta=prev?+s.total_value - +prev.total_value:null;
+            const isYoY=arr.length>i+12?+s.total_value - +arr[i+12].total_value:null;
+            return(
+              <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+                <td style={{padding:'10px 13px',fontWeight:700,fontSize:13}}>{monthName(s.snapshot_month)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'DM Mono',fontWeight:600}}>{fmt$k(s.total_value)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right'}}>
+                  {isYoY!==null?<span style={{fontSize:11,fontWeight:700,color:clr(isYoY)}}>{arrow(isYoY)}{Math.abs(isYoY/+arr[i+12].total_value*100).toFixed(1)}%</span>:<span style={{color:'var(--dim)',fontSize:11}}>—</span>}
+                </td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'DM Mono'}}>{fmt$k(s.total_equity)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',color:'var(--green)',fontFamily:'DM Mono'}}>{fmt$(s.gross_revenue)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontWeight:700,color:clr(s.net_cashflow),fontFamily:'DM Mono'}}>{fmt$s(s.net_cashflow)}</td>
+              </tr>
+            );
+          })}</tbody>
         </table>
       </div>
     </div>}
   </>);
 }
 
-function CashflowContent({props}){
+function CashflowPane({props}){
   const revenue=props.reduce((s,p)=>s+(+p.monthly_revenue||0),0);
   const mortgage=props.reduce((s,p)=>s+(+p.mortgage||0),0);
   const tax=props.reduce((s,p)=>s+(+p.property_tax||0),0);
@@ -1520,29 +1736,48 @@ function CashflowContent({props}){
   const noi=revenue-tax-ins-hoa;
   const ncf=revenue-total_exp;
 
+  // Bar chart: last 12 months simulated (will be real data when snapshots exist)
+  const barData=[revenue,-mortgage,-tax,-ins,-hoa,ncf];
+  const barLabels=['Revenue','Mortgage','Tax','Insurance','HOA','Net CF'];
+
   return(<>
-    <div className="grid2" style={{marginBottom:14}}>
-      <div className="stat"><div className="stat-lbl">Monthly Revenue</div><div className="stat-val" style={{color:'var(--green)'}}>{fmt$(revenue)}</div></div>
-      <div className="stat"><div className="stat-lbl">Monthly Expenses</div><div className="stat-val" style={{color:'var(--red)'}}>{fmt$(total_exp)}</div></div>
-      <div className="stat"><div className="stat-lbl">NOI</div><div className="stat-val" style={{color:clr(noi)}}>{fmt$(noi)}</div></div>
-      <div className="stat"><div className="stat-lbl">Net Cash Flow</div><div className="stat-val" style={{color:clr(ncf),fontWeight:800}}>{fmt$(ncf)}</div></div>
+    <div style={{marginBottom:14}}>
+      <div style={{fontSize:11,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.8,marginBottom:6}}>Net Cash Flow / Month</div>
+      <div style={{fontSize:40,fontWeight:800,letterSpacing:-2,color:clr(ncf)}}>{fmt$s(ncf)}</div>
+      <div style={{fontSize:13,color:'var(--muted)',marginTop:4}}>Annual {fmt$k(ncf*12)}</div>
     </div>
-    <div className="card" style={{padding:18}}>
-      <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Monthly Breakdown</div>
-      {[['Gross Revenue',revenue,true],['Mortgage',mortgage],['Property Taxes',tax],['Insurance',ins],['HOA',hoa]].map(([lbl,val,isIncome])=>(
+    <div className="glass-card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:12}}>Breakdown</div>
+      <BarChart data={barData} labels={barLabels} color="var(--blue)" height={130}/>
+    </div>
+    <div className="glass-card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:12}}>Monthly Detail</div>
+      {[['Gross Revenue',revenue,true],['Mortgage',-mortgage],['Property Tax',-tax],['Insurance',-ins],['HOA',-hoa]].map(([lbl,val,inc])=>(
         <div key={lbl} className="cf-row">
           <span className="cf-lbl">{lbl}</span>
-          <span className="cf-val" style={{color:isIncome?'var(--green)':+val>0?'var(--red)':'var(--g700)'}}>{isIncome?'':'-'}{fmt$(Math.abs(val))}</span>
+          <span className="cf-val" style={{color:inc?'var(--green)':+val<0?'var(--red)':'var(--muted)'}}>{fmt$s(inc?val:val)}</span>
         </div>
       ))}
-      <div style={{borderTop:'1px solid var(--g200)',margin:'10px 0'}}/>
-      <div className="cf-row total-row"><span className="cf-lbl" style={{fontWeight:700}}>Net Cash Flow</span><span className="cf-val" style={{color:clr(ncf),fontSize:15}}>{fmt$(ncf)}</span></div>
-      <div style={{marginTop:12,fontSize:12,color:'var(--g500)'}}>Annual: {fmt$k(ncf*12)} · Annual Revenue: {fmt$k(revenue*12)}</div>
+      <div style={{borderTop:'1px solid rgba(0,0,0,.08)',margin:'8px 0'}}/>
+      <div className="cf-row cf-total">
+        <span className="cf-lbl" style={{fontWeight:700}}>Net Operating Income</span>
+        <span className="cf-val" style={{color:clr(noi),fontSize:14}}>{fmt$s(noi)}</span>
+      </div>
+      <div className="cf-row cf-total" style={{marginTop:4}}>
+        <span className="cf-lbl" style={{fontWeight:700}}>Net Cash Flow</span>
+        <span className="cf-val" style={{color:clr(ncf),fontSize:14}}>{fmt$s(ncf)}</span>
+      </div>
+    </div>
+    <div className="grid2">
+      <div className="scard"><div className="scard-lbl">Annual Revenue</div><div className="scard-val">{fmt$k(revenue*12)}</div></div>
+      <div className="scard"><div className="scard-lbl">Annual Expenses</div><div className="scard-val" style={{color:'var(--red)'}}>{fmt$k(total_exp*12)}</div></div>
+      <div className="scard"><div className="scard-lbl">Expense Ratio</div><div className="scard-val">{revenue>0?((total_exp/revenue)*100).toFixed(0)+'%':'—'}</div></div>
+      <div className="scard"><div className="scard-lbl">Annual NOI</div><div className="scard-val" style={{color:clr(noi)}}>{fmt$k(noi*12)}</div></div>
     </div>
   </>);
 }
 
-function ProjectionsContent({props,portfolio}){
+function ProjectionsPane({props,portfolio,user}){
   const [appreciation,setAppreciation]=useState(3.5);
   const [rentGrowth,setRentGrowth]=useState(2.5);
   const [vacancy,setVacancy]=useState(5);
@@ -1553,71 +1788,55 @@ function ProjectionsContent({props,portfolio}){
   const exp=props.reduce((s,p)=>s+(+p.mortgage||0)+(+p.insurance||0)+(+p.hoa||0)+(+p.property_tax||0),0)*12;
   const down=props.reduce((s,p)=>s+(+p.down_payment||0),0);
   const debt=tv-(+portfolio.total_equity||0);
+  const accent=user.accent_color||'#2563eb';
 
   const proj=useMemo(()=>{
     if(!tv)return[];
-    const vacFactor=1-(vacancy/100);
+    const vf=1-(vacancy/100);
     return Array.from({length:30},(_,i)=>{
-      const y=i+1;
-      const val=tv*Math.pow(1+appreciation/100,y);
-      const r=rev*Math.pow(1+rentGrowth/100,y)*vacFactor;
-      const e=exp*Math.pow(1+expInflation/100,y);
-      const ncf=r-e;
-      const debtRemain=debt*Math.pow(1-(.012+y*.001),y);
-      const eq=val-Math.max(0,debtRemain);
-      const cumCF=Array.from({length:y},(_,j)=>rev*Math.pow(1+rentGrowth/100,j)*vacFactor-exp*Math.pow(1+expInflation/100,j)).reduce((a,b)=>a+b,0);
+      const y=i+1,val=tv*Math.pow(1+appreciation/100,y),r=rev*Math.pow(1+rentGrowth/100,y)*vf,e=exp*Math.pow(1+expInflation/100,y),ncf=r-e,dr=debt*Math.pow(1-(.012+y*.001),y),eq=val-Math.max(0,dr);
+      const cumCF=Array.from({length:y},(_,j)=>rev*Math.pow(1+rentGrowth/100,j)*vf-exp*Math.pow(1+expInflation/100,j)).reduce((a,b)=>a+b,0);
       return{y,val,eq,rev:r,ncf,cumCF,coc:down>0?ncf/down:0};
     });
   },[tv,rev,exp,down,debt,appreciation,rentGrowth,vacancy,expInflation]);
 
-  if(!tv)return(
-    <div style={{textAlign:'center',padding:'48px 20px',color:'var(--g400)'}}>
-      <div style={{fontSize:36,marginBottom:8}}>📈</div>
-      <div style={{fontWeight:600}}>Add a property to see projections</div>
-    </div>
-  );
+  if(!tv)return(<div className="empty"><div className="empty-icon">📈</div><div className="empty-title">Add a property first</div><div className="empty-sub">Projections require at least one property with a value</div></div>);
 
-  const yr10=proj[9];const yr20=proj[19];const yr30=proj[29];
-
-  const Slider=({label,value,set,min,max,step,format})=>(
-    <div className="slider-row">
-      <div className="slider-hdr">
-        <span className="slider-name">{label}</span>
-        <span className="slider-val">{format(value)}</span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={e=>set(+e.target.value)}/>
-    </div>
-  );
+  const milestones=[proj[4],proj[9],proj[14],proj[19],proj[24],proj[29]].filter(Boolean);
+  const chartVals=proj.filter(p=>[5,10,15,20,25,30].includes(p.y)).map(p=>p.val);
+  const chartLabels=['Yr 5','Yr 10','Yr 15','Yr 20','Yr 25','Yr 30'];
+  const ncfChart=proj.map(p=>p.ncf);
 
   return(<>
-    <div className="card" style={{padding:18,marginBottom:14}}>
-      <div style={{fontSize:12,fontWeight:700,color:'var(--g400)',textTransform:'uppercase',letterSpacing:.5,marginBottom:14}}>Assumptions</div>
-      <Slider label="Appreciation" value={appreciation} set={setAppreciation} min={0} max={10} step={0.5} format={v=>v.toFixed(1)+'%'}/>
-      <Slider label="Rent Growth" value={rentGrowth} set={setRentGrowth} min={0} max={8} step={0.5} format={v=>v.toFixed(1)+'%'}/>
-      <Slider label="Vacancy Rate" value={vacancy} set={setVacancy} min={0} max={20} step={1} format={v=>v+'%'}/>
-      <Slider label="Expense Inflation" value={expInflation} set={setExpInflation} min={0} max={6} step={0.5} format={v=>v.toFixed(1)+'%'}/>
+    <div className="glass-card" style={{padding:18,marginBottom:14}}>
+      <div className="lbl" style={{marginBottom:16}}>Adjust Assumptions</div>
+      <Slider label="Appreciation" value={appreciation} set={setAppreciation} min={0} max={10} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
+      <Slider label="Rent Growth" value={rentGrowth} set={setRentGrowth} min={0} max={8} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
+      <Slider label="Vacancy Rate" value={vacancy} set={setVacancy} min={0} max={20} step={1} fmt={v=>v+'%'}/>
+      <Slider label="Expense Inflation" value={expInflation} set={setExpInflation} min={0} max={6} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:14}}>
-      {[[10,yr10,'#1a56db'],[20,yr20,'#7c3aed'],[30,yr30,'#059669']].map(([y,d,c])=>(
-        <div key={y} className="card" style={{padding:14,borderTop:`3px solid ${c}`}}>
-          <div style={{fontSize:10,fontWeight:800,color:c,marginBottom:6}}>YEAR {y}</div>
-          <div style={{fontSize:10,color:'var(--g400)',marginBottom:1}}>Value</div>
-          <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.5px'}}>{fmt$k(d?.val)}</div>
-          <div style={{fontSize:10,color:'var(--g400)',marginTop:6,marginBottom:1}}>Equity</div>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--green)'}}>{fmt$k(d?.eq)}</div>
-        </div>
-      ))}
+    <div className="glass-card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:10}}>Portfolio Value at Milestones</div>
+      <BarChart data={chartVals} labels={chartLabels} color={accent} height={140}/>
     </div>
-    <div className="card" style={{padding:0,overflow:'hidden'}}>
+    <div className="glass-card" style={{padding:18,marginBottom:12}}>
+      <div className="lbl" style={{marginBottom:10}}>Annual Cash Flow Growth (30yr)</div>
+      <MiniLine data={ncfChart} color={ncfChart[ncfChart.length-1]>0?'#10b981':'#f43f5e'} height={80}/>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
+      {milestones.map((m,i)=>(<div key={m.y} className="scard" style={{borderTop:`3px solid ${[accent,'#6366f1','#10b981','#f59e0b','#f43f5e','#0891b2'][i]}`}}>
+        <div style={{fontSize:10,fontWeight:700,color:'var(--muted)',marginBottom:6}}>YEAR {m.y}</div>
+        <div style={{fontSize:17,fontWeight:800,letterSpacing:'-.5px'}}>{fmt$k(m.val)}</div>
+        <div style={{fontSize:11,color:'var(--green)',fontWeight:700,marginTop:4}}>Eq {fmt$k(m.eq)}</div>
+      </div>))}
+    </div>
+    <div className="glass-card" style={{padding:0,overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
         <table className="proj-table">
-          <thead><tr>
-            {['Yr','Value','Equity','Annual Rev','Net CF','Cum CF','CoC'].map(h=><th key={h}>{h}</th>)}
-          </tr></thead>
+          <thead><tr>{['Yr','Value','Equity','Ann Rev','Net CF','Cum CF','CoC'].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>{proj.map(r=>(
-            <tr key={r.y} className={[5,10,15,20,25,30].includes(r.y)?'milestone-row':''}>
-              <td>{r.y}</td>
-              <td>{fmt$k(r.val)}</td>
+            <tr key={r.y} className={[5,10,15,20,25,30].includes(r.y)?'milestone':''}>
+              <td>{r.y}</td><td>{fmt$k(r.val)}</td>
               <td style={{color:'var(--green)'}}>{fmt$k(r.eq)}</td>
               <td>{fmt$k(r.rev)}</td>
               <td style={{color:clr(r.ncf)}}>{fmt$k(r.ncf)}</td>
@@ -1640,97 +1859,84 @@ function NetWorthTab({user,portfolio,props}){
   const [newLabel,setNewLabel]=useState('');
   const [newVal,setNewVal]=useState('');
   const [newType,setNewType]=useState('asset');
-  const plaidConnected=false; // Will be true when Plaid connected
+  const accent=user.accent_color||'#2563eb';
+  const plaidConnected=false;
 
   const re=+portfolio.total_equity||0;
   const stockVal=stocks.reduce((s,st)=>s+(+st.shares*(+st.price||0)),0);
-  const manualAssets=manuals.filter(m=>m.type==='asset').reduce((s,m)=>s+(+m.value||0),0);
-  const manualLiab=manuals.filter(m=>m.type==='liability').reduce((s,m)=>s+(+m.value||0),0);
-  const totalAssets=re+stockVal+manualAssets;
-  const netWorth=totalAssets-manualLiab;
-  const accent=user.accent_color||'#1a56db';
+  const manualA=manuals.filter(m=>m.type==='asset').reduce((s,m)=>s+(+m.value||0),0);
+  const manualL=manuals.filter(m=>m.type==='liability').reduce((s,m)=>s+(+m.value||0),0);
+  const totalA=re+stockVal+manualA;
+  const nw=totalA-manualL;
 
   const addStock=async()=>{
     const parts=stockInput.toUpperCase().trim().split(':');
-    const ticker=parts[0].trim();const shares=parseFloat(parts[1])||1;
+    const ticker=parts[0].trim(),shares=parseFloat(parts[1])||1;
     if(!ticker)return;
-    try{
-      const r=await fetch(`/api/stocks/quote?ticker=${ticker}`,{credentials:'include'});
-      const d=await r.json();
-      if(d.price)setStocks(p=>[...p.filter(s=>s.ticker!==ticker),{ticker,shares,price:d.price,change:d.change_pct||0}]);
-    }catch(e){}
+    try{const r=await fetch(`/api/stocks/quote?ticker=${ticker}`,{credentials:'include'});const d=await r.json();if(d.price)setStocks(p=>[...p.filter(s=>s.ticker!==ticker),{ticker,shares,price:d.price,change:d.change_pct||0}]);}catch{}
     setStockInput('');
   };
 
   return(
     <div className="page page-in">
-      <div style={{marginBottom:16}}>
-        <div className="lbl">Net Worth</div>
-        <div className="nw-big" style={{color:clr(netWorth)}}>{fmt$k(netWorth)}</div>
-        {totalAssets>0&&<div className="nw-bar">
-          <div className="nw-seg" style={{width:`${(re/totalAssets*100).toFixed(0)}%`,background:accent}}/>
-          <div className="nw-seg" style={{width:`${(stockVal/totalAssets*100).toFixed(0)}%`,background:'#7c3aed'}}/>
-          <div className="nw-seg" style={{width:`${(manualAssets/totalAssets*100).toFixed(0)}%`,background:'#059669'}}/>
-        </div>}
-        <div style={{display:'flex',gap:12,fontSize:11,color:'var(--g500)',marginTop:4}}>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:8,height:8,borderRadius:2,background:accent,display:'inline-block'}}/> RE Equity {fmt$k(re)}</span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:8,height:8,borderRadius:2,background:'#7c3aed',display:'inline-block'}}/> Stocks {fmt$k(stockVal)}</span>
-        </div>
+      <div style={{marginBottom:18}}>
+        <div className="lbl" style={{marginBottom:6}}>Total Net Worth</div>
+        <div style={{fontSize:44,fontWeight:800,letterSpacing:-2,color:clr(nw),lineHeight:1}}>{fmt$k(nw)}</div>
+        {totalA>0&&<>
+          <div className="nw-bar">
+            <div className="nw-seg" style={{width:`${(re/totalA*100).toFixed(0)}%`,background:accent}}/>
+            <div className="nw-seg" style={{width:`${(stockVal/totalA*100).toFixed(0)}%`,background:'#6366f1'}}/>
+            <div className="nw-seg" style={{width:`${(manualA/totalA*100).toFixed(0)}%`,background:'#10b981'}}/>
+          </div>
+          <div style={{display:'flex',gap:14,fontSize:11,color:'var(--muted)'}}>
+            <span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:accent,marginRight:4}}/> RE {fmt$k(re)}</span>
+            {stockVal>0&&<span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#6366f1',marginRight:4}}/> Stocks {fmt$k(stockVal)}</span>}
+          </div>
+        </>}
       </div>
 
-      {/* Plaid */}
-      {!plaidConnected&&<div className="plaid-cta" onClick={()=>{}}>
-        <div style={{fontSize:32,marginBottom:8}}>🏦</div>
-        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Connect Your Bank</div>
-        <div style={{fontSize:13,color:'var(--g500)',lineHeight:1.5,marginBottom:16}}>Connect via Plaid to automatically pull in all your account balances, cash, and liabilities into your net worth.</div>
-        <button className="btn btn-blue">Connect with Plaid</button>
-      </div>}
+      {!plaidConnected&&(
+        <div className="plaid-cta" onClick={()=>{}}>
+          <div style={{fontSize:40,marginBottom:10}}>🏦</div>
+          <div style={{fontSize:16,fontWeight:800,marginBottom:6}}>Connect Your Bank with Plaid</div>
+          <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.6,marginBottom:20,maxWidth:280,margin:'0 auto 20px'}}>Automatically pull in all account balances, cash, investments, and liabilities to get your true net worth.</div>
+          <button className="btn btn-prime">Connect with Plaid</button>
+        </div>
+      )}
 
-      {/* Stocks section */}
-      <div className="card" style={{padding:18,marginTop:14}}>
-        <div className="sec-hdr">
-          <h4>Stocks &amp; ETFs</h4>
+      <div className="glass-card" style={{padding:20,marginTop:14}}>
+        <div className="sec-hdr"><h4>Stocks &amp; ETFs</h4></div>
+        <div style={{display:'flex',gap:8,marginBottom:14}}>
+          <input className="sinput" value={stockInput} onChange={e=>setStockInput(e.target.value)} placeholder="AAPL:10  (ticker:shares)" onKeyDown={e=>e.key==='Enter'&&addStock()} style={{fontSize:13}}/>
+          <button className="btn btn-prime btn-sm" onClick={addStock}>Add</button>
         </div>
-        <div style={{display:'flex',gap:8,marginBottom:12}}>
-          <input className="sinput" value={stockInput} onChange={e=>setStockInput(e.target.value)}
-            placeholder="AAPL:10 (ticker:shares)" onKeyDown={e=>e.key==='Enter'&&addStock()} style={{fontSize:13}}/>
-          <button className="btn btn-blue btn-sm" onClick={addStock}>Add</button>
-        </div>
-        {stocks.length===0&&<div style={{fontSize:12,color:'var(--g400)',textAlign:'center',padding:'8px 0'}}>No holdings — add by ticker:shares</div>}
+        {stocks.length===0&&<div style={{fontSize:12,color:'var(--dim)',textAlign:'center',padding:'12px 0'}}>No holdings — type AAPL:10 and press Add</div>}
         {stocks.map(s=>(
-          <div key={s.ticker} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 0',borderBottom:'1px solid var(--g100)'}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:700}}>{s.ticker}</div>
-              <div style={{fontSize:11,color:'var(--g400)'}}>{s.shares} shares · {fmt$(s.price)}</div>
-            </div>
+          <div key={s.ticker} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(0,0,0,.05)'}}>
+            <div><div style={{fontSize:14,fontWeight:800,fontFamily:'DM Mono'}}>{s.ticker}</div><div style={{fontSize:11,color:'var(--muted)'}}>{s.shares} shares @ {fmt$(s.price)}</div></div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:14,fontWeight:700}}>{fmt$k(s.shares*s.price)}</div>
-              <div style={{fontSize:11,color:clr(s.change)}}>{s.change>=0?'+':''}{s.change.toFixed(1)}%</div>
+              <div style={{fontSize:15,fontWeight:700,fontFamily:'DM Mono'}}>{fmt$k(s.shares*s.price)}</div>
+              <div style={{fontSize:11,fontWeight:700,color:clr(s.change)}}>{arrow(s.change)}{Math.abs(s.change).toFixed(1)}%</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Manual override - barely visible */}
-      <button className="manual-link" onClick={()=>setShowManual(p=>!p)}>
-        {showManual?'Hide manual entries':'+ Add manual entry'}
-      </button>
-      {showManual&&<div className="card" style={{padding:16,marginTop:8}}>
+      <button className="manual-link" onClick={()=>setShowManual(v=>!v)}>{showManual?'Hide manual entries':'+ Manual entry'}</button>
+      {showManual&&<div className="glass-card" style={{padding:16,marginTop:4}}>
         {manuals.map(m=>(
-          <div key={m.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--g100)'}}>
-            <div style={{fontSize:13,color:m.type==='liability'?'var(--red)':'var(--g700)'}}>{m.label}</div>
-            <input value={m.value} onChange={e=>setManuals(p=>p.map(x=>x.id===m.id?{...x,value:e.target.value}:x))}
-              placeholder="0" style={{width:80,padding:'4px 8px',border:'1.5px solid var(--g200)',borderRadius:7,fontSize:13,textAlign:'right'}}/>
+          <div key={m.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid rgba(0,0,0,.05)'}}>
+            <span style={{fontSize:13,color:m.type==='liability'?'var(--red)':'var(--ink)'}}>{m.label}</span>
+            <input value={m.value} onChange={e=>setManuals(p=>p.map(x=>x.id===m.id?{...x,value:e.target.value}:x))} style={{width:90,padding:'5px 9px',border:'1.5px solid rgba(0,0,0,.1)',borderRadius:8,fontSize:13,textAlign:'right',outline:'none'}}/>
           </div>
         ))}
         <div style={{display:'flex',gap:6,marginTop:10}}>
           <input className="sinput" value={newLabel} onChange={e=>setNewLabel(e.target.value)} placeholder="Label" style={{fontSize:12}}/>
-          <input className="sinput" value={newVal} onChange={e=>setNewVal(e.target.value)} placeholder="$" style={{width:70,fontSize:12}}/>
-          <select value={newType} onChange={e=>setNewType(e.target.value)} className="sinput" style={{width:90,fontSize:12}}>
-            <option value="asset">Asset</option>
-            <option value="liability">Liability</option>
+          <input className="sinput" value={newVal} onChange={e=>setNewVal(e.target.value)} placeholder="Amount" style={{width:80,fontSize:12}}/>
+          <select value={newType} onChange={e=>setNewType(e.target.value)} className="sinput" style={{width:95,fontSize:12}}>
+            <option value="asset">Asset</option><option value="liability">Liability</option>
           </select>
-          <button className="btn btn-blue btn-sm" onClick={()=>{if(newLabel&&newVal){setManuals(p=>[...p,{id:Date.now(),label:newLabel,value:newVal,type:newType}]);setNewLabel('');setNewVal('');}}}>+</button>
+          <button className="btn btn-prime btn-sm" onClick={()=>{if(newLabel&&newVal){setManuals(p=>[...p,{id:Date.now(),label:newLabel,value:newVal,type:newType}]);setNewLabel('');setNewVal('');}}}>+</button>
         </div>
       </div>}
     </div>
@@ -1742,7 +1948,7 @@ function SearchTab({currentUser,onViewProfile}){
   const [q,setQ]=useState('');
   const [results,setResults]=useState([]);
   const [loading,setLoading]=useState(false);
-  const [following,setFollowing]=useState(new Set());
+  const [followed,setFollowed]=useState(new Set());
 
   useEffect(()=>{
     if(q.length<2){setResults([]);return;}
@@ -1750,153 +1956,187 @@ function SearchTab({currentUser,onViewProfile}){
       setLoading(true);
       try{
         const r=await fetch(`/api/users/search?q=${encodeURIComponent(q)}`,{credentials:'include'});
-        const d=await r.json();setResults(d);
-        setFollowing(new Set(d.filter(u=>u.is_following).map(u=>u.id)));
-      }catch(e){}
+        const d=await r.json();
+        setResults(Array.isArray(d)?d:[]);
+        setFollowed(new Set((Array.isArray(d)?d:[]).filter(u=>u.is_following).map(u=>u.id)));
+      }catch{}
       setLoading(false);
-    },300);
+    },320);
     return()=>clearTimeout(t);
   },[q]);
 
-  const toggle=async(uid,e)=>{
+  const toggleFollow=async(uid,e)=>{
     e.stopPropagation();
-    const isF=following.has(uid);
+    const isF=followed.has(uid);
     await fetch(`/api/${isF?'un':''}follow/${uid}`,{method:'POST',credentials:'include'});
-    setFollowing(p=>{const n=new Set(p);isF?n.delete(uid):n.add(uid);return n;});
+    setFollowed(p=>{const n=new Set(p);isF?n.delete(uid):n.add(uid);return n;});
   };
 
   return(
     <div className="page page-in">
-      <div className="search-input-wrap">
+      <div className="search-wrap">
         <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         <input className="search-inp" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, username, or ticker…" autoComplete="off"/>
       </div>
-      {q.length<2&&<div style={{textAlign:'center',padding:'48px 20px',color:'var(--g400)'}}>
-        <div style={{fontSize:36,marginBottom:8}}>🔍</div>
-        <div style={{fontWeight:600,fontSize:15}}>Find investors</div>
-        <div style={{fontSize:13,marginTop:4}}>Search by name, username, or 4-letter ticker</div>
+
+      {q.length<2&&<div className="empty">
+        <div className="empty-icon">🔍</div>
+        <div className="empty-title">Find Investors</div>
+        <div className="empty-sub">Search by name, username, or 4-letter ticker to view their public portfolio</div>
       </div>}
-      {loading&&<div style={{textAlign:'center',padding:'32px',color:'var(--g400)',fontSize:13}}>Searching…</div>}
-      {!loading&&q.length>=2&&results.length===0&&<div style={{textAlign:'center',padding:'32px',color:'var(--g400)',fontSize:13}}>No results for "{q}"</div>}
-      {results.map(u=>{
-        const isF=following.has(u.id);
-        const history=useMemo(()=>{try{const h=u.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
+
+      {loading&&<div style={{textAlign:'center',padding:32,color:'var(--muted)',fontSize:13}}>Searching…</div>}
+
+      {!loading&&results.map(u=>{
+        const history=u.price_history?(typeof u.price_history==='string'?JSON.parse(u.price_history):u.price_history)||[]:[];
         const chartData=history.map(h=>+h.price);
+        const isF=followed.has(u.id);
+        const tv=+u.total_value||0;
+        const mcf=+u.monthly_cashflow||0;
         return(
-          <div key={u.id} className="user-result" onClick={()=>onViewProfile(u.id)}>
-            <div style={{width:42,height:42,borderRadius:50,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:'#fff',background:u.avatar_color||'#1a56db',flexShrink:0,boxShadow:'0 2px 8px rgba(0,0,0,.2)',borderRadius:'50%'}}>{initials(u.full_name||u.username)}</div>
+          <div key={u.id} className="user-card" onClick={()=>onViewProfile(u.id)}>
+            <div style={{width:44,height:44,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,fontWeight:800,color:'#fff',background:u.avatar_color||'#2563eb',flexShrink:0,boxShadow:'0 3px 12px rgba(0,0,0,.2)'}}>{initials(u.full_name||u.username)}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                <span className="ur-name">{u.full_name||u.username}</span>
-                <span className="ticker-badge">{u.ticker}</span>
+              <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:2}}>
+                <span style={{fontSize:14,fontWeight:700}}>{u.full_name||u.username}</span>
+                <span className="ticker-pill">{u.ticker}</span>
               </div>
-              <div className="ur-sub">{u.portfolio_name||u.username} · {u.property_count||0} properties</div>
-              <div style={{fontSize:11,color:'var(--g500)',marginTop:1}}>{fmt$k(u.total_value)} portfolio · {fmt$(u.monthly_cashflow)}/mo</div>
+              <div style={{fontSize:12,color:'var(--muted)'}}>{u.portfolio_name||u.username} · {u.property_count||0} properties</div>
+              <div style={{fontSize:11,color:'var(--dim)',marginTop:2,display:'flex',gap:8}}>
+                <span style={{color:mcf>=0?'var(--green)':'var(--red)',fontWeight:600}}>{mcf>=0?'+':''}{fmt$(mcf)}/mo</span>
+                <span>{fmt$k(tv)} portfolio</span>
+              </div>
             </div>
-            {chartData.length>2&&<div style={{width:60,height:32,flexShrink:0,margin:'0 8px'}}><MiniChart data={chartData} color={u.avatar_color||'#1a56db'} height={32}/></div>}
-            <div style={{flexShrink:0,textAlign:'right'}}>
-              <div className="ur-price">${(+u.share_price||1).toFixed(2)}</div>
-              <button className={`follow-btn btn btn-sm${isF?' following':''}`}
-                style={{marginTop:4,padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:700,border:`1.5px solid ${isF?'transparent':'var(--blue)'}`,background:isF?'var(--blue)':'transparent',color:isF?'#fff':'var(--blue)',cursor:'pointer'}}
-                onClick={e=>toggle(u.id,e)}>{isF?'Following':'Follow'}</button>
+            {chartData.length>2&&<div style={{width:56,height:30,flexShrink:0}}><MiniLine data={chartData} color={u.avatar_color||'#2563eb'} height={30} fill={false}/></div>}
+            <div style={{flexShrink:0,textAlign:'right',minWidth:64}}>
+              <div style={{fontSize:15,fontWeight:800,fontFamily:'DM Mono'}}>${(+u.share_price||1).toFixed(2)}</div>
+              <button className={`btn-follow${isF?' on':''}`} style={{marginTop:5,fontSize:11}} onClick={e=>toggleFollow(u.id,e)}>{isF?'Following':'Follow'}</button>
             </div>
           </div>
         );
       })}
+
+      {!loading&&q.length>=2&&results.length===0&&<div style={{textAlign:'center',padding:32,color:'var(--muted)',fontSize:13}}>No investors found for "{q}"</div>}
     </div>
   );
 }
 
-// ── PUBLIC PROFILE VIEW ───────────────────────────────────────────────────────
-function PublicProfileView({uid,currentUser,onBack}){
+// ── PUBLIC PROFILE ────────────────────────────────────────────────────────────
+function PublicProfile({uid,currentUser,onBack}){
   const [profile,setProfile]=useState(null);
   const [following,setFollowing]=useState(false);
+  const [err,setErr]=useState('');
   const isOwn=currentUser?.id===uid;
 
   useEffect(()=>{
-    fetch(`/api/users/${uid}/public`,{credentials:'include'}).then(r=>r.json()).then(d=>{setProfile(d);}).catch(()=>{});
+    setProfile(null);setErr('');
+    fetch(`/api/users/${uid}/public`,{credentials:'include'})
+      .then(r=>{if(!r.ok)throw new Error('Failed');return r.json();})
+      .then(d=>setProfile(d))
+      .catch(e=>setErr('Could not load profile'));
     if(!isOwn){
-      fetch(`/api/users/${uid}/following-status`,{credentials:'include'}).then(r=>r.json()).then(d=>setFollowing(d.following)).catch(()=>{});
+      fetch(`/api/users/${uid}/following-status`,{credentials:'include'})
+        .then(r=>r.json()).then(d=>setFollowing(d.following)).catch(()=>{});
     }
   },[uid]);
 
-  const toggle=async()=>{
+  const toggleFollow=async()=>{
     await fetch(`/api/${following?'un':''}follow/${uid}`,{method:'POST',credentials:'include'});
     setFollowing(f=>!f);
   };
 
-  if(!profile)return<div style={{textAlign:'center',padding:60,color:'var(--g400)'}}>Loading…</div>;
+  if(err)return(<div className="page page-in-r">
+    {onBack&&<button className="back-btn" style={{marginBottom:14}} onClick={onBack}>← Back</button>}
+    <div className="alert alert-err">{err}</div>
+  </div>);
 
-  const history=useMemo(()=>{try{const h=profile.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
+  if(!profile)return(<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'var(--muted)',fontSize:13}}>Loading profile…</div>);
+
+  const history=profile.price_history?(typeof profile.price_history==='string'?JSON.parse(profile.price_history):profile.price_history)||[]:[];
   const chartData=history.map(h=>+h.price);
-  const tv=+profile.total_value||0;
-  const te=+profile.total_equity||0;
-  const mcf=+profile.monthly_cashflow||0;
+  const tv=+profile.total_value||0,te=+profile.total_equity||0,mcf=+profile.monthly_cashflow||0;
   const props=profile.properties||[];
   const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
   const totalDown=props.reduce((s,p)=>s+(+p.down_payment||0),0);
   const coc=totalDown>0?(mcf*12/totalDown*100):0;
+  const accent=profile.avatar_color||'#2563eb';
 
   return(
-    <div className="page page-in">
-      {onBack&&<button className="back-btn" style={{marginBottom:14}} onClick={onBack}>← Back to search</button>}
-      {isOwn&&<div className="pub-preview-banner">👁 This is how your profile appears to others</div>}
+    <div className="page page-in-r">
+      {onBack&&<button className="back-btn" style={{marginBottom:14}} onClick={onBack}>← Back to Search</button>}
+      {isOwn&&<div className="alert alert-info" style={{marginBottom:12}}>👁 This is how your profile appears publicly</div>}
 
-      {/* Header */}
-      <div className="profile-header">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-          <div className="profile-av" style={{background:profile.avatar_color||'#1a56db'}}>{initials(profile.full_name||profile.username)}</div>
-          {!isOwn&&<button className={`btn btn-sm${following?' btn-blue':' btn-outline'}`} onClick={toggle}>{following?'Following':'Follow'}</button>}
+      {/* Cover + Avatar (Instagram/Twitter style) */}
+      <div style={{borderRadius:'20px',overflow:'hidden',marginBottom:14,boxShadow:'0 16px 48px rgba(0,0,0,.12)'}}>
+        <div className="profile-cover">
+          <div className="profile-cover-inner" style={{background:`linear-gradient(135deg,${accent} 0%,${accent}88 100%)`}}/>
+          <div className="profile-cover-grain"/>
+          {/* Share price watermark on cover */}
+          <div style={{position:'absolute',right:16,bottom:12,textAlign:'right'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.7)',textTransform:'uppercase',letterSpacing:.8}}>Share Price</div>
+            <div style={{fontSize:22,fontWeight:800,color:'#fff',fontFamily:'DM Mono',letterSpacing:-.5}}>${(+profile.share_price||1).toFixed(2)}</div>
+          </div>
         </div>
-        <div className="profile-name">{profile.full_name||profile.username}</div>
-        <div className="profile-handle">
-          <span className="ticker-badge" style={{marginRight:6}}>{profile.ticker}</span>
-          {profile.portfolio_name||profile.username}
-          {profile.location&&<span style={{color:'var(--g400)',marginLeft:6}}>· {profile.location}</span>}
+        <div className="profile-card">
+          <div className="profile-av-wrap">
+            <div className="profile-av" style={{background:accent}}>{initials(profile.full_name||profile.username)}</div>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginTop:4}}>
+            <div>
+              <div className="profile-name">{profile.full_name||profile.username}</div>
+              <div className="profile-meta">
+                <span className="ticker-pill">{profile.ticker}</span>
+                {profile.portfolio_name&&<span>{profile.portfolio_name}</span>}
+                {profile.location&&<span style={{color:'var(--muted)'}}>📍 {profile.location}</span>}
+              </div>
+            </div>
+            {!isOwn&&<button className={`btn-follow${following?' on':''}`} style={{flexShrink:0}} onClick={toggleFollow}>{following?'Following':'Follow'}</button>}
+          </div>
+          {profile.bio&&<div className="profile-bio">{profile.bio}</div>}
+          <div style={{display:'flex',gap:18,marginTop:12,paddingTop:12,borderTop:'1px solid rgba(0,0,0,.06)'}}>
+            <div><div style={{fontSize:16,fontWeight:800}}>{props.length}</div><div style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>Properties</div></div>
+            <div><div style={{fontSize:16,fontWeight:800,color:clr(mcf)}}>{fmt$s(mcf)}</div><div style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>Monthly CF</div></div>
+            <div><div style={{fontSize:16,fontWeight:800}}>{profile.health_score||0}</div><div style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>Health Score</div></div>
+          </div>
         </div>
-        {profile.bio&&<div className="profile-bio">{profile.bio}</div>}
       </div>
 
       {/* Share price chart */}
-      {chartData.length>1&&<div className="share-price-card">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-          <div>
-            <div className="lbl">Share Price</div>
-            <div style={{fontSize:26,fontWeight:800,letterSpacing:'-.5px'}}>${(+profile.share_price||1).toFixed(2)}</div>
-          </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontSize:10,color:'var(--g400)',fontWeight:700,textTransform:'uppercase',letterSpacing:.4}}>Health Score</div>
-            <div style={{fontSize:22,fontWeight:800}}>{profile.health_score||0}</div>
-          </div>
+      {chartData.length>1&&<div className="glass-card" style={{padding:18,marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
+          <div className="lbl">Share Price History</div>
+          <div style={{fontFamily:'DM Mono',fontWeight:800,fontSize:18}}>${(+profile.share_price||1).toFixed(2)}</div>
         </div>
-        <MiniChart data={chartData} color={profile.avatar_color||'#1a56db'} height={72}/>
+        <MiniLine data={chartData} color={accent} height={80}/>
       </div>}
 
-      {/* Key stats */}
+      {/* Key metrics */}
       <div className="grid2" style={{marginBottom:12}}>
-        <div className="stat"><div className="stat-lbl">Portfolio Value</div><div className="stat-val">{fmt$k(tv)}</div></div>
-        <div className="stat"><div className="stat-lbl">Total Equity</div><div className="stat-val">{fmt$k(te)}</div></div>
-        <div className="stat"><div className="stat-lbl">Monthly CF</div><div className="stat-val" style={{color:clr(mcf)}}>{fmt$(mcf)}</div></div>
-        <div className="stat"><div className="stat-lbl">Annual CF</div><div className="stat-val">{fmt$k(mcf*12)}</div></div>
-        <div className="stat"><div className="stat-lbl">Cap Rate</div><div className="stat-val">{capRate.toFixed(1)}%</div></div>
-        <div className="stat"><div className="stat-lbl">Cash-on-Cash</div><div className="stat-val">{coc.toFixed(1)}%</div></div>
+        <div className="scard" style={{'--accent':accent}}><div className="scard-lbl">Portfolio Value</div><div className="scard-val">{fmt$k(tv)}</div></div>
+        <div className="scard"><div className="scard-lbl">Total Equity</div><div className="scard-val">{fmt$k(te)}</div></div>
+        <div className="scard"><div className="scard-lbl">Monthly Cash Flow</div><div className="scard-val" style={{color:clr(mcf)}}>{fmt$s(mcf)}</div></div>
+        <div className="scard"><div className="scard-lbl">Annual Cash Flow</div><div className="scard-val">{fmt$k(mcf*12)}</div></div>
+        <div className="scard"><div className="scard-lbl">Cap Rate</div><div className="scard-val">{capRate.toFixed(1)}%</div></div>
+        <div className="scard"><div className="scard-lbl">Cash-on-Cash</div><div className="scard-val">{coc.toFixed(1)}%</div></div>
       </div>
 
       {/* Properties */}
       {props.length>0&&<>
-        <div className="sec-hdr"><h4>{props.length} {props.length===1?'Property':'Properties'}</h4></div>
+        <div className="sec-hdr" style={{marginBottom:10}}><h4>{props.length} {props.length===1?'Property':'Properties'}</h4></div>
         {props.map((p,i)=>{
           const val=+p.zestimate||+p.purchase_price||0;
+          const cf=+p.monthly_revenue-(+p.mortgage+ +p.property_tax+ +p.insurance+ +p.hoa);
           return(
-            <div key={i} className="glass-row" style={{padding:'12px 13px',display:'flex',alignItems:'center',gap:12}}>
-              <div style={{width:38,height:38,borderRadius:10,background:(profile.avatar_color||'#1a56db')+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>🏠</div>
+            <div key={i} className="prop-row" style={{'--accent':accent}}>
+              <div className="prop-icon" style={{background:accent+'18'}}>🏠</div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:700}}>{p.name}</div>
-                <div style={{fontSize:11,color:'var(--g400)'}}>{p.location}</div>
+                <div className="prop-name">{p.name}</div>
+                {p.location&&<div className="prop-loc">📍 {p.location}</div>}
+                {p.bedrooms>0&&<div className="prop-meta">{p.bedrooms}bd · {fmt$k(val)}</div>}
               </div>
               <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontSize:14,fontWeight:800}}>{fmt$k(val)}</div>
-                {p.bedrooms>0&&<div style={{fontSize:11,color:'var(--g400)'}}>{p.bedrooms}bd</div>}
+                <div style={{fontSize:15,fontWeight:800}}>{fmt$k(val)}</div>
+                <div style={{fontSize:11,fontWeight:700,color:clr(cf)}}>{cf>=0?'+':''}{fmt$(cf)}/mo</div>
               </div>
             </div>
           );
@@ -1906,13 +2146,12 @@ function PublicProfileView({uid,currentUser,onBack}){
   );
 }
 
-// ── PROFILE TAB (your own) ────────────────────────────────────────────────────
+// ── PROFILE TAB ───────────────────────────────────────────────────────────────
 function ProfileTab({user,portfolio,props,onUpdate,onLogout}){
-  const [view,setView]=useState('settings'); // settings | public
-  const [f,setF]=useState({full_name:user.full_name||'',portfolio_name:user.portfolio_name||'',bio:user.bio||'',location:user.location||'',accent_color:user.accent_color||'#1a56db'});
-  const [msg,setMsg]=useState('');
-  const [err,setErr]=useState('');
-  const COLORS=['#1a56db','#7c3aed','#059669','#d92d20','#f59e0b','#0891b2','#db2777','#ea580c'];
+  const [view,setView]=useState('public');
+  const [f,setF]=useState({full_name:user.full_name||'',portfolio_name:user.portfolio_name||'',bio:user.bio||'',location:user.location||'',accent_color:user.accent_color||'#2563eb'});
+  const [msg,setMsg]=useState('');const [err,setErr]=useState('');
+  const COLORS=['#2563eb','#6366f1','#10b981','#f43f5e','#f59e0b','#0891b2','#db2777','#ea580c'];
 
   const save=async()=>{
     setErr('');setMsg('');
@@ -1921,38 +2160,33 @@ function ProfileTab({user,portfolio,props,onUpdate,onLogout}){
       const d=await r.json();
       if(!r.ok){setErr(d.error||'Failed');return;}
       onUpdate(d.user);setMsg('Saved!');setTimeout(()=>setMsg(''),2500);
-    }catch(e){setErr('Failed');}
+    }catch{setErr('Failed');}
   };
 
   return(
-    <div className="page page-in">
-      <div className="sub-tabs" style={{marginBottom:16}}>
-        <button className={`sub-tab${view==='settings'?' on':''}`} onClick={()=>setView('settings')}>Settings</button>
-        <button className={`sub-tab${view==='public'?' on':''}`} onClick={()=>setView('public')}>Public Profile</button>
+    <div className="page page-in" style={{paddingTop:14}}>
+      <div className="subnav" style={{marginBottom:16}}>
+        <button className={`subnav-btn${view==='public'?' on':''}`} onClick={()=>setView('public')}>My Profile</button>
+        <button className={`subnav-btn${view==='settings'?' on':''}`} onClick={()=>setView('settings')}>Settings</button>
       </div>
 
-      {view==='public'&&<PublicProfileView uid={user.id} currentUser={user} onBack={null}/>}
+      {view==='public'&&<PublicProfile uid={user.id} currentUser={user} onBack={null}/>}
 
-      {view==='settings'&&<div style={{maxWidth:500}}>
+      {view==='settings'&&<div style={{maxWidth:480}}>
         {err&&<div className="alert alert-err">{err}</div>}
-        {msg&&<div className="alert alert-ok">{msg}</div>}
-        <div className="card" style={{padding:20,marginBottom:12}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>Profile Info</div>
+        {msg&&<div className="alert alert-ok">✓ {msg}</div>}
+        <div className="glass-card" style={{padding:22,marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:16}}>Profile Info</div>
           {[['Full name','full_name','Brandon Bonomo'],['Portfolio name','portfolio_name','BLB Realty'],['Location','location','Houston, TX'],['Bio','bio','Real estate investor…']].map(([lbl,k,ph])=>(
-            <div key={k} className="form-row">
-              <label style={{fontSize:10,fontWeight:700,color:'var(--g500)',textTransform:'uppercase',letterSpacing:.5,marginBottom:4,display:'block'}}>{lbl}</label>
-              <input className="sinput" value={f[k]} onChange={e=>setF(p=>({...p,[k]:e.target.value}))} placeholder={ph}/>
-            </div>
+            <div key={k} className="form-row"><label>{lbl}</label><input className="sinput" value={f[k]} onChange={e=>setF(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></div>
           ))}
         </div>
-        <div className="card" style={{padding:20,marginBottom:12}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>Accent Color</div>
-          <div className="swatch-row">
-            {COLORS.map(c=><div key={c} className={`swatch${f.accent_color===c?' on':''}`} style={{background:c}} onClick={()=>setF(p=>({...p,accent_color:c}))}/>)}
-          </div>
+        <div className="glass-card" style={{padding:22,marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>Accent Color</div>
+          <div className="swatch-row">{COLORS.map(c=><div key={c} className={`swatch${f.accent_color===c?' on':''}`} style={{background:c}} onClick={()=>setF(p=>({...p,accent_color:c}))}/>)}</div>
         </div>
         <div style={{display:'flex',gap:10}}>
-          <button className="btn btn-blue" onClick={save}>Save Changes</button>
+          <button className="btn btn-prime" onClick={save}>Save Changes</button>
           <button className="btn btn-danger" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST',credentials:'include'});onLogout();}}>Sign Out</button>
         </div>
       </div>}
@@ -1968,10 +2202,10 @@ function MainApp({user:initUser,onLogout}){
   const [portfolio,setPortfolio]=useState({});
   const [showAdd,setShowAdd]=useState(false);
   const [editProp,setEditProp]=useState(null);
-  const [viewingProfile,setViewingProfile]=useState(null);
-  const accent=user.accent_color||'#1a56db';
+  const [profileUID,setProfileUID]=useState(null);
+  const accent=user.accent_color||'#2563eb';
 
-  useEffect(()=>{document.documentElement.style.setProperty('--blue',accent);},[accent]);
+  useEffect(()=>{document.documentElement.style.setProperty('--accent',accent);},[accent]);
 
   const loadData=useCallback(async()=>{
     try{
@@ -1980,179 +2214,86 @@ function MainApp({user:initUser,onLogout}){
         fetch(`/api/properties/${user.id}`,{credentials:'include'}).then(r=>r.json())
       ]);
       setPortfolio(pf||{});setProps(Array.isArray(pr)?pr:[]);
-    }catch(e){}
+    }catch{}
   },[user.id]);
 
   useEffect(()=>{loadData();},[loadData]);
 
   const NAV=[
-    {id:'portfolio',label:'Portfolio',icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
-    {id:'performance',label:'Analytics',icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
-    {id:'networth',label:'Net Worth',icon:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
-    {id:'search',label:'Search',icon:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
-    {id:'profile',label:'Profile',icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'},
+    {id:'portfolio',label:'Portfolio',d:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'},
+    {id:'analytics',label:'Analytics',d:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'},
+    {id:'networth',label:'Net Worth',d:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
+    {id:'search',label:'Search',d:'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'},
+    {id:'profile',label:'Profile',d:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'},
   ];
 
-  const PAGE_TITLES={portfolio:'Portfolio',performance:'Analytics',networth:'Net Worth',search:'Search',profile:'Profile'};
-  const tabProps={user,props,portfolio,onRefresh:loadData};
+  const TITLES={portfolio:'Portfolio',analytics:'Analytics',networth:'Net Worth',search:'Search',profile:'Profile'};
+  const tp={user,props,portfolio};
 
   return(
     <div className="shell">
       <div className="topbar">
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:20}}>🐦</span>
-          <span className="topbar-title">{viewingProfile?'Profile':PAGE_TITLES[tab]}</span>
+        <div className="topbar-left">
+          {profileUID&&<button className="back-btn" style={{margin:0}} onClick={()=>setProfileUID(null)}>←</button>}
+          <span className="topbar-logo">🐦 PP</span>
+          <span className="topbar-title">{profileUID?'Profile':TITLES[tab]}</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {tab==='portfolio'&&!viewingProfile&&<button className="btn btn-blue btn-sm" onClick={()=>setShowAdd(true)}>+ Add</button>}
-          <div className="topbar-av" style={{background:accent}} onClick={()=>setTab('profile')}>{initials(user.full_name||user.username)}</div>
+        <div className="topbar-right">
+          {tab==='portfolio'&&!profileUID&&<button className="btn btn-prime btn-sm" onClick={()=>setShowAdd(true)}>+ Add</button>}
+          <div className="av-btn" style={{background:accent}} onClick={()=>{setProfileUID(null);setTab('profile');}}>{initials(user.full_name||user.username)}</div>
         </div>
       </div>
 
       <div className="page-area">
-        {viewingProfile
-          ?<PublicProfileView uid={viewingProfile} currentUser={user} onBack={()=>setViewingProfile(null)}/>
+        {profileUID
+          ?<PublicProfile uid={profileUID} currentUser={user} onBack={()=>setProfileUID(null)}/>
           :<>
-            {tab==='portfolio'&&<PortfolioTab {...tabProps} onAddProp={()=>setShowAdd(true)} onEditProp={setEditProp}/>}
-            {tab==='performance'&&<PerformanceTab {...tabProps}/>}
-            {tab==='networth'&&<NetWorthTab {...tabProps}/>}
-            {tab==='search'&&<SearchTab currentUser={user} onViewProfile={uid=>{setViewingProfile(uid);}}/>}
-            {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} props={props} onUpdate={u=>setUser(u)} onLogout={onLogout}/>}
+            {tab==='portfolio'&&<PortfolioTab {...tp} onAdd={()=>setShowAdd(true)} onEdit={setEditProp}/>}
+            {tab==='analytics'&&<AnalyticsTab {...tp}/>}
+            {tab==='networth'&&<NetWorthTab {...tp}/>}
+            {tab==='search'&&<SearchTab currentUser={user} onViewProfile={uid=>{setProfileUID(uid);}}/>}
+            {tab==='profile'&&<ProfileTab user={user} portfolio={portfolio} props={props} onUpdate={u=>{setUser(u);}} onLogout={onLogout}/>}
           </>
         }
       </div>
 
       <nav className="bottom-nav">
         {NAV.map(n=>(
-          <div key={n.id} className={`nav-tab${tab===n.id&&!viewingProfile?' on':''}`} onClick={()=>{setViewingProfile(null);setTab(n.id);}}>
-            <svg fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d={n.icon}/>
-            </svg>
+          <div key={n.id} className={`nav-item${tab===n.id&&!profileUID?' on':''}`} onClick={()=>{setProfileUID(null);setTab(n.id);}}>
+            <svg fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={n.d}/></svg>
             <span>{n.label}</span>
-            <div className="nav-dot"/>
+            <div className="nav-pip"/>
           </div>
         ))}
       </nav>
 
-      {showAdd&&<AddPropModal uid={user.id} onClose={()=>setShowAdd(false)} onSave={p=>{setProps(prev=>[p,...prev]);loadData();setShowAdd(false);}}/>}
-      {editProp&&<EditPropModal prop={editProp} onClose={()=>setEditProp(null)} onSave={p=>{setProps(prev=>prev.map(x=>x.id===p.id?p:x));setEditProp(null);loadData();}} onDelete={id=>{setProps(prev=>prev.filter(x=>x.id!==id));setEditProp(null);loadData();}}/>}
+      {showAdd&&<AddPropSheet uid={user.id} onClose={()=>setShowAdd(false)} onSave={p=>{setProps(v=>[p,...v]);loadData();setShowAdd(false);}}/>}
+      {editProp&&<EditPropSheet prop={editProp} onClose={()=>setEditProp(null)} onSave={p=>{setProps(v=>v.map(x=>x.id===p.id?p:x));setEditProp(null);loadData();}} onDelete={id=>{setProps(v=>v.filter(x=>x.id!==id));setEditProp(null);loadData();}}/>}
     </div>
   );
 }
 
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 function App(){
-  const [user,setUser]=useState(null);
-  const [loading,setLoading]=useState(true);
-
+  const [user,setUser]=useState(null);const [loading,setLoading]=useState(true);
   useEffect(()=>{
-    fetch('/api/auth/me',{credentials:'include'})
-      .then(r=>r.ok?r.json():null)
-      .then(d=>{if(d?.user)setUser(d.user);})
-      .catch(()=>{}).finally(()=>setLoading(false));
+    fetch('/api/auth/me',{credentials:'include'}).then(r=>r.ok?r.json():null)
+      .then(d=>{if(d?.user)setUser(d.user);}).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
-
   if(loading)return(
-    <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#dce8ff,#f0e8ff)'}}>
-      <div style={{textAlign:'center'}}>
-        <div style={{fontSize:48,animation:'spin 2s linear infinite'}}>🐦</div>
-        <div style={{fontWeight:600,color:'var(--g500)',marginTop:12}}>Loading…</div>
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{height:'100dvh',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{textAlign:'center'}}><div style={{fontSize:52,animation:'float 2s ease-in-out infinite'}}>🐦</div><div style={{fontWeight:700,color:'var(--muted)',marginTop:12,fontSize:14}}>Loading…</div></div>
+      <style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`}</style>
     </div>
   );
-
   if(!user)return <AuthScreen onLogin={setUser}/>;
   return <MainApp user={user} onLogout={()=>setUser(null)}/>;
 }
-
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>"""
 
-
-
-@app.route('/api/debug/test-insert')
-def test_insert():
-    """Test what columns exist in properties table"""
-    uid = session.get('user_id')
-    if not uid: return jsonify({'error': 'Not authenticated'}), 401
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='properties' AND table_schema='public' ORDER BY ordinal_position")
-            cols = [r[0] for r in cur.fetchall()]
-            cur.close()
-        return jsonify({'properties_columns': cols, 'count': len(cols)})
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-
-@app.route('/api/users/search')
-def search_users():
-    q = request.args.get('q','').strip()
-    if not q: return jsonify([])
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,u.avatar_color,u.bio,u.is_public,
-                   pm.total_value,pm.total_equity,pm.monthly_cashflow,pm.annual_cashflow,
-                   pm.property_count,pm.health_score,pm.share_price,pm.price_history
-            FROM users u LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
-            WHERE u.is_public=true AND (
-                LOWER(u.username) LIKE %s OR LOWER(u.ticker) LIKE %s OR LOWER(u.full_name) LIKE %s
-            )
-            ORDER BY pm.total_value DESC NULLS LAST LIMIT 20
-        """, (f'%{q.lower()}%', f'%{q.lower()}%', f'%{q.lower()}%'))
-        users = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    for u in users:
-        if u.get('price_history') and isinstance(u['price_history'], str):
-            try: u['price_history'] = json.loads(u['price_history'])
-            except: u['price_history'] = []
-    return jsonify(users)
-
-@app.route('/api/users/<int:uid>/public')
-def user_public(uid):
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT u.id,u.username,u.full_name,u.portfolio_name,u.ticker,u.avatar_color,u.bio,u.location,u.is_public,
-                   pm.total_value,pm.total_equity,pm.monthly_cashflow,pm.annual_cashflow,
-                   pm.property_count,pm.health_score,pm.share_price,pm.price_history,pm.updated_at
-            FROM users u LEFT JOIN portfolio_metrics pm ON pm.user_id=u.id
-            WHERE u.id=%s
-        """, (uid,))
-        u = cur.fetchone()
-        if not u: cur.close(); return jsonify({'error':'Not found'}),404
-        u = dict(u)
-        cur.execute("""
-            SELECT name,location,purchase_price,zestimate,bedrooms,monthly_revenue,
-                   mortgage,property_tax,insurance,hoa,equity
-            FROM properties WHERE user_id=%s ORDER BY zestimate DESC NULLS LAST
-        """, (uid,))
-        u['properties'] = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    if not u.get('is_public'):
-        req_uid = session.get('user_id')
-        if req_uid != uid: return jsonify({'error':'Private profile'}),403
-    u.pop('password_hash', None); u.pop('totp_secret', None)
-    if u.get('price_history') and isinstance(u['price_history'], str):
-        try: u['price_history'] = json.loads(u['price_history'])
-        except: u['price_history'] = []
-    if u.get('updated_at'): u['updated_at'] = u['updated_at'].isoformat()
-    return jsonify(u)
-
-@app.route('/api/users/<int:uid>/following-status')
-def following_status(uid):
-    req_uid = session.get('user_id')
-    if not req_uid: return jsonify({'following': False})
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM follows WHERE follower_id=%s AND following_id=%s",(req_uid,uid))
-        following = cur.fetchone() is not None; cur.close()
-    return jsonify({'following': following})
 
 # ── SERVE ──────────────────────────────────────────────────────────────────────
 @app.route('/', defaults={'path': ''})
