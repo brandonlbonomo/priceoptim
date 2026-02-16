@@ -1310,20 +1310,28 @@ def plaid_exchange():
 
         with get_db() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            # Upsert — if this item_id already exists (re-auth), update token
-            cur.execute("""
-                INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
-                VALUES (%s,%s,%s,%s,%s)
-                ON CONFLICT (item_id) DO UPDATE
-                  SET access_token=EXCLUDED.access_token,
-                      institution_name=EXCLUDED.institution_name,
-                      updated_at=CURRENT_TIMESTAMP
-            """, (uid, access_token, item_id, inst_name, inst_id))
+            if item_id:
+                # Upsert by item_id
+                cur.execute("""
+                    INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
+                    VALUES (%s,%s,%s,%s,%s)
+                    ON CONFLICT (item_id) DO UPDATE
+                      SET access_token=EXCLUDED.access_token,
+                          institution_name=EXCLUDED.institution_name,
+                          updated_at=CURRENT_TIMESTAMP
+                """, (uid, access_token, item_id, inst_name, inst_id))
+            else:
+                # No item_id — plain insert
+                cur.execute("""
+                    INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
+                    VALUES (%s,%s,%s,%s,%s)
+                """, (uid, access_token, item_id or None, inst_name, inst_id))
             conn.commit(); cur.close()
         return jsonify({'ok': True, 'item_id': item_id})
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8','ignore')
-        return jsonify({'error': f'Plaid {e.code}: {body[:300]}'}), e.code
+        import traceback; traceback.print_exc()
+        return jsonify({'error': f'Plaid {e.code}: {body[:500]}'}), 500
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -2843,15 +2851,28 @@ function NetWorthTab({user,portfolio,props}){
         token: linkToken,
         onSuccess: async(publicToken, meta)=>{
           setPlaidLoading(true);
-          await fetch('/api/plaid/exchange-token',{
-            method:'POST', credentials:'include',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              public_token: publicToken,
-              institution_name: meta?.institution?.name||'',
-              institution_id: meta?.institution?.institution_id||'',
-            })
-          });
+          setPlaidError('');
+          try{
+            const r=await fetch('/api/plaid/exchange-token',{
+              method:'POST', credentials:'include',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({
+                public_token: publicToken,
+                institution_name: meta?.institution?.name||'',
+                institution_id: meta?.institution?.institution_id||'',
+              })
+            });
+            const d=await r.json();
+            if(!r.ok||d.error){
+              setPlaidError('Bank link failed: '+(d.error||r.status));
+              setPlaidLoading(false);
+              return;
+            }
+          }catch(e){
+            setPlaidError('Bank link error: '+e.message);
+            setPlaidLoading(false);
+            return;
+          }
           await loadPlaid();
           setPlaidLoading(false);
         },
