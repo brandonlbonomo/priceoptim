@@ -1481,6 +1481,174 @@ def plaid_remove():
         import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# ── PLAID TRANSACTION CATEGORIES ─────────────────────────────────────────────
+
+@app.route('/api/plaid/txn-categories', methods=['GET'])
+def get_txn_categories():
+    """Get all user transaction category overrides"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS plaid_txn_categories (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    txn_id TEXT NOT NULL,
+                    txn_name TEXT,
+                    original_category TEXT,
+                    user_category TEXT NOT NULL,
+                    amount NUMERIC,
+                    txn_date DATE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, txn_id)
+                )
+            """)
+            conn.commit()
+            cur.execute("SELECT * FROM plaid_txn_categories WHERE user_id=%s", (uid,))
+            rows = [dict(r) for r in cur.fetchall()]; cur.close()
+        return jsonify({'categories': rows})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/txn-categories', methods=['POST'])
+def set_txn_category():
+    """Override a transaction's category"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    d = request.json or {}
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS plaid_txn_categories (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    txn_id TEXT NOT NULL,
+                    txn_name TEXT,
+                    original_category TEXT,
+                    user_category TEXT NOT NULL,
+                    amount NUMERIC,
+                    txn_date DATE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, txn_id)
+                )
+            """)
+            cur.execute("""
+                INSERT INTO plaid_txn_categories (user_id, txn_id, txn_name, original_category, user_category, amount, txn_date)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (user_id, txn_id) DO UPDATE
+                  SET user_category=EXCLUDED.user_category, original_category=EXCLUDED.original_category
+            """, (uid, d['txn_id'], d.get('txn_name',''), d.get('original_category',''),
+                  d['user_category'], d.get('amount',0), d.get('txn_date')))
+            conn.commit(); cur.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/cashflow-summary')
+def plaid_cashflow_summary():
+    """Compute revenue, expenses, net CF from Plaid transactions with user overrides applied"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        # Get all items
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT access_token FROM plaid_items WHERE user_id=%s", (uid,))
+            items = [dict(r) for r in cur.fetchall()]
+            cur.execute("SELECT txn_id, user_category FROM plaid_txn_categories WHERE user_id=%s", (uid,))
+            overrides = {r['txn_id']: r['user_category'] for r in cur.fetchall()}
+            cur.close()
+
+        import datetime as dt
+        end   = dt.date.today().isoformat()
+        start = (dt.date.today() - dt.timedelta(days=90)).isoformat()
+
+        revenue = 0; mortgage = 0; expenses = 0; internal = 0
+        all_txns = []
+
+        for item in items:
+            try:
+                data = plaid_post("/transactions/get", {
+                    "access_token": item['access_token'],
+                    "start_date": start, "end_date": end,
+                    "options": {"count": 250}
+                })
+                for t in data.get('transactions', []):
+                    tid = t['transaction_id']
+                    amt = t['amount']  # positive=debit, negative=credit
+                    raw_cat = (t.get('personal_finance_category',{}).get('primary') or
+                               (t.get('category',['OTHER'])[0]) or 'OTHER').upper()
+
+                    # Apply user override if exists
+                    cat = overrides.get(tid, auto_categorize(t['name'], amt, raw_cat))
+
+                    all_txns.append({
+                        'id': tid,
+                        'date': t['date'],
+                        'name': t['name'],
+                        'amount': amt,
+                        'raw_category': raw_cat,
+                        'category': cat,
+                        'pending': t.get('pending', False),
+                        'user_overridden': tid in overrides,
+                    })
+
+                    if cat == 'INTERNAL_TRANSFER':
+                        internal += abs(amt)
+                    elif amt < 0:  # credit = money in
+                        revenue += abs(amt)
+                    elif cat == 'MORTGAGE':
+                        mortgage += amt
+                    else:
+                        expenses += amt
+            except Exception:
+                pass
+
+        return jsonify({
+            'revenue': round(revenue, 2),
+            'mortgage': round(mortgage, 2),
+            'expenses': round(expenses, 2),
+            'internal_transfers': round(internal, 2),
+            'net_cashflow': round(revenue - mortgage - expenses, 2),
+            'period_days': 90,
+            'transactions': sorted(all_txns, key=lambda x: x['date'], reverse=True)
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+def auto_categorize(name, amount, raw_cat):
+    """Auto-categorize a transaction based on name and Plaid category"""
+    name_up = name.upper()
+    # Credits (money coming in)
+    if amount < 0:
+        if any(x in name_up for x in ['DEPOSIT', 'PAYROLL', 'DIRECT DEP', 'ACH CREDIT', 'ZELLE IN', 'VENMO IN']):
+            return 'REVENUE'
+        if any(x in name_up for x in ['TRANSFER FROM', 'XFER FROM']):
+            return 'INTERNAL_TRANSFER'
+        return 'REVENUE'
+    # Debits (money going out)
+    if any(x in name_up for x in ['MORTGAGE', 'LOAN PMT', 'LOAN PAY', 'HOME LOAN', 'MTG']):
+        return 'MORTGAGE'
+    if any(x in name_up for x in ['TRANSFER TO', 'XFER TO', 'ZELLE TO', 'ACH BATCH', 'INTERNAL', 'MOVE MONEY']):
+        return 'INTERNAL_TRANSFER'
+    if any(x in name_up for x in ['INSURANCE', 'HOMEOWNER', 'ALLSTATE', 'STATE FARM', 'GEICO']):
+        return 'INSURANCE'
+    if any(x in name_up for x in ['HOA', 'HOMEOWNERS ASSOC', 'CONDO FEE']):
+        return 'HOA'
+    if any(x in name_up for x in ['PROPERTY TAX', 'COUNTY TAX', 'TAX PAYMENT']):
+        return 'PROPERTY_TAX'
+    if any(x in name_up for x in ['REPAIR', 'MAINTENANCE', 'PLUMBER', 'HVAC', 'CONTRACTOR']):
+        return 'MAINTENANCE'
+    if raw_cat in ('TRANSFER_IN', 'TRANSFER_OUT'):
+        return 'INTERNAL_TRANSFER'
+    return 'EXPENSE'
+
 # ── PLAID CONNECTIVITY TEST ───────────────────────────────────────────────────
 @app.route('/api/plaid/test')
 def plaid_test():
@@ -2814,6 +2982,172 @@ function ProjectionsPane({props,portfolio,user}){
   </>);
 }
 
+
+// ── PLAID CASHFLOW CATEGORIZER ────────────────────────────────────────────────
+const CAT_LABELS = {
+  REVENUE:           {label:'Revenue',        color:'#10b981', icon:'📈', impacts:'revenue'},
+  MORTGAGE:          {label:'Mortgage',        color:'#ef4444', icon:'🏠', impacts:'mortgage'},
+  INSURANCE:         {label:'Insurance',       color:'#f59e0b', icon:'🛡', impacts:'expense'},
+  HOA:               {label:'HOA',             color:'#f59e0b', icon:'🏘', impacts:'expense'},
+  PROPERTY_TAX:      {label:'Property Tax',    color:'#f59e0b', icon:'📋', impacts:'expense'},
+  MAINTENANCE:       {label:'Maintenance',     color:'#8b5cf6', icon:'🔧', impacts:'expense'},
+  EXPENSE:           {label:'Expense',         color:'#6b7280', icon:'💸', impacts:'expense'},
+  INTERNAL_TRANSFER: {label:'Internal Transfer',color:'#94a3b8',icon:'↔️', impacts:'none'},
+};
+const CAT_OPTIONS = Object.entries(CAT_LABELS).map(([k,v])=>({value:k,...v}));
+
+function PlaidCashflow({uid, accent}){
+  const [data, setData]   = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [overriding, setOverriding] = useState(null); // txn id being edited
+  const [saving, setSaving] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [filterCat, setFilterCat] = useState('ALL');
+
+  const load = async()=>{
+    setLoading(true);
+    try{
+      const r = await fetch('/api/plaid/cashflow-summary',{credentials:'include'});
+      const d = await r.json();
+      setData(d);
+    }catch{}
+    setLoading(false);
+  };
+
+  useEffect(()=>{load();},[]);
+
+  const saveOverride = async(txn, newCat)=>{
+    setSaving(true);
+    await fetch('/api/plaid/txn-categories',{
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        txn_id: txn.id,
+        txn_name: txn.name,
+        original_category: txn.raw_category,
+        user_category: newCat,
+        amount: txn.amount,
+        txn_date: txn.date,
+      })
+    });
+    setSaving(false);
+    setOverriding(null);
+    await load();
+  };
+
+  if(loading) return <div style={{textAlign:'center',padding:20,color:'var(--muted)',fontSize:12}}>Loading bank data…</div>;
+  if(!data||data.error) return null;
+
+  const txns = data.transactions||[];
+  const visible = txns.filter(t=>filterCat==='ALL'||t.category===filterCat);
+  const shown = showAll ? visible : visible.slice(0,20);
+
+  return(
+    <div style={{marginBottom:16}}>
+      {/* ── Summary bar ── */}
+      <div style={{background:`linear-gradient(135deg,${accent} 0%,${accent}bb 100%)`,
+        borderRadius:16,padding:'16px 18px',marginBottom:12,color:'#fff'}}>
+        <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.6)',letterSpacing:.5,marginBottom:10}}>
+          BANK CASH FLOW · LAST 90 DAYS
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+          {[
+            ['Revenue',   fmt$k(data.revenue),    '#6ee7b7'],
+            ['Mortgage',  fmt$k(data.mortgage),   '#fca5a5'],
+            ['Net CF',    fmt$s(data.net_cashflow), data.net_cashflow>=0?'#6ee7b7':'#fca5a5'],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{background:'rgba(255,255,255,.12)',borderRadius:10,padding:'8px 10px'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.55)',marginBottom:3}}>{l}</div>
+              <div style={{fontSize:16,fontWeight:800,color:c,fontFamily:'JetBrains Mono'}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {data.internal_transfers>0&&
+          <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:8}}>
+            ↔ {fmt$k(data.internal_transfers)} excluded as internal transfers
+          </div>}
+      </div>
+
+      {/* ── Category filter tabs ── */}
+      <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:4,marginBottom:10}}>
+        {[['ALL','All'],['REVENUE','Revenue'],['MORTGAGE','Mortgage'],['EXPENSE','Expense'],['INTERNAL_TRANSFER','Internal']].map(([k,l])=>(
+          <button key={k} onClick={()=>setFilterCat(k)}
+            style={{flexShrink:0,padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:11,fontWeight:700,
+              background:filterCat===k?accent:'rgba(0,0,0,.06)',
+              color:filterCat===k?'#fff':'var(--muted)'}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Transaction list ── */}
+      <div className="glass-card" style={{padding:0,overflow:'hidden'}}>
+        {shown.length===0&&<div style={{textAlign:'center',padding:24,color:'var(--muted)',fontSize:12}}>No transactions</div>}
+        {shown.map(t=>{
+          const ci = CAT_LABELS[t.category]||CAT_LABELS.EXPENSE;
+          const isEditing = overriding===t.id;
+          return(
+            <div key={t.id} style={{padding:'12px 16px',borderBottom:'1px solid rgba(0,0,0,.05)',
+              background: t.user_overridden?'rgba(99,102,241,.04)':'transparent'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {t.name}
+                    {t.user_overridden&&<span style={{fontSize:9,marginLeft:6,color:'#6366f1',fontWeight:700}}>EDITED</span>}
+                  </div>
+                  <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{t.date}</div>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <div style={{fontSize:14,fontWeight:800,fontFamily:'JetBrains Mono',
+                    color:t.amount<0?'#10b981':ci.color}}>
+                    {t.amount<0?'+':'-'}{fmt$(Math.abs(t.amount))}
+                  </div>
+                  <button onClick={()=>setOverriding(isEditing?null:t.id)}
+                    style={{marginTop:3,fontSize:10,fontWeight:700,color:ci.color,
+                      background:ci.color+'18',border:'none',borderRadius:10,padding:'2px 8px',cursor:'pointer'}}>
+                    {ci.icon} {ci.label}
+                  </button>
+                </div>
+              </div>
+              {isEditing&&(
+                <div style={{marginTop:10,padding:'10px 12px',background:'rgba(0,0,0,.03)',borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,marginBottom:8,color:'var(--muted)'}}>Recategorize as:</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
+                    {CAT_OPTIONS.map(opt=>(
+                      <button key={opt.value}
+                        onClick={()=>!saving&&saveOverride(t, opt.value)}
+                        style={{padding:'7px 10px',borderRadius:10,border:'none',cursor:'pointer',
+                          textAlign:'left',fontSize:12,fontWeight:700,
+                          background: t.category===opt.value?opt.color+'22':'rgba(0,0,0,.04)',
+                          color: t.category===opt.value?opt.color:'var(--fg)',
+                          opacity: saving?0.5:1}}>
+                        {opt.icon} {opt.label}
+                        {opt.impacts==='none'&&<span style={{fontSize:9,display:'block',color:'var(--muted)',fontWeight:400}}>won't affect numbers</span>}
+                        {opt.impacts==='revenue'&&<span style={{fontSize:9,display:'block',color:'#10b981',fontWeight:400}}>counts as income</span>}
+                        {opt.impacts==='mortgage'&&<span style={{fontSize:9,display:'block',color:'#ef4444',fontWeight:400}}>counts as mortgage</span>}
+                        {opt.impacts==='expense'&&<span style={{fontSize:9,display:'block',color:'#f59e0b',fontWeight:400}}>counts as expense</span>}
+                      </button>
+                    ))}
+                  </div>
+                  {saving&&<div style={{fontSize:11,color:'var(--muted)',marginTop:8,textAlign:'center'}}>Saving…</div>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {visible.length>20&&!showAll&&(
+          <div style={{padding:'12px 16px',textAlign:'center'}}>
+            <button onClick={()=>setShowAll(true)}
+              style={{fontSize:12,fontWeight:700,color:accent,background:'none',border:'none',cursor:'pointer'}}>
+              Show all {visible.length} transactions
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── NET WORTH TAB ─────────────────────────────────────────────────────────────
 function NetWorthTab({user,portfolio,props}){
   const [showManual,setShowManual]=useState(false);
@@ -2827,9 +3161,7 @@ function NetWorthTab({user,portfolio,props}){
   const [plaidItems,setPlaidItems]=useState([]);
   const [plaidLoading,setPlaidLoading]=useState(false);
   const [plaidError,setPlaidError]=useState('');
-  const [plaidView,setPlaidView]=useState(null); // null | item_id for txn view
-  const [txns,setTxns]=useState([]);
-  const [txnLoading,setTxnLoading]=useState(false);
+
 
   useEffect(()=>{loadPlaid();},[]);
 
@@ -2915,17 +3247,7 @@ function NetWorthTab({user,portfolio,props}){
     await loadPlaid();
   };
 
-  const loadTxns=async(accessToken)=>{
-    setTxnLoading(true); setTxns([]);
-    try{
-      const r=await fetch('/api/plaid/transactions',{method:'POST',credentials:'include',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({access_token:accessToken,days:90})});
-      const d=await r.json();
-      if(d.transactions) setTxns(d.transactions);
-    }catch{}
-    setTxnLoading(false);
-  };
+
 
   const plaidConnected=plaidItems.length>0;
 
@@ -3011,12 +3333,6 @@ function NetWorthTab({user,portfolio,props}){
                 {item.needs_update&&<button className="btn btn-sm"
                   style={{fontSize:11,color:'#f59e0b',border:'1px solid #f59e0b'}}
                   onClick={()=>openPlaidLink(item.access_token)}>Fix</button>}
-                <button className="btn btn-sm"
-                  style={{fontSize:11}}
-                  onClick={()=>{setPlaidView(item.item_id);loadTxns(item.access_token);}}>Txns</button>
-                <button className="btn btn-sm"
-                  style={{fontSize:11,color:'#ef4444'}}
-                  onClick={()=>removeItem(item.item_id)}>✕</button>
               </div>
             </div>
             {item.accounts?.map(a=>(
@@ -3036,38 +3352,13 @@ function NetWorthTab({user,portfolio,props}){
                 </div>
               </div>
             ))}
-            {item.error&&<div style={{fontSize:12,color:'#ef4444',paddingTop:8}}>{item.error}</div>}
+            {item.error&&<div style={{fontSize:11,color:'#ef4444',paddingTop:8,fontWeight:600}}>{item.error}</div>}
           </div>
         ))}
       </div>
 
-      {/* ── TRANSACTIONS DRAWER ──────────────────────────────────────────── */}
-      {plaidView&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
-          onClick={e=>e.target===e.currentTarget&&setPlaidView(null)}>
-          <div style={{background:'var(--surface)',borderRadius:'20px 20px 0 0',padding:'20px',maxHeight:'80vh',overflowY:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:16}}>Recent Transactions</div>
-              <button className="btn btn-sm" onClick={()=>setPlaidView(null)}>✕ Close</button>
-            </div>
-            {txnLoading&&<div style={{textAlign:'center',padding:30,color:'var(--muted)'}}>Loading…</div>}
-            {!txnLoading&&txns.length===0&&<div style={{textAlign:'center',padding:30,color:'var(--muted)'}}>No transactions found</div>}
-            {txns.map(t=>(
-              <div key={t.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',
-                borderBottom:'1px solid rgba(0,0,0,.05)'}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
-                  <div style={{fontSize:11,color:'var(--muted)'}}>{t.date} · {t.category?.replace(/_/g,' ')}</div>
-                </div>
-                <div style={{marginLeft:12,fontWeight:700,fontFamily:'JetBrains Mono',fontSize:14,flexShrink:0,
-                  color:t.amount<0?'#10b981':'var(--fg)'}}>
-                  {t.amount<0?'+':'-'}{fmt$(Math.abs(t.amount))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── CASHFLOW FROM BANK ───────────────────────────────────────────── */}
+      {plaidConnected&&<PlaidCashflow uid={user.id} accent={accent}/>}
 
       <div className="glass-card" style={{padding:20,marginTop:14}}>
         <div className="sec-hdr"><h4>Stocks &amp; ETFs</h4></div>
