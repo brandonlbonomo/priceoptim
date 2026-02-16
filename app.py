@@ -1253,8 +1253,17 @@ def plaid_post(path, payload):
         data=body,
         headers={'Content-Type': 'application/json'}
     )
-    resp = urllib.request.urlopen(req, timeout=20)
-    return json.loads(resp.read())
+    try:
+        resp = urllib.request.urlopen(req, timeout=20)
+        return json.loads(resp.read())
+    except OSError as e:
+        if 'Name or service not known' in str(e) or 'Errno -2' in str(e) or 'Errno 11001' in str(e):
+            raise RuntimeError(
+                'NETWORK_BLOCKED: Render free tier blocks outbound requests. '
+                'Upgrade your Render service to Starter ($7/mo) at dashboard.render.com '
+                'to enable outbound network access required for Plaid.'
+            )
+        raise
 
 @app.route('/api/plaid/create-link-token', methods=['GET','POST'])
 def plaid_link():
@@ -1269,7 +1278,7 @@ def plaid_link():
         payload = {
             "user": {"client_user_id": str(uid)},
             "client_name": "Property Pigeon",
-            "products": ["transactions", "auth"],
+            "products": ["transactions"],
             "country_codes": ["US"],
             "language": "en",
         }
@@ -1443,6 +1452,40 @@ def plaid_remove():
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+# ── PLAID CONNECTIVITY TEST ───────────────────────────────────────────────────
+@app.route('/api/plaid/test')
+def plaid_test():
+    """Diagnostic: test Plaid connectivity and config"""
+    results = {
+        'client_id_set': bool(PLAID_CLIENT_ID),
+        'secret_set': bool(PLAID_SECRET),
+        'env': PLAID_ENV,
+        'network': False,
+        'auth': False,
+        'error': None,
+    }
+    # Test basic network connectivity
+    try:
+        test_req = urllib.request.Request(
+            f'https://{PLAID_ENV}.plaid.com/link/token/create',
+            data=b'{}',
+            headers={'Content-Type': 'application/json'}
+        )
+        urllib.request.urlopen(test_req, timeout=5)
+    except urllib.error.HTTPError as e:
+        results['network'] = True  # Got a response = network works
+        if e.code == 400:
+            results['auth'] = True  # 400 = reached Plaid, just bad payload
+        elif e.code in (401, 403):
+            results['network'] = True
+            results['error'] = 'Invalid credentials — check PLAID_CLIENT_ID and PLAID_SECRET'
+    except OSError as e:
+        results['network'] = False
+        results['error'] = f'Network blocked: {e}. Upgrade Render to Starter plan to enable outbound requests.'
+    except Exception as e:
+        results['error'] = str(e)
+    return jsonify(results)
 
 # ── DEBUG ──────────────────────────────────────────────────────────────────────
 @app.route('/api/debug/schema')
@@ -2777,7 +2820,15 @@ function NetWorthTab({user,portfolio,props}){
       const r=await fetch('/api/plaid/create-link-token',{method:'POST',credentials:'include',
         headers:{'Content-Type':'application/json'},body});
       const d=await r.json();
-      if(d.error){setPlaidError(d.error);setPlaidLoading(false);return;}
+      if(d.error){
+        let msg = d.error;
+        if(msg.includes('NETWORK_BLOCKED')){
+          msg = '⚠️ Render free tier blocks outbound network calls. Upgrade your Render service to Starter ($7/mo) at dashboard.render.com → your service → Settings → Instance Type.';
+        } else if(msg.includes('Plaid not configured')){
+          msg = '⚠️ Missing env vars. Add PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV=production in Render → Environment.';
+        }
+        setPlaidError(msg);setPlaidLoading(false);return;
+      }
       const linkToken=d.link_token;
       // Load Plaid Link SDK dynamically
       if(!window.Plaid){
