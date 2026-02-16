@@ -124,9 +124,12 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 access_token TEXT NOT NULL,
-                item_id TEXT,
+                item_id TEXT UNIQUE,
                 institution_name TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                institution_id TEXT DEFAULT '',
+                cursor TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.commit()
@@ -151,6 +154,9 @@ def migrate_db():
         ("properties", "bathrooms", "DECIMAL(4,1) DEFAULT 0"),
         ("properties", "sqft", "INTEGER DEFAULT 0"),
         ("properties", "year_built", "INTEGER DEFAULT 0"),
+        ("plaid_items", "institution_id", "TEXT DEFAULT ''"),
+        ("plaid_items", "cursor", "TEXT DEFAULT ''"),
+        ("plaid_items", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         ("properties", "last_value_refresh", "TIMESTAMP"),
         ("properties", "zillow_url", "TEXT DEFAULT ''"),
         ("properties", "monthly_expenses", "DECIMAL(10,2) DEFAULT 0"),
@@ -1236,43 +1242,206 @@ def save_snapshot():
 
 # ── PLAID ──────────────────────────────────────────────────────────────────────
 PLAID_CLIENT_ID = os.environ.get('PLAID_CLIENT_ID','')
-PLAID_SECRET = os.environ.get('PLAID_SECRET','')
-PLAID_ENV = os.environ.get('PLAID_ENV','sandbox')
+PLAID_SECRET    = os.environ.get('PLAID_SECRET','')
+PLAID_ENV       = os.environ.get('PLAID_ENV','production')   # production | sandbox
 
-@app.route('/api/plaid/create-link-token')
+def plaid_post(path, payload):
+    """Helper: POST to Plaid API, returns parsed JSON"""
+    body = json.dumps({**payload, "client_id": PLAID_CLIENT_ID, "secret": PLAID_SECRET}).encode()
+    req  = urllib.request.Request(
+        f"https://{PLAID_ENV}.plaid.com{path}",
+        data=body,
+        headers={'Content-Type': 'application/json'}
+    )
+    resp = urllib.request.urlopen(req, timeout=20)
+    return json.loads(resp.read())
+
+@app.route('/api/plaid/create-link-token', methods=['GET','POST'])
 def plaid_link():
+    """Create a Plaid Link token to initialise the Link flow"""
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
-    if not PLAID_CLIENT_ID: return jsonify({'error': 'Plaid not configured'}), 400
+    if not PLAID_CLIENT_ID: return jsonify({'error': 'Plaid not configured — add PLAID_CLIENT_ID, PLAID_SECRET to Render env'}), 400
+    # Check for update mode (re-authenticating an existing item)
+    d = request.json or {}
+    access_token = d.get('access_token')
     try:
-        payload = json.dumps({"client_id": PLAID_CLIENT_ID, "secret": PLAID_SECRET,
-            "user": {"client_user_id": str(uid)}, "client_name": "Property Pigeon",
-            "products": ["transactions"], "country_codes": ["US"], "language": "en"}).encode()
-        req = urllib.request.Request(f"https://{PLAID_ENV}.plaid.com/link/token/create",
-            data=payload, headers={'Content-Type': 'application/json'})
-        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        payload = {
+            "user": {"client_user_id": str(uid)},
+            "client_name": "Property Pigeon",
+            "products": ["transactions", "auth"],
+            "country_codes": ["US"],
+            "language": "en",
+        }
+        if access_token:
+            # Update mode — user re-authenticating
+            payload.pop("products", None)
+            payload["access_token"] = access_token
+        data = plaid_post("/link/token/create", payload)
         return jsonify({'link_token': data.get('link_token')})
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8','ignore')
+        return jsonify({'error': f'Plaid {e.code}: {body[:300]}'}), e.code
     except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plaid/exchange-token', methods=['POST'])
 def plaid_exchange():
+    """Exchange public token for access token, store item"""
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
     d = request.json or {}
     try:
-        payload = json.dumps({"client_id": PLAID_CLIENT_ID, "secret": PLAID_SECRET,
-            "public_token": d['public_token']}).encode()
-        req = urllib.request.Request(f"https://{PLAID_ENV}.plaid.com/item/public_token/exchange",
-            data=payload, headers={'Content-Type': 'application/json'})
-        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        data = plaid_post("/item/public_token/exchange", {"public_token": d['public_token']})
+        access_token   = data['access_token']
+        item_id        = data.get('item_id','')
+        inst_name      = d.get('institution_name', '')
+        inst_id        = d.get('institution_id', '')
+
         with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute("INSERT INTO plaid_items (user_id,access_token,item_id,institution_name) VALUES (%s,%s,%s,%s)",
-                (uid, data['access_token'], data.get('item_id',''), d.get('institution_name','')))
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Upsert — if this item_id already exists (re-auth), update token
+            cur.execute("""
+                INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
+                VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT (item_id) DO UPDATE
+                  SET access_token=EXCLUDED.access_token,
+                      institution_name=EXCLUDED.institution_name,
+                      updated_at=CURRENT_TIMESTAMP
+            """, (uid, access_token, item_id, inst_name, inst_id))
+            conn.commit(); cur.close()
+        return jsonify({'ok': True, 'item_id': item_id})
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8','ignore')
+        return jsonify({'error': f'Plaid {e.code}: {body[:300]}'}), e.code
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/accounts')
+def plaid_accounts():
+    """Return all connected Plaid items + their accounts + balances"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM plaid_items WHERE user_id=%s ORDER BY created_at", (uid,))
+            items = [dict(r) for r in cur.fetchall()]; cur.close()
+
+        result = []
+        for item in items:
+            try:
+                data = plaid_post("/accounts/balance/get", {"access_token": item['access_token']})
+                accounts = data.get('accounts', [])
+                result.append({
+                    'item_id':    item['item_id'],
+                    'institution': item.get('institution_name','Unknown'),
+                    'institution_id': item.get('institution_id',''),
+                    'access_token': item['access_token'],  # needed for update mode
+                    'needs_update': False,
+                    'accounts': [{
+                        'id':        a['account_id'],
+                        'name':      a['name'],
+                        'mask':      a.get('mask',''),
+                        'type':      a['type'],
+                        'subtype':   a.get('subtype',''),
+                        'balance':   a['balances'].get('current') or a['balances'].get('available') or 0,
+                        'available': a['balances'].get('available'),
+                        'limit':     a['balances'].get('limit'),
+                        'currency':  a['balances'].get('iso_currency_code','USD'),
+                    } for a in accounts]
+                })
+            except urllib.error.HTTPError as e:
+                body = e.read().decode('utf-8','ignore')
+                # ITEM_LOGIN_REQUIRED — bank needs re-auth
+                needs_update = 'ITEM_LOGIN_REQUIRED' in body or 'LOGIN_REQUIRED' in body
+                result.append({
+                    'item_id':    item['item_id'],
+                    'institution': item.get('institution_name','Unknown'),
+                    'institution_id': item.get('institution_id',''),
+                    'access_token': item['access_token'],
+                    'needs_update': needs_update,
+                    'error': 'Re-authentication required' if needs_update else f'Error {e.code}',
+                    'accounts': []
+                })
+        return jsonify({'items': result})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/transactions', methods=['POST'])
+def plaid_transactions():
+    """Fetch recent transactions for an item"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    d = request.json or {}
+    access_token = d.get('access_token')
+    days = int(d.get('days', 90))
+    if not access_token: return jsonify({'error': 'access_token required'}), 400
+    import datetime as dt
+    end   = dt.date.today().isoformat()
+    start = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    try:
+        data = plaid_post("/transactions/get", {
+            "access_token": access_token,
+            "start_date": start, "end_date": end,
+            "options": {"count": 250, "include_personal_finance_category": True}
+        })
+        txns = data.get('transactions', [])
+        # Summarise by category
+        by_cat = {}
+        for t in txns:
+            cat = (t.get('personal_finance_category',{}).get('primary') or
+                   (t.get('category',[None])[0]) or 'Other')
+            amt = t.get('amount', 0)  # Plaid: positive = debit, negative = credit
+            by_cat.setdefault(cat, 0)
+            by_cat[cat] += amt
+        return jsonify({
+            'transactions': [{
+                'id':     t['transaction_id'],
+                'date':   t['date'],
+                'name':   t['name'],
+                'amount': t['amount'],
+                'category': (t.get('personal_finance_category',{}).get('primary') or
+                             (t.get('category',['Other'])[0])),
+                'pending': t.get('pending', False),
+            } for t in txns[:100]],
+            'by_category': by_cat,
+            'total': len(txns),
+            'start': start, 'end': end,
+        })
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8','ignore')
+        return jsonify({'error': f'Plaid {e.code}: {body[:300]}'}), e.code
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/remove', methods=['POST'])
+def plaid_remove():
+    """Remove a Plaid item (disconnect a bank)"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    d = request.json or {}
+    item_id = d.get('item_id','')
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT access_token FROM plaid_items WHERE item_id=%s AND user_id=%s", (item_id, uid))
+            row = cur.fetchone()
+            if not row: cur.close(); return jsonify({'error': 'Item not found'}), 404
+            access_token = row['access_token']
+            try:
+                plaid_post("/item/remove", {"access_token": access_token})
+            except Exception:
+                pass  # Best effort — still remove from DB
+            cur.execute("DELETE FROM plaid_items WHERE item_id=%s AND user_id=%s", (item_id, uid))
             conn.commit(); cur.close()
         return jsonify({'ok': True})
     except Exception as e:
+        import traceback; traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 # ── DEBUG ──────────────────────────────────────────────────────────────────────
@@ -1629,6 +1798,11 @@ input,button,select,textarea{font-family:'Inter',-apple-system,BlinkMacSystemFon
 .empty-icon{font-size:44px;margin-bottom:12px;opacity:.6;}
 .empty-title{font-size:16px;font-weight:700;margin-bottom:6px;}
 .empty-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px;}
+
+/* ── QUARTERLY ──────────────────────────────────────────────────────────── */
+.qtr-banner{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:16px;padding:16px 18px;color:#fff;margin-bottom:14px;}
+.q-up{color:#6ee7b7;background:rgba(16,185,129,.2);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;}
+.q-down{color:#fca5a5;background:rgba(239,68,68,.2);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;}
 </style>
 </head>
 <body>
@@ -1636,6 +1810,185 @@ input,button,select,textarea{font-family:'Inter',-apple-system,BlinkMacSystemFon
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+
+// ── QUARTERLY RESULTS COMPONENTS ─────────────────────────────────────────────
+
+// Compact badge used in property cards and overview rows
+function QBadge({label,value,delta,deltaLabel,color='var(--accent)',mono=true}){
+  const pos=delta>0,neg=delta<0;
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+      <div style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.5,whiteSpace:'nowrap'}}>{label}</div>
+      <div style={{fontSize:15,fontWeight:800,fontFamily:mono?'JetBrains Mono':'inherit',color}}>{value}</div>
+      {delta!=null&&<div style={{fontSize:10,fontWeight:700,
+        color:pos?'#10b981':neg?'#ef4444':'var(--muted)',
+        background:pos?'rgba(16,185,129,.1)':neg?'rgba(239,68,68,.08)':'rgba(0,0,0,.04)',
+        padding:'1px 6px',borderRadius:20,whiteSpace:'nowrap'}}>
+        {pos?'▲':'▼'} {Math.abs(delta).toFixed(delta>-10&&delta<100?1:0)}{deltaLabel||''}
+      </div>}
+    </div>
+  );
+}
+
+// Full quarterly results strip — used inside Overview, Analytics, Portfolio
+function QuarterlyStrip({uid, accent='#2563eb', compact=false}){
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    fetch(`/api/quarterly/results/${uid}`,{credentials:'include'})
+      .then(r=>r.json()).then(d=>{setData(d);setLoading(false);}).catch(()=>setLoading(false));
+  },[uid]);
+
+  if(loading) return <div style={{padding:'12px 0',textAlign:'center',color:'var(--muted)',fontSize:12}}>Loading…</div>;
+  if(!data||!data.quarters?.length) return(
+    <div style={{padding:'14px',textAlign:'center',color:'var(--muted)',fontSize:12,borderRadius:12,background:'rgba(0,0,0,.03)'}}>
+      No quarterly data yet — save a performance snapshot in Analytics to begin tracking
+    </div>
+  );
+
+  const qs=data.quarters;
+  const cur=qs[0]; // most recent
+  const prev=qs[1];
+
+  if(compact){
+    // Compact 2-row strip: current quarter headline + QoQ change
+    const rev=+cur.gross_revenue||0;
+    const cf=+cur.net_cashflow||0;
+    const val=+cur.total_value||0;
+    const revQoQ=prev?(rev-(+prev.gross_revenue||0)):null;
+    const cfQoQ=prev?(cf-(+prev.net_cashflow||0)):null;
+    return(
+      <div style={{background:'rgba(0,0,0,.025)',borderRadius:14,padding:'12px 16px',marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5}}>
+            {cur.full_label} RESULTS
+          </div>
+          {cur.value_yoy_pct!=null&&<div style={{fontSize:11,fontWeight:700,
+            color:cur.value_yoy_pct>=0?'#10b981':'#ef4444',
+            background:cur.value_yoy_pct>=0?'rgba(16,185,129,.1)':'rgba(239,68,68,.08)',
+            padding:'2px 8px',borderRadius:20}}>
+            {cur.value_yoy_pct>=0?'▲':'▼'} {Math.abs(cur.value_yoy_pct).toFixed(1)}% YoY
+          </div>}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+          <QBadge label="Revenue" value={fmt$k(rev)} delta={revQoQ?revQoQ/1000:null} deltaLabel="K" color={accent}/>
+          <QBadge label="Net CF" value={fmt$s(cf)} delta={cfQoQ?cfQoQ/1000:null} deltaLabel="K" color={cf>=0?'#10b981':'#ef4444'}/>
+          <QBadge label="Value" value={fmt$k(val)} delta={cur.value_qoq?cur.value_qoq/1000:null} deltaLabel="K" color="var(--fg)"/>
+        </div>
+      </div>
+    );
+  }
+
+  // Full quarterly results table + chart
+  const chartVals=qs.slice(0,8).reverse().map(q=>+q.net_cashflow||0);
+  const chartLabels=qs.slice(0,8).reverse().map(q=>q.label);
+  const revChart=qs.slice(0,8).reverse().map(q=>+q.gross_revenue||0);
+
+  return(
+    <div>
+      {/* Big headline card */}
+      <div style={{background:`linear-gradient(135deg,${accent} 0%,${accent}bb 100%)`,
+        borderRadius:18,padding:'20px 20px',marginBottom:14,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:-20,right:-20,width:100,height:100,
+          borderRadius:'50%',background:'rgba(255,255,255,.06)'}}/>
+        <div style={{position:'absolute',bottom:-30,left:-10,width:80,height:80,
+          borderRadius:'50%',background:'rgba(255,255,255,.04)'}}/>
+        <div style={{position:'relative'}}>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:700,letterSpacing:.8,marginBottom:6}}>
+            LATEST QUARTERLY RESULTS
+          </div>
+          <div style={{fontSize:26,fontWeight:900,color:'#fff',letterSpacing:'-1px',marginBottom:2}}>
+            {cur.full_label}
+          </div>
+          <div style={{fontSize:13,color:'rgba(255,255,255,.7)',marginBottom:16}}>
+            {cur.property_count} {+cur.property_count===1?'property':'properties'}
+            {cur.value_yoy_pct!=null&&<span style={{marginLeft:8,fontWeight:700,
+              color:cur.value_yoy_pct>=0?'#6ee7b7':'#fca5a5'}}>
+              {cur.value_yoy_pct>=0?'▲':'▼'} {Math.abs(cur.value_yoy_pct).toFixed(1)}% YoY
+            </span>}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+            {[
+              ['Revenue',fmt$k(cur.gross_revenue),null],
+              ['Net CF',fmt$s(cur.net_cashflow),cur.cf_qoq],
+              ['Portfolio',fmt$k(cur.total_value),cur.value_qoq],
+            ].map(([lbl,val,dlt])=>(
+              <div key={lbl} style={{background:'rgba(255,255,255,.12)',borderRadius:12,padding:'10px 12px'}}>
+                <div style={{fontSize:10,color:'rgba(255,255,255,.55)',marginBottom:4}}>{lbl}</div>
+                <div style={{fontSize:17,fontWeight:800,color:'#fff',fontFamily:'JetBrains Mono'}}>{val}</div>
+                {dlt!=null&&<div style={{fontSize:10,fontWeight:700,marginTop:4,
+                  color:dlt>=0?'#6ee7b7':'#fca5a5'}}>
+                  {dlt>=0?'▲':'▼'} {fmt$k(Math.abs(dlt))} QoQ
+                </div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Net CF bar chart */}
+      {chartVals.length>1&&<div className="glass-card" style={{padding:'18px',marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <div style={{fontSize:12,fontWeight:700}}>Quarterly Net Cash Flow</div>
+          <div style={{fontSize:11,color:'var(--muted)'}}>Last {chartVals.length} quarters</div>
+        </div>
+        <BarChart data={chartVals} labels={chartLabels} color={accent} height={110}/>
+      </div>}
+
+      {/* Revenue bar chart */}
+      {revChart.length>1&&<div className="glass-card" style={{padding:'18px',marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <div style={{fontSize:12,fontWeight:700}}>Quarterly Revenue</div>
+        </div>
+        <BarChart data={revChart} labels={chartLabels} color="#10b981" height={110}/>
+      </div>}
+
+      {/* Quarterly table */}
+      <div className="glass-card" style={{padding:0,overflow:'hidden',marginBottom:12}}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+            <thead><tr style={{borderBottom:'1px solid rgba(0,0,0,.07)',background:'rgba(0,0,0,.02)'}}>
+              {['Quarter','Value','Equity','Revenue','Net CF','QoQ CF','YoY'].map(h=>(
+                <th key={h} style={{padding:'10px 13px',textAlign:h==='Quarter'?'left':'right',
+                  fontWeight:700,color:'var(--muted)',fontSize:10,textTransform:'uppercase',
+                  letterSpacing:.6,whiteSpace:'nowrap'}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>{qs.map((q,i)=>(
+              <tr key={i} style={{borderBottom:'1px solid rgba(0,0,0,.04)',
+                background:i===0?`${accent}08`:'transparent'}}>
+                <td style={{padding:'10px 13px',fontWeight:i===0?800:600,fontSize:13,
+                  color:i===0?accent:'var(--fg)',whiteSpace:'nowrap'}}>
+                  {q.full_label}
+                </td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono',fontWeight:600}}>{fmt$k(q.total_value)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono',color:'var(--green)'}}>{fmt$k(q.total_equity)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono',color:'var(--green)'}}>{fmt$k(q.gross_revenue)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right',fontFamily:'JetBrains Mono',fontWeight:700,
+                  color:+q.net_cashflow>=0?'#10b981':'#ef4444'}}>{fmt$s(q.net_cashflow)}</td>
+                <td style={{padding:'10px 13px',textAlign:'right'}}>
+                  {q.cf_qoq!=null
+                    ?<span style={{fontSize:11,fontWeight:700,color:q.cf_qoq>=0?'#10b981':'#ef4444'}}>
+                        {q.cf_qoq>=0?'▲':'▼'}{fmt$k(Math.abs(q.cf_qoq))}
+                      </span>
+                    :<span style={{color:'var(--dim)',fontSize:11}}>—</span>}
+                </td>
+                <td style={{padding:'10px 13px',textAlign:'right'}}>
+                  {q.value_yoy_pct!=null
+                    ?<span style={{fontSize:11,fontWeight:700,color:q.value_yoy_pct>=0?'#10b981':'#ef4444'}}>
+                        {q.value_yoy_pct>=0?'▲':'▼'}{Math.abs(q.value_yoy_pct).toFixed(1)}%
+                      </span>
+                    :<span style={{color:'var(--dim)',fontSize:11}}>—</span>}
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 const fmt$=v=>v==null?'—':'$'+Math.abs(+v).toLocaleString('en-US',{maximumFractionDigits:0});
@@ -2014,6 +2367,24 @@ function EditPropSheet({prop,onClose,onSave,onDelete}){
         <div className="sheet-handle"/>
         <h3>Edit Property</h3>
         <p className="sheet-sub">{prop.name}</p>
+        {/* Property quarterly performance */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:800,color:'var(--muted)',letterSpacing:.5,marginBottom:6}}>THIS PROPERTY</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,
+            background:'rgba(0,0,0,.025)',borderRadius:12,padding:'12px 14px'}}>
+            {[
+              ['Revenue', `$${((+prop.monthly_revenue||0)*3).toLocaleString()}`, 'Qtr'],
+              ['Expenses', `$${((+prop.mortgage+ +prop.insurance+ +prop.hoa+ +prop.property_tax)*3||0).toLocaleString()}`, 'Qtr'],
+              ['Net CF', `${((+prop.monthly_revenue||0)*3 - (+prop.mortgage+ +prop.insurance+ +prop.hoa+ +prop.property_tax)*3)>=0?'+':''}$${Math.abs(((+prop.monthly_revenue||0)*3 - (+prop.mortgage+ +prop.insurance+ +prop.hoa+ +prop.property_tax)*3)).toLocaleString()}`, 'Qtr'],
+            ].map(([l,v,u])=>(
+              <div key={l} style={{textAlign:'center'}}>
+                <div style={{fontSize:9,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.4,marginBottom:3}}>{l}</div>
+                <div style={{fontSize:14,fontWeight:800,fontFamily:'JetBrains Mono'}}>{v}</div>
+                <div style={{fontSize:9,color:'var(--dim)'}}>{u}</div>
+              </div>
+            ))}
+          </div>
+        </div>
         {err&&<div className="alert alert-err">{err}</div>}
         {Inp('Property name','name')}{Inp('Location','location')}
         {Inp2(['Purchase price','purchase_price','number'],['Down payment','down_payment','number'])}
@@ -2033,6 +2404,16 @@ function EditPropSheet({prop,onClose,onSave,onDelete}){
 
 // ── PORTFOLIO TAB ─────────────────────────────────────────────────────────────
 function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
+  const [plaidSummary,setPlaidSummary]=useState(null);
+  useEffect(()=>{
+    fetch('/api/plaid/accounts',{credentials:'include'}).then(r=>r.json())
+      .then(d=>{
+        if(!d.items?.length) return;
+        const assets=d.items.flatMap(i=>i.accounts).filter(a=>a.type==='depository'||a.type==='investment').reduce((s,a)=>s+(+a.balance||0),0);
+        const liabs=d.items.flatMap(i=>i.accounts).filter(a=>a.type==='credit'||a.type==='loan').reduce((s,a)=>s+(+a.balance||0),0);
+        setPlaidSummary({assets,liabs,banks:d.items.length,accounts:d.items.flatMap(i=>i.accounts).length});
+      }).catch(()=>{});
+  },[]);
   const tv=+portfolio.total_value||0,te=+portfolio.total_equity||0,mcf=+portfolio.monthly_cashflow||0,hs=+portfolio.health_score||0;
   const accent=user.accent_color||'#2563eb';
   const history=useMemo(()=>{try{const h=portfolio.price_history;return(typeof h==='string'?JSON.parse(h):h)||[];}catch{return[];}});
@@ -2059,6 +2440,12 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
         </div>
       </div>
 
+      {/* Quarterly Results */}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5,marginBottom:8}}>QUARTERLY RESULTS</div>
+        <QuarterlyStrip uid={user.id} accent={accent} compact={true}/>
+      </div>
+
       {/* Stats */}
       <div className="grid2" style={{marginBottom:14}}>
         <div className="scard"><div className="scard-lbl">Monthly Cash Flow</div><div className="scard-val" style={{color:clr(mcf)}}>{fmt$s(mcf)}</div><div className="scard-sub">Annual {fmt$k(mcf*12)}</div></div>
@@ -2066,6 +2453,19 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
         <div className="scard"><div className="scard-lbl">Cap Rate</div><div className="scard-val">{capRate.toFixed(2)}%</div></div>
         <div className="scard"><div className="scard-lbl">Share Price</div><div className="scard-val mono">${(+portfolio.share_price||1).toFixed(2)}</div></div>
       </div>
+      {plaidSummary&&<div className="glass-card" style={{padding:'12px 16px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:20}}>🏦</span>
+          <div>
+            <div style={{fontSize:12,fontWeight:700}}>Bank Accounts</div>
+            <div style={{fontSize:11,color:'var(--muted)'}}>{plaidSummary.banks} institution{plaidSummary.banks!==1?'s':''} · {plaidSummary.accounts} accounts</div>
+          </div>
+        </div>
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:15,fontWeight:800,fontFamily:'JetBrains Mono',color:'#10b981'}}>{fmt$k(plaidSummary.assets)}</div>
+          {plaidSummary.liabs>0&&<div style={{fontSize:11,color:'#ef4444',fontFamily:'JetBrains Mono'}}>-{fmt$k(plaidSummary.liabs)} debt</div>}
+        </div>
+      </div>}
 
       {/* Properties */}
       <div className="sec-hdr"><h4>Properties</h4><button className="btn btn-prime btn-sm" onClick={onAdd}>+ Add</button></div>
@@ -2084,7 +2484,9 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
             <div style={{flex:1,minWidth:0}}>
               <div className="prop-name">{p.name}</div>
               <div className="prop-loc">{p.location}</div>
-              {+p.zestimate>0&&<div className="prop-meta">{fmt$(p.zestimate)} Zestimate</div>}
+              <div style={{display:'flex',gap:5,marginTop:3,flexWrap:'wrap'}}>
+                {+p.zestimate>0&&<span className="prop-meta">{fmt$(p.zestimate)} Zest</span>}
+              </div>
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontSize:16,fontWeight:800,letterSpacing:'-.3px'}}>{fmt$k(val)}</div>
@@ -2099,16 +2501,18 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
   );
 }
 
+
 // ── ANALYTICS TAB (Performance + Cashflow + Projections) ─────────────────────
 function AnalyticsTab({user,props,portfolio}){
-  const [sub,setSub]=useState('performance');
+  const [sub,setSub]=useState('quarterly');
   return(
     <div className="page page-in" style={{paddingTop:14}}>
       <div className="subnav">
-        {[['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
+        {[['quarterly','📊 Quarterly'],['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
           <button key={id} className={`subnav-btn${sub===id?' on':''}`} onClick={()=>setSub(id)}>{lbl}</button>
         ))}
       </div>
+      {sub==='quarterly'&&<QuarterlyStrip uid={user.id} accent={user.accent_color||'#2563eb'}/>}
       {sub==='performance'&&<PerfPane user={user} props={props} portfolio={portfolio}/>}
       {sub==='cashflow'&&<CashflowPane props={props}/>}
       {sub==='projections'&&<ProjectionsPane props={props} portfolio={portfolio} user={user}/>}
@@ -2153,7 +2557,15 @@ function PerfPane({user,props,portfolio}){
   const chartLabels=snaps.map(s=>monthShort(s.snapshot_month));
   const accent=user.accent_color||'#2563eb';
 
+  const [perfView, setPerfView] = useState('overview');
   return(<>
+    <div className="subnav" style={{marginBottom:14}}>
+      {[['overview','Overview'],['quarterly','Quarterly'],['history','History']].map(([id,lbl])=>(
+        <button key={id} className={`subnav-btn${perfView===id?' on':''}`} onClick={()=>setPerfView(id)}>{lbl}</button>
+      ))}
+    </div>
+    {perfView==='quarterly'&&<QuarterlyStrip uid={uid} accent={accent}/>}
+    {(perfView==='overview'||perfView==='history')&&<>
     <div className="grid2" style={{marginBottom:12}}>
       <div className="scard"><div className="scard-lbl">Portfolio Value</div><div className="scard-val">{fmt$k(tv)}</div>
         {yoyData&&<div className="scard-delta" style={deltaStyle(yoyData.valuePct)}>{arrow(yoyData.valuePct)}{Math.abs(yoyData.valuePct).toFixed(1)}% YoY</div>}
@@ -2203,6 +2615,7 @@ function PerfPane({user,props,portfolio}){
         </table>
       </div>
     </div>}
+    </>}
   </>);
 }
 
@@ -2340,14 +2753,104 @@ function NetWorthTab({user,portfolio,props}){
   const [newVal,setNewVal]=useState('');
   const [newType,setNewType]=useState('asset');
   const accent=user.accent_color||'#2563eb';
-  const plaidConnected=false;
+  const [plaidItems,setPlaidItems]=useState([]);
+  const [plaidLoading,setPlaidLoading]=useState(false);
+  const [plaidError,setPlaidError]=useState('');
+  const [plaidView,setPlaidView]=useState(null); // null | item_id for txn view
+  const [txns,setTxns]=useState([]);
+  const [txnLoading,setTxnLoading]=useState(false);
+
+  useEffect(()=>{loadPlaid();},[]);
+
+  const loadPlaid=async()=>{
+    try{
+      const r=await fetch('/api/plaid/accounts',{credentials:'include'});
+      const d=await r.json();
+      if(d.items) setPlaidItems(d.items);
+    }catch{}
+  };
+
+  const openPlaidLink=async(accessToken=null)=>{
+    setPlaidLoading(true); setPlaidError('');
+    try{
+      const body = accessToken ? JSON.stringify({access_token:accessToken}) : '{}';
+      const r=await fetch('/api/plaid/create-link-token',{method:'POST',credentials:'include',
+        headers:{'Content-Type':'application/json'},body});
+      const d=await r.json();
+      if(d.error){setPlaidError(d.error);setPlaidLoading(false);return;}
+      const linkToken=d.link_token;
+      // Load Plaid Link SDK dynamically
+      if(!window.Plaid){
+        await new Promise((res,rej)=>{
+          const s=document.createElement('script');
+          s.src='https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+          s.onload=res; s.onerror=rej;
+          document.head.appendChild(s);
+        });
+      }
+      const handler=window.Plaid.create({
+        token: linkToken,
+        onSuccess: async(publicToken, meta)=>{
+          setPlaidLoading(true);
+          await fetch('/api/plaid/exchange-token',{
+            method:'POST', credentials:'include',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              public_token: publicToken,
+              institution_name: meta?.institution?.name||'',
+              institution_id: meta?.institution?.institution_id||'',
+            })
+          });
+          await loadPlaid();
+          setPlaidLoading(false);
+        },
+        onExit:(err)=>{
+          if(err) setPlaidError(err.display_message||err.error_message||'Link exited');
+          setPlaidLoading(false);
+        },
+      });
+      handler.open();
+    }catch(e){
+      setPlaidError(e.message);
+      setPlaidLoading(false);
+    }
+  };
+
+  const removeItem=async(itemId)=>{
+    if(!confirm('Disconnect this bank account?')) return;
+    await fetch('/api/plaid/remove',{method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId})});
+    await loadPlaid();
+  };
+
+  const loadTxns=async(accessToken)=>{
+    setTxnLoading(true); setTxns([]);
+    try{
+      const r=await fetch('/api/plaid/transactions',{method:'POST',credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({access_token:accessToken,days:90})});
+      const d=await r.json();
+      if(d.transactions) setTxns(d.transactions);
+    }catch{}
+    setTxnLoading(false);
+  };
+
+  const plaidConnected=plaidItems.length>0;
+
+  // Totals from Plaid
+  const plaidAssets = plaidItems.flatMap(i=>i.accounts)
+    .filter(a=>a.type==='depository'||a.type==='investment')
+    .reduce((s,a)=>s+(+a.balance||0),0);
+  const plaidLiabilities = plaidItems.flatMap(i=>i.accounts)
+    .filter(a=>a.type==='credit'||a.type==='loan')
+    .reduce((s,a)=>s+(+a.balance||0),0);
 
   const re=+portfolio.total_equity||0;
   const stockVal=stocks.reduce((s,st)=>s+(+st.shares*(+st.price||0)),0);
   const manualA=manuals.filter(m=>m.type==='asset').reduce((s,m)=>s+(+m.value||0),0);
   const manualL=manuals.filter(m=>m.type==='liability').reduce((s,m)=>s+(+m.value||0),0);
-  const totalA=re+stockVal+manualA;
-  const nw=totalA-manualL;
+  const totalA=re+stockVal+manualA+plaidAssets;
+  const nw=totalA-manualL-plaidLiabilities;
 
   const addStock=async()=>{
     const parts=stockInput.toUpperCase().trim().split(':');
@@ -2368,19 +2871,109 @@ function NetWorthTab({user,portfolio,props}){
             <div className="nw-seg" style={{width:`${(stockVal/totalA*100).toFixed(0)}%`,background:'#6366f1'}}/>
             <div className="nw-seg" style={{width:`${(manualA/totalA*100).toFixed(0)}%`,background:'#10b981'}}/>
           </div>
-          <div style={{display:'flex',gap:14,fontSize:11,color:'var(--muted)'}}>
+          <div style={{display:'flex',gap:14,fontSize:11,color:'var(--muted)',flexWrap:'wrap'}}>
             <span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:accent,marginRight:4}}/> RE {fmt$k(re)}</span>
             {stockVal>0&&<span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#6366f1',marginRight:4}}/> Stocks {fmt$k(stockVal)}</span>}
+            {plaidAssets>0&&<span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#10b981',marginRight:4}}/> Bank {fmt$k(plaidAssets)}</span>}
+            {plaidLiabilities>0&&<span><span style={{display:'inline-block',width:8,height:8,borderRadius:2,background:'#ef4444',marginRight:4}}/> Debt {fmt$k(plaidLiabilities)}</span>}
           </div>
         </>}
       </div>
 
-      {!plaidConnected&&(
-        <div className="plaid-cta" onClick={()=>{}}>
+      {/* ── PLAID BANKS ─────────────────────────────────────────────────── */}
+      <div style={{marginBottom:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5}}>CONNECTED BANKS</div>
+          <button className="btn btn-prime btn-sm"
+            onClick={()=>openPlaidLink()} disabled={plaidLoading}
+            style={{fontSize:12,padding:'5px 12px'}}>
+            {plaidLoading?'Connecting…':'+ Connect Bank'}
+          </button>
+        </div>
+        {plaidError&&<div className="alert alert-err" style={{marginBottom:10}}>{plaidError}</div>}
+
+        {!plaidConnected&&<div className="plaid-cta" onClick={()=>openPlaidLink()}>
           <div style={{fontSize:40,marginBottom:10}}>🏦</div>
-          <div style={{fontSize:16,fontWeight:800,marginBottom:6}}>Connect Your Bank with Plaid</div>
-          <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.6,marginBottom:20,maxWidth:280,margin:'0 auto 20px'}}>Automatically pull in all account balances, cash, investments, and liabilities to get your true net worth.</div>
-          <button className="btn btn-prime">Connect with Plaid</button>
+          <div style={{fontSize:16,fontWeight:800,marginBottom:6}}>Connect Your Bank</div>
+          <div style={{fontSize:13,color:'var(--muted)',lineHeight:1.6,marginBottom:20,maxWidth:280,margin:'0 auto 20px'}}>
+            Pull in live balances from checking, savings, credit cards, loans, and investments to get your true net worth.
+          </div>
+          <button className="btn btn-prime" disabled={plaidLoading}>{plaidLoading?'Opening Plaid…':'Connect with Plaid'}</button>
+        </div>}
+
+        {plaidItems.map(item=>(
+          <div key={item.item_id} className="glass-card" style={{padding:'16px 18px',marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:item.accounts?.length?12:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:36,height:36,borderRadius:10,background:'rgba(37,99,235,.1)',
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🏦</div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{item.institution}</div>
+                  {item.needs_update
+                    ?<div style={{fontSize:11,color:'#f59e0b',fontWeight:600}}>⚠ Re-authentication required</div>
+                    :<div style={{fontSize:11,color:'var(--muted)'}}>{item.accounts?.length||0} accounts</div>
+                  }
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                {item.needs_update&&<button className="btn btn-sm"
+                  style={{fontSize:11,color:'#f59e0b',border:'1px solid #f59e0b'}}
+                  onClick={()=>openPlaidLink(item.access_token)}>Fix</button>}
+                <button className="btn btn-sm"
+                  style={{fontSize:11}}
+                  onClick={()=>{setPlaidView(item.item_id);loadTxns(item.access_token);}}>Txns</button>
+                <button className="btn btn-sm"
+                  style={{fontSize:11,color:'#ef4444'}}
+                  onClick={()=>removeItem(item.item_id)}>✕</button>
+              </div>
+            </div>
+            {item.accounts?.map(a=>(
+              <div key={a.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                padding:'8px 0',borderTop:'1px solid rgba(0,0,0,.05)'}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600}}>{a.name} <span style={{fontSize:11,color:'var(--muted)'}}>····{a.mask}</span></div>
+                  <div style={{fontSize:11,color:'var(--muted)',textTransform:'capitalize'}}>{a.subtype||a.type}</div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:15,fontWeight:800,fontFamily:'JetBrains Mono',
+                    color:(a.type==='credit'||a.type==='loan')?'#ef4444':'var(--fg)'}}>
+                    {(a.type==='credit'||a.type==='loan')?'-':''}{fmt$(a.balance)}
+                  </div>
+                  {a.available!=null&&a.available!==a.balance&&
+                    <div style={{fontSize:10,color:'var(--dim)'}}>Avail {fmt$(a.available)}</div>}
+                </div>
+              </div>
+            ))}
+            {item.error&&<div style={{fontSize:12,color:'#ef4444',paddingTop:8}}>{item.error}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* ── TRANSACTIONS DRAWER ──────────────────────────────────────────── */}
+      {plaidView&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
+          onClick={e=>e.target===e.currentTarget&&setPlaidView(null)}>
+          <div style={{background:'var(--surface)',borderRadius:'20px 20px 0 0',padding:'20px',maxHeight:'80vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:16}}>Recent Transactions</div>
+              <button className="btn btn-sm" onClick={()=>setPlaidView(null)}>✕ Close</button>
+            </div>
+            {txnLoading&&<div style={{textAlign:'center',padding:30,color:'var(--muted)'}}>Loading…</div>}
+            {!txnLoading&&txns.length===0&&<div style={{textAlign:'center',padding:30,color:'var(--muted)'}}>No transactions found</div>}
+            {txns.map(t=>(
+              <div key={t.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',
+                borderBottom:'1px solid rgba(0,0,0,.05)'}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</div>
+                  <div style={{fontSize:11,color:'var(--muted)'}}>{t.date} · {t.category?.replace(/_/g,' ')}</div>
+                </div>
+                <div style={{marginLeft:12,fontWeight:700,fontFamily:'JetBrains Mono',fontSize:14,flexShrink:0,
+                  color:t.amount<0?'#10b981':'var(--fg)'}}>
+                  {t.amount<0?'+':'-'}{fmt$(Math.abs(t.amount))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -2679,6 +3272,8 @@ function SettingsSheet({user,onClose,onUpdate,onLogout}){
   );
 }
 
+
+
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 function MainApp({user:initUser,onLogout}){
   const [user,setUser]=useState(initUser);
@@ -2894,6 +3489,123 @@ def following_status(uid):
         return jsonify({'following': following})
     except Exception as e:
         return jsonify({'following': False})
+
+
+
+# ── QUARTERLY RESULTS ─────────────────────────────────────────────────────────
+
+@app.route('/api/quarterly/results/<int:uid>')
+def quarterly_results(uid):
+    """Return quarterly aggregated performance from monthly_snapshots"""
+    req_uid = session.get('user_id')
+    if not req_uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("""
+                SELECT
+                    EXTRACT(YEAR FROM snapshot_month)::int AS year,
+                    EXTRACT(QUARTER FROM snapshot_month)::int AS quarter,
+                    MAX(snapshot_month::text) AS period_end,
+                    MAX(total_value)          AS total_value,
+                    MAX(total_equity)         AS total_equity,
+                    SUM(gross_revenue)        AS gross_revenue,
+                    SUM(net_cashflow)         AS net_cashflow,
+                    SUM(total_expenses)       AS total_expenses,
+                    AVG(avg_cap_rate)         AS avg_cap_rate,
+                    MAX(property_count)       AS property_count
+                FROM monthly_snapshots
+                WHERE user_id = %s
+                GROUP BY year, quarter
+                ORDER BY year ASC, quarter ASC
+            """, (uid,))
+            rows = [dict(r) for r in cur.fetchall()]
+            cur.close()
+
+        # Compute QoQ deltas and YoY deltas
+        quarters = []
+        for i, row in enumerate(rows):
+            q = dict(row)
+            q['label'] = f"Q{int(q['quarter'])} '{str(int(q['year']))[-2:]}"
+            q['full_label'] = f"Q{int(q['quarter'])} {int(q['year'])}"
+
+            # QoQ delta
+            prev = rows[i-1] if i > 0 else None
+            q['value_qoq'] = float(q['total_value'] or 0) - float(prev['total_value'] or 0) if prev else None
+            q['cf_qoq']    = float(q['net_cashflow'] or 0) - float(prev['net_cashflow'] or 0) if prev else None
+            q['rev_qoq']   = float(q['gross_revenue'] or 0) - float(prev['gross_revenue'] or 0) if prev else None
+
+            # YoY delta (4 quarters back)
+            yoy = rows[i-4] if i >= 4 else None
+            q['value_yoy_pct'] = ((float(q['total_value'] or 0) / float(yoy['total_value']) - 1) * 100) if yoy and yoy['total_value'] and float(yoy['total_value']) > 0 else None
+            q['cf_yoy_pct']    = ((float(q['net_cashflow'] or 0) / float(yoy['net_cashflow']) - 1) * 100) if yoy and yoy['net_cashflow'] and float(yoy['net_cashflow'] or 0) != 0 else None
+
+            quarters.append(q)
+
+        # Current quarter summary (most recent)
+        current = quarters[-1] if quarters else {}
+        # Best quarter
+        if quarters:
+            best_cf = max(quarters, key=lambda q: float(q['net_cashflow'] or 0))
+        else:
+            best_cf = {}
+
+        return jsonify({
+            'quarters': list(reversed(quarters)),   # newest first
+            'current': current,
+            'best_cf': best_cf,
+            'total_quarters': len(quarters),
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quarterly/property/<int:pid>')
+def quarterly_property(pid):
+    """Per-property quarterly revenue from monthly snapshots (estimated from property data)"""
+    req_uid = session.get('user_id')
+    if not req_uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Verify ownership
+            cur.execute("SELECT * FROM properties WHERE id=%s AND user_id=%s", (pid, req_uid))
+            prop = cur.fetchone()
+            if not prop: cur.close(); return jsonify({'error': 'Not found'}), 404
+
+            # Get portfolio quarterly data and estimate this property's share
+            cur.execute("""
+                SELECT
+                    EXTRACT(YEAR FROM snapshot_month)::int AS year,
+                    EXTRACT(QUARTER FROM snapshot_month)::int AS quarter,
+                    SUM(gross_revenue) AS gross_revenue,
+                    SUM(net_cashflow)  AS net_cashflow,
+                    MAX(property_count) AS property_count
+                FROM monthly_snapshots WHERE user_id=%s
+                GROUP BY year, quarter ORDER BY year, quarter
+            """, (req_uid,))
+            rows = [dict(r) for r in cur.fetchall()]
+            cur.close()
+
+        monthly_rev = float(prop.get('monthly_revenue') or 0)
+        monthly_exp = (float(prop.get('mortgage') or 0) + float(prop.get('insurance') or 0) +
+                       float(prop.get('hoa') or 0) + float(prop.get('property_tax') or 0))
+
+        quarters = []
+        for row in rows:
+            q = dict(row)
+            pc = max(1, int(q.get('property_count') or 1))
+            # Estimate this property's contribution
+            q['est_revenue']  = monthly_rev * 3
+            q['est_expenses'] = monthly_exp * 3
+            q['est_cf']       = q['est_revenue'] - q['est_expenses']
+            q['label'] = f"Q{int(q['quarter'])} '{str(int(q['year']))[-2:]}"
+            quarters.append(q)
+
+        return jsonify({'quarters': list(reversed(quarters)), 'property': dict(prop)})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 # ── SERVE ──────────────────────────────────────────────────────────────────────
 @app.route('/', defaults={'path': ''})
