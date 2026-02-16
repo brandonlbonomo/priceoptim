@@ -169,6 +169,23 @@ def migrate_db():
         ("portfolio_metrics", "health_score", "INTEGER DEFAULT 0"),
         ("portfolio_metrics", "share_price", "DECIMAL(10,4) DEFAULT 1.0"),
     ]
+    # Add unique constraint to plaid_items.item_id if missing
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                DO $$ BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'plaid_items_item_id_key'
+                    ) THEN
+                        ALTER TABLE plaid_items ADD CONSTRAINT plaid_items_item_id_key UNIQUE (item_id);
+                    END IF;
+                END $$;
+            """)
+            conn.commit(); cur.close()
+    except Exception as e:
+        print(f'Constraint migration skipped: {e}')
+
     try:
         with get_db() as conn:
             cur = conn.cursor()
@@ -1311,21 +1328,24 @@ def plaid_exchange():
         with get_db() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
             if item_id:
-                # Upsert by item_id
-                cur.execute("""
-                    INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
-                    VALUES (%s,%s,%s,%s,%s)
-                    ON CONFLICT (item_id) DO UPDATE
-                      SET access_token=EXCLUDED.access_token,
-                          institution_name=EXCLUDED.institution_name,
-                          updated_at=CURRENT_TIMESTAMP
-                """, (uid, access_token, item_id, inst_name, inst_id))
+                # Check if item already exists, update if so
+                cur.execute("SELECT id FROM plaid_items WHERE item_id=%s AND user_id=%s", (item_id, uid))
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute("""
+                        UPDATE plaid_items SET access_token=%s, institution_name=%s, updated_at=CURRENT_TIMESTAMP
+                        WHERE item_id=%s AND user_id=%s
+                    """, (access_token, inst_name, item_id, uid))
+                else:
+                    cur.execute("""
+                        INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
+                        VALUES (%s,%s,%s,%s,%s)
+                    """, (uid, access_token, item_id, inst_name, inst_id))
             else:
-                # No item_id — plain insert
                 cur.execute("""
                     INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
                     VALUES (%s,%s,%s,%s,%s)
-                """, (uid, access_token, item_id or None, inst_name, inst_id))
+                """, (uid, access_token, None, inst_name, inst_id))
             conn.commit(); cur.close()
         return jsonify({'ok': True, 'item_id': item_id})
     except urllib.error.HTTPError as e:
