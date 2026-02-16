@@ -1169,7 +1169,7 @@ def blended_lookup():
 
 
 @app.route('/api/property/lookup')
-def attom_lookup():
+def property_lookup():
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Not authenticated'}), 401
     addr = request.args.get('address','')
