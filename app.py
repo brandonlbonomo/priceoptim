@@ -6,7 +6,7 @@ from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
 import datetime as dt
 
-app = Flask(**name**, static_folder=‘static’)
+app = Flask(**name**)
 app.secret_key = os.environ.get(‘SECRET_KEY’, secrets.token_hex(32))
 CORS(app, supports_credentials=True)
 
