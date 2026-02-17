@@ -140,6 +140,31 @@ def logout():
     session.clear()
     return jsonify({'ok': True})
 
+@app.route('/api/reset-account', methods=['POST'])
+def reset_account():
+    """Delete user account so they can re-register fresh"""
+    d = request.json or {}
+    email = d.get('email', '').lower().strip()
+    
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            # Delete user and all their data (cascades to properties, plaid_items, txn_categories)
+            cur.execute("DELETE FROM users WHERE email=%s", (email,))
+            deleted = cur.rowcount
+            conn.commit()
+            cur.close()
+        
+        if deleted > 0:
+            return jsonify({'ok': True, 'message': 'Account deleted. You can now register again.'})
+        else:
+            return jsonify({'error': 'No account found with that email'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/me')
 def me():
     uid = session.get('user_id')
@@ -627,6 +652,7 @@ function Auth({onAuth}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showReset, setShowReset] = useState(false);
   
   const submit = async () => {
     const r = await fetch(isLogin ? '/api/login' : '/api/register', {
@@ -640,6 +666,23 @@ function Auth({onAuth}) {
     else onAuth(d.user || {id: d.user_id, email});
   };
   
+  const resetAccount = async () => {
+    if (!confirm(`Delete all data for ${email} and start fresh?`)) return;
+    const r = await fetch('/api/reset-account', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({email})
+    });
+    const d = await r.json();
+    if (d.error) setError(d.error);
+    else {
+      setError('');
+      setIsLogin(false);
+      alert('Account deleted! You can now register again.');
+    }
+  };
+  
   return React.createElement('div', {className: 'container', style: {maxWidth: 400, marginTop: 100}},
     React.createElement('div', {className: 'card'},
       React.createElement('h2', null, isLogin ? 'Login' : 'Register'),
@@ -647,8 +690,13 @@ function Auth({onAuth}) {
       React.createElement('input', {type: 'password', placeholder: 'Password', value: password, onChange: e => setPassword(e.target.value), style: {marginBottom: 12}, onKeyDown: e => e.key === 'Enter' && submit()}),
       React.createElement('button', {className: 'btn btn-primary', onClick: submit, style: {width: '100%'}}, isLogin ? 'Login' : 'Register'),
       error && React.createElement('div', {className: 'error'}, error),
-      React.createElement('div', {style: {marginTop: 12, textAlign: 'center', fontSize: 14}},
-        React.createElement('a', {href: '#', onClick: e => {e.preventDefault(); setIsLogin(!isLogin); setError('');}}, isLogin ? 'Need an account?' : 'Have an account?')
+      React.createElement('div', {style: {marginTop: 12, textAlign: 'center', fontSize: 14, display: 'flex', justifyContent: 'space-between'}},
+        React.createElement('a', {href: '#', onClick: e => {e.preventDefault(); setIsLogin(!isLogin); setError('');}}, isLogin ? 'Need an account?' : 'Have an account?'),
+        isLogin && React.createElement('a', {href: '#', onClick: e => {e.preventDefault(); setShowReset(!showReset);}, style: {color: '#dc2626'}}, 'Reset Account')
+      ),
+      showReset && React.createElement('div', {style: {marginTop: 12, padding: 12, background: '#fef2f2', borderRadius: 8}},
+        React.createElement('div', {style: {fontSize: 12, color: '#dc2626', marginBottom: 8}}, 'This will delete your account and all data. You can then register again.'),
+        React.createElement('button', {className: 'btn', onClick: resetAccount, style: {width: '100%', background: '#dc2626', color: 'white'}}, 'Delete Account & Reset')
       )
     )
   );
