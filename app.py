@@ -90,65 +90,35 @@ def init_db():
 
 init_db()
 
-# ── AUTH ───────────────────────────────────────────────────────────────────────
-@app.route('/api/register', methods=['POST'])
-def register():
-    d = request.json or {}
-    email = d.get('email', '').lower().strip()
-    password = d.get('password', '')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-    
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute("INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id", 
-                       (email, pw_hash))
-            user_id = cur.fetchone()[0]
-            conn.commit()
-            cur.close()
-        
-        session['user_id'] = user_id
-        return jsonify({'ok': True, 'user_id': user_id})
-    except psycopg2.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 400
-
-@app.route('/api/login', methods=['POST'])
-def login():
-    d = request.json or {}
-    email = d.get('email', '').lower().strip()
-    password = d.get('password', '')
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM users WHERE email=%s AND password_hash=%s", (email, pw_hash))
-        user = cur.fetchone()
-        cur.close()
-    
-    if not user:
-        return jsonify({'error': 'Invalid credentials'}), 401
-    
-    session['user_id'] = user['id']
-    return jsonify({'ok': True, 'user': dict(user)})
-
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return jsonify({'ok': True})
-
+# ── AUTH (AUTO USER) ──────────────────────────────────────────────────────────
 @app.route('/api/me')
 def me():
+    # Auto-create user if none exists in session
     uid = session.get('user_id')
+    
     if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Get or create default user
+            cur.execute("SELECT id, email FROM users WHERE email=%s", ('user@propertypigeon.com',))
+            user = cur.fetchone()
+            
+            if not user:
+                cur.execute("""
+                    INSERT INTO users (email, password_hash) 
+                    VALUES (%s, %s) 
+                    RETURNING id, email
+                """, ('user@propertypigeon.com', ''))
+                user = cur.fetchone()
+                conn.commit()
+            
+            cur.close()
+            session['user_id'] = user['id']
+            uid = user['id']
     
     with get_db() as conn:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id, email, created_at FROM users WHERE id=%s", (uid,))
+        cur.execute("SELECT id, email FROM users WHERE id=%s", (uid,))
         user = cur.fetchone()
         cur.close()
     
@@ -548,22 +518,15 @@ function App() {
     fetch('/api/me', {credentials: 'include'})
       .then(r => r.json())
       .then(d => {
-        if (!d.error) setUser(d);
+        setUser(d);
         setLoading(false);
       });
   }, []);
   
   if (loading) return React.createElement('div', {className: 'container'}, 'Loading...');
-  if (!user) return React.createElement(Auth, {onAuth: setUser});
   
   return React.createElement('div', {className: 'container'}, 
-    React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', marginBottom: 20}},
-      React.createElement('h1', null, '🐦 Property Pigeon'),
-      React.createElement('button', {className: 'btn', onClick: () => {
-        fetch('/api/logout', {method: 'POST', credentials: 'include'});
-        setUser(null);
-      }}, 'Logout')
-    ),
+    React.createElement('h1', {style: {marginBottom: 20}}, '🐦 Property Pigeon'),
     React.createElement('div', {className: 'nav'},
       React.createElement('button', {className: `nav-btn ${tab==='dashboard'?'active':''}`, onClick: () => setTab('dashboard')}, 'Dashboard'),
       React.createElement('button', {className: `nav-btn ${tab==='bank'?'active':''}`, onClick: () => setTab('bank')}, 'Bank'),
@@ -572,38 +535,6 @@ function App() {
     tab === 'dashboard' && React.createElement(Dashboard, {user}),
     tab === 'bank' && React.createElement(Bank, {user}),
     tab === 'analytics' && React.createElement(Analytics, {user})
-  );
-}
-
-function Auth({onAuth}) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  
-  const submit = async () => {
-    const r = await fetch(isLogin ? '/api/login' : '/api/register', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({email, password})
-    });
-    const d = await r.json();
-    if (d.error) setError(d.error);
-    else onAuth(d.user || d);
-  };
-  
-  return React.createElement('div', {className: 'container', style: {maxWidth: 400, marginTop: 100}},
-    React.createElement('div', {className: 'card'},
-      React.createElement('h2', null, isLogin ? 'Login' : 'Register'),
-      React.createElement('input', {placeholder: 'Email', value: email, onChange: e => setEmail(e.target.value), style: {marginBottom: 12}}),
-      React.createElement('input', {type: 'password', placeholder: 'Password', value: password, onChange: e => setPassword(e.target.value), style: {marginBottom: 12}}),
-      React.createElement('button', {className: 'btn btn-primary', onClick: submit, style: {width: '100%'}}, isLogin ? 'Login' : 'Register'),
-      error && React.createElement('div', {className: 'error'}, error),
-      React.createElement('div', {style: {marginTop: 12, textAlign: 'center', fontSize: 14}},
-        React.createElement('a', {href: '#', onClick: () => setIsLogin(!isLogin)}, isLogin ? 'Need an account?' : 'Have an account?')
-      )
-    )
   );
 }
 
