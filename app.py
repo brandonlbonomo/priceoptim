@@ -132,6 +132,20 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS plaid_txn_categories (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                txn_id TEXT NOT NULL,
+                txn_name TEXT,
+                original_category TEXT,
+                user_category TEXT NOT NULL,
+                amount NUMERIC,
+                txn_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, txn_id)
+            )
+        """)
         conn.commit()
         cur.close()
 
@@ -1491,21 +1505,7 @@ def get_txn_categories():
     try:
         with get_db() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS plaid_txn_categories (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    txn_id TEXT NOT NULL,
-                    txn_name TEXT,
-                    original_category TEXT,
-                    user_category TEXT NOT NULL,
-                    amount NUMERIC,
-                    txn_date DATE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(user_id, txn_id)
-                )
-            """)
-            conn.commit()
+
             cur.execute("SELECT * FROM plaid_txn_categories WHERE user_id=%s", (uid,))
             rows = [dict(r) for r in cur.fetchall()]; cur.close()
         return jsonify({'categories': rows})
