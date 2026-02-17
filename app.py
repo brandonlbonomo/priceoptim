@@ -2886,15 +2886,14 @@ function PerfPane({user,props,portfolio}){
   const capRate=tv>0?(props.reduce((s,p)=>s+(+p.monthly_revenue*12-(+p.property_tax+ +p.insurance+ +p.hoa)*12),0)/tv)*100:0;
 
   useEffect(()=>{
-    fetch(`/api/performance/portfolio/${uid}?months=24`,{credentials:'include'})
-      .then(r=>r.json()).then(d=>setSnaps(d.snapshots||[])).catch(()=>{});
+    fetch(`/api/performance/portfolio/${uid}`,{credentials:'include'})
+      .then(r=>r.json()).then(d=>{
+        // Backend now returns current calculated data, not historical snapshots
+        setSnaps(d.snapshots||[]);
+      }).catch(()=>{});
   },[uid]);
 
-  const saveSnap=async()=>{
-    await fetch('/api/performance/snapshot',{method:'POST',credentials:'include'});
-    const r=await fetch(`/api/performance/portfolio/${uid}?months=24`,{credentials:'include'});
-    const d=await r.json();setSnaps(d.snapshots||[]);
-  };
+
 
   // YoY comparison
   const yoyData=useMemo(()=>{
