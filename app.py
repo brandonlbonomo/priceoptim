@@ -2636,7 +2636,15 @@ function AddPropSheet({uid,onClose,onSave}){
             <div className="form-row"><label>Down payment ($)</label><input className="sinput" type="number" value={f.down_payment} onChange={set('down_payment')}/></div>
           </div>
           <div className="form-2">
-            <div className="form-row"><label>Monthly rent ($)</label><input className="sinput" type="number" value={f.monthly_revenue} onChange={set('monthly_revenue')}/></div>
+            <div style={{padding:'12px 14px',background:'rgba(0,0,0,.03)',borderRadius:10}}>
+              <div style={{fontSize:10,fontWeight:700,color:'var(--muted)',marginBottom:4}}>MONTHLY RENT</div>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:'JetBrains Mono',color:'#10b981'}}>
+                {fmt$(f.monthly_revenue||0)}
+              </div>
+              <div style={{fontSize:9,color:'var(--muted)',marginTop:3,fontStyle:'italic'}}>
+                Auto-calculated from bank
+              </div>
+            </div>
             <div className="form-row"><label>Mortgage /mo ($)</label><input className="sinput" type="number" value={f.mortgage} onChange={set('mortgage')}/></div>
           </div>
           <div className="form-2">
@@ -2852,14 +2860,15 @@ function PortfolioTab({user,props,portfolio,onAdd,onEdit,onRefreshValue}){
 
 // ── ANALYTICS TAB (Performance + Cashflow + Projections) ─────────────────────
 function AnalyticsTab({user,props,portfolio}){
-  const [sub,setSub]=useState('quarterly');
+  const [sub,setSub]=useState('bank');
   return(
     <div className="page page-in" style={{paddingTop:14}}>
       <div className="subnav">
-        {[['quarterly','📊 Quarterly'],['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
+        {[['bank','Bank Cash Flow'],['quarterly','Quarterly'],['performance','Performance'],['cashflow','Cash Flow'],['projections','Projections']].map(([id,lbl])=>(
           <button key={id} className={`subnav-btn${sub===id?' on':''}`} onClick={()=>setSub(id)}>{lbl}</button>
         ))}
       </div>
+      {sub==='bank'&&<PlaidCashflow uid={user.id} accent={user.accent_color||'#2563eb'} props={props}/>}
       {sub==='quarterly'&&<QuarterlyStrip uid={user.id} accent={user.accent_color||'#2563eb'}/>}
       {sub==='performance'&&<PerfPane user={user} props={props} portfolio={portfolio}/>}
       {sub==='cashflow'&&<CashflowPane props={props}/>}
