@@ -140,6 +140,7 @@ def init_db():
                 txn_name TEXT,
                 original_category TEXT,
                 user_category TEXT NOT NULL,
+                property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL,
                 amount NUMERIC,
                 txn_date DATE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -171,6 +172,7 @@ def migrate_db():
         ("plaid_items", "institution_id", "TEXT DEFAULT ''"),
         ("plaid_items", "cursor", "TEXT DEFAULT ''"),
         ("plaid_items", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("plaid_txn_categories", "property_id", "INTEGER REFERENCES properties(id) ON DELETE SET NULL"),
         ("properties", "last_value_refresh", "TIMESTAMP"),
         ("properties", "zillow_url", "TEXT DEFAULT ''"),
         ("properties", "monthly_expenses", "DECIMAL(10,2) DEFAULT 0"),
@@ -1506,7 +1508,7 @@ def get_txn_categories():
         with get_db() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
-            cur.execute("SELECT * FROM plaid_txn_categories WHERE user_id=%s", (uid,))
+            cur.execute("SELECT * FROM plaid_txn_categories WHERE user_id=%s ORDER BY txn_date DESC", (uid,))
             rows = [dict(r) for r in cur.fetchall()]; cur.close()
         return jsonify({'categories': rows})
     except Exception as e:
@@ -1537,12 +1539,14 @@ def set_txn_category():
                 )
             """)
             cur.execute("""
-                INSERT INTO plaid_txn_categories (user_id, txn_id, txn_name, original_category, user_category, amount, txn_date)
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                INSERT INTO plaid_txn_categories (user_id, txn_id, txn_name, original_category, user_category, property_id, amount, txn_date)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (user_id, txn_id) DO UPDATE
-                  SET user_category=EXCLUDED.user_category, original_category=EXCLUDED.original_category
+                  SET user_category=EXCLUDED.user_category, 
+                      property_id=EXCLUDED.property_id,
+                      original_category=EXCLUDED.original_category
             """, (uid, d['txn_id'], d.get('txn_name',''), d.get('original_category',''),
-                  d['user_category'], d.get('amount',0), d.get('txn_date')))
+                  d['user_category'], d.get('property_id'), d.get('amount',0), d.get('txn_date')))
             conn.commit(); cur.close()
         return jsonify({'ok': True})
     except Exception as e:
@@ -1649,6 +1653,111 @@ def auto_categorize(name, amount, raw_cat):
         return 'INTERNAL_TRANSFER'
     return 'EXPENSE'
 
+
+@app.route('/api/plaid/property-metrics/<int:pid>')
+def plaid_property_metrics(pid):
+    """Calculate property revenue/expenses from categorized bank transactions"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            # Verify ownership
+            cur.execute("SELECT id FROM properties WHERE id=%s AND user_id=%s", (pid, uid))
+            if not cur.fetchone(): cur.close(); return jsonify({'error': 'Not found'}), 404
+            
+            # Get categorized transactions for this property (last 90 days)
+            import datetime as dt
+            start = (dt.date.today() - dt.timedelta(days=90)).isoformat()
+            cur.execute("""
+                SELECT user_category, SUM(amount) as total, COUNT(*) as count
+                FROM plaid_txn_categories
+                WHERE user_id=%s AND property_id=%s AND txn_date >= %s
+                GROUP BY user_category
+            """, (uid, pid, start))
+            cats = {r['user_category']: {'total': float(r['total']), 'count': r['count']} for r in cur.fetchall()}
+            cur.close()
+        
+        revenue = abs(cats.get('REVENUE', {}).get('total', 0))
+        mortgage = cats.get('MORTGAGE', {}).get('total', 0)
+        insurance = cats.get('INSURANCE', {}).get('total', 0)
+        hoa = cats.get('HOA', {}).get('total', 0)
+        prop_tax = cats.get('PROPERTY_TAX', {}).get('total', 0)
+        maintenance = cats.get('MAINTENANCE', {}).get('total', 0)
+        other_exp = cats.get('EXPENSE', {}).get('total', 0)
+        
+        total_expenses = mortgage + insurance + hoa + prop_tax + maintenance + other_exp
+        net_cf = revenue - total_expenses
+        
+        # Monthly averages (90 days = 3 months)
+        return jsonify({
+            'property_id': pid,
+            'period_days': 90,
+            'revenue_total': round(revenue, 2),
+            'revenue_monthly': round(revenue / 3, 2),
+            'mortgage_total': round(mortgage, 2),
+            'mortgage_monthly': round(mortgage / 3, 2),
+            'expenses_total': round(total_expenses, 2),
+            'expenses_monthly': round(total_expenses / 3, 2),
+            'net_cf_total': round(net_cf, 2),
+            'net_cf_monthly': round(net_cf / 3, 2),
+            'breakdown': {
+                'mortgage': round(mortgage, 2),
+                'insurance': round(insurance, 2),
+                'hoa': round(hoa, 2),
+                'property_tax': round(prop_tax, 2),
+                'maintenance': round(maintenance, 2),
+                'other': round(other_exp, 2),
+            }
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plaid/sync-to-properties', methods=['POST'])
+def sync_plaid_to_properties():
+    """Update all properties with calculated revenue/expenses from bank transactions"""
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        with get_db() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT id FROM properties WHERE user_id=%s", (uid,))
+            props = [r['id'] for r in cur.fetchall()]
+            
+            import datetime as dt
+            start = (dt.date.today() - dt.timedelta(days=90)).isoformat()
+            
+            updated = 0
+            for pid in props:
+                # Get categorized txns for this property
+                cur.execute("""
+                    SELECT user_category, SUM(ABS(amount)) as total
+                    FROM plaid_txn_categories
+                    WHERE user_id=%s AND property_id=%s AND txn_date >= %s
+                    GROUP BY user_category
+                """, (uid, pid, start))
+                cats = {r['user_category']: float(r['total']) for r in cur.fetchall()}
+                
+                revenue = cats.get('REVENUE', 0)
+                mortgage = cats.get('MORTGAGE', 0)
+                expenses = (cats.get('INSURANCE', 0) + cats.get('HOA', 0) + 
+                           cats.get('PROPERTY_TAX', 0) + cats.get('MAINTENANCE', 0) + 
+                           cats.get('EXPENSE', 0))
+                
+                # Update property with monthly averages (90 days / 3)
+                cur.execute("""
+                    UPDATE properties 
+                    SET monthly_revenue=%s, monthly_expenses=%s, mortgage=%s
+                    WHERE id=%s
+                """, (round(revenue/3, 2), round(expenses/3, 2), round(mortgage/3, 2), pid))
+                updated += 1
+            
+            conn.commit(); cur.close()
+            return jsonify({'updated': updated})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 # ── PLAID CONNECTIVITY TEST ───────────────────────────────────────────────────
 @app.route('/api/plaid/test')
 def plaid_test():
@@ -2935,33 +3044,34 @@ function ProjectionsPane({props,portfolio,user}){
   if(!tv)return(<div className="empty"><div className="empty-icon">📈</div><div className="empty-title">Add a property first</div><div className="empty-sub">Projections require at least one property with a value</div></div>);
 
   const milestones=[proj[4],proj[9],proj[14],proj[19],proj[24],proj[29]].filter(Boolean);
-  const chartVals=proj.filter(p=>[5,10,15,20,25,30].includes(p.y)).map(p=>p.val);
-  const chartLabels=['Yr 5','Yr 10','Yr 15','Yr 20','Yr 25','Yr 30'];
-  const ncfChart=proj.map(p=>p.ncf);
 
   return(<>
-    <div className="glass-card" style={{padding:18,marginBottom:14}}>
-      <div className="lbl" style={{marginBottom:16}}>Adjust Assumptions</div>
+    <div className="glass-card" style={{padding:'18px 20px',marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5,marginBottom:14}}>ADJUST ASSUMPTIONS</div>
       <Slider label="Appreciation" value={appreciation} set={setAppreciation} min={0} max={10} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
       <Slider label="Rent Growth" value={rentGrowth} set={setRentGrowth} min={0} max={8} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
       <Slider label="Vacancy Rate" value={vacancy} set={setVacancy} min={0} max={20} step={1} fmt={v=>v+'%'}/>
       <Slider label="Expense Inflation" value={expInflation} set={setExpInflation} min={0} max={6} step={0.5} fmt={v=>v.toFixed(1)+'%'}/>
     </div>
-    <div className="glass-card" style={{padding:18,marginBottom:12}}>
-      <div className="lbl" style={{marginBottom:10}}>Portfolio Value at Milestones</div>
-      <BarChart data={chartVals} labels={chartLabels} color={accent} height={140}/>
-    </div>
-    <div className="glass-card" style={{padding:18,marginBottom:12}}>
-      <div className="lbl" style={{marginBottom:10}}>Annual Cash Flow Growth (30yr)</div>
-      <MiniLine data={ncfChart} color={ncfChart[ncfChart.length-1]>0?'#10b981':'#f43f5e'} height={80}/>
-    </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
-      {milestones.map((m,i)=>(<div key={m.y} className="scard" style={{borderTop:`3px solid ${[accent,'#6366f1','#10b981','#f59e0b','#f43f5e','#0891b2'][i]}`}}>
-        <div style={{fontSize:10,fontWeight:700,color:'var(--muted)',marginBottom:6}}>YEAR {m.y}</div>
-        <div style={{fontSize:17,fontWeight:800,letterSpacing:'-.5px'}}>{fmt$k(m.val)}</div>
-        <div style={{fontSize:11,color:'var(--green)',fontWeight:700,marginTop:4}}>Eq {fmt$k(m.eq)}</div>
+
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
+      {milestones.map((m,i)=>(<div key={m.y} className="glass-card" style={{padding:'14px 16px',borderLeft:`4px solid ${[accent,'#6366f1','#10b981','#f59e0b','#f43f5e','#0891b2'][i]}`}}>
+        <div style={{fontSize:10,fontWeight:700,color:'var(--muted)',marginBottom:4}}>YEAR {m.y}</div>
+        <div style={{fontSize:19,fontWeight:800,letterSpacing:'-1px',fontFamily:'JetBrains Mono'}}>{fmt$k(m.val)}</div>
+        <div style={{fontSize:11,color:'#10b981',fontWeight:600,marginTop:4}}>Eq {fmt$k(m.eq)}</div>
       </div>))}
     </div>
+
+    <div className="glass-card" style={{padding:20,marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5,marginBottom:12}}>PORTFOLIO VALUE AT MILESTONES</div>
+      <BarChart data={[proj[4].val,proj[9].val,proj[14].val,proj[19].val,proj[24].val,proj[29].val]} labels={['Yr 5','Yr 10','Yr 15','Yr 20','Yr 25','Yr 30']} color={accent} height={160}/>
+    </div>
+
+    <div className="glass-card" style={{padding:20,marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:800,color:'var(--muted)',letterSpacing:.5,marginBottom:12}}>ANNUAL CASH FLOW GROWTH (30YR)</div>
+      <MiniLine data={proj.map(p=>p.ncf)} color={proj[29].ncf>0?'#10b981':'#f43f5e'} height={100}/>
+    </div>
+
     <div className="glass-card" style={{padding:0,overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
         <table className="proj-table">
@@ -2985,18 +3095,18 @@ function ProjectionsPane({props,portfolio,user}){
 
 // ── PLAID CASHFLOW CATEGORIZER ────────────────────────────────────────────────
 const CAT_LABELS = {
-  REVENUE:           {label:'Revenue',        color:'#10b981', icon:'📈', impacts:'revenue'},
-  MORTGAGE:          {label:'Mortgage',        color:'#ef4444', icon:'🏠', impacts:'mortgage'},
-  INSURANCE:         {label:'Insurance',       color:'#f59e0b', icon:'🛡', impacts:'expense'},
-  HOA:               {label:'HOA',             color:'#f59e0b', icon:'🏘', impacts:'expense'},
-  PROPERTY_TAX:      {label:'Property Tax',    color:'#f59e0b', icon:'📋', impacts:'expense'},
-  MAINTENANCE:       {label:'Maintenance',     color:'#8b5cf6', icon:'🔧', impacts:'expense'},
-  EXPENSE:           {label:'Expense',         color:'#6b7280', icon:'💸', impacts:'expense'},
-  INTERNAL_TRANSFER: {label:'Internal Transfer',color:'#94a3b8',icon:'↔️', impacts:'none'},
+  REVENUE:           {label:'Revenue',        color:'#10b981', impacts:'revenue'},
+  MORTGAGE:          {label:'Mortgage',        color:'#ef4444', impacts:'mortgage'},
+  INSURANCE:         {label:'Insurance',       color:'#f59e0b', impacts:'expense'},
+  HOA:               {label:'HOA',             color:'#f59e0b', impacts:'expense'},
+  PROPERTY_TAX:      {label:'Property Tax',    color:'#f59e0b', impacts:'expense'},
+  MAINTENANCE:       {label:'Maintenance',     color:'#8b5cf6', impacts:'expense'},
+  EXPENSE:           {label:'Expense',         color:'#6b7280', impacts:'expense'},
+  INTERNAL_TRANSFER: {label:'Internal Transfer',color:'#94a3b8',impacts:'none'},
 };
 const CAT_OPTIONS = Object.entries(CAT_LABELS).map(([k,v])=>({value:k,...v}));
 
-function PlaidCashflow({uid, accent}){
+function PlaidCashflow({uid, accent, props}){
   const [data, setData]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [overriding, setOverriding] = useState(null); // txn id being edited
@@ -3007,6 +3117,9 @@ function PlaidCashflow({uid, accent}){
   const load = async()=>{
     setLoading(true);
     try{
+      // Sync bank data to properties first
+      await fetch('/api/plaid/sync-to-properties',{method:'POST',credentials:'include'});
+      // Then load summary
       const r = await fetch('/api/plaid/cashflow-summary',{credentials:'include'});
       const d = await r.json();
       setData(d);
@@ -3016,7 +3129,7 @@ function PlaidCashflow({uid, accent}){
 
   useEffect(()=>{load();},[]);
 
-  const saveOverride = async(txn, newCat)=>{
+  const saveOverride = async(txn, newCat, propId)=>{
     setSaving(true);
     await fetch('/api/plaid/txn-categories',{
       method:'POST', credentials:'include',
@@ -3026,6 +3139,7 @@ function PlaidCashflow({uid, accent}){
         txn_name: txn.name,
         original_category: txn.raw_category,
         user_category: newCat,
+        property_id: propId,
         amount: txn.amount,
         txn_date: txn.date,
       })
@@ -3105,23 +3219,23 @@ function PlaidCashflow({uid, accent}){
                   <button onClick={()=>setOverriding(isEditing?null:t.id)}
                     style={{marginTop:3,fontSize:10,fontWeight:700,color:ci.color,
                       background:ci.color+'18',border:'none',borderRadius:10,padding:'2px 8px',cursor:'pointer'}}>
-                    {ci.icon} {ci.label}
+                    {ci.label}
                   </button>
                 </div>
               </div>
               {isEditing&&(
                 <div style={{marginTop:10,padding:'10px 12px',background:'rgba(0,0,0,.03)',borderRadius:10}}>
                   <div style={{fontSize:11,fontWeight:700,marginBottom:8,color:'var(--muted)'}}>Recategorize as:</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,marginBottom:10}}>
                     {CAT_OPTIONS.map(opt=>(
                       <button key={opt.value}
-                        onClick={()=>!saving&&saveOverride(t, opt.value)}
+                        onClick={()=>!saving&&saveOverride(t, opt.value, t.property_id)}
                         style={{padding:'7px 10px',borderRadius:10,border:'none',cursor:'pointer',
                           textAlign:'left',fontSize:12,fontWeight:700,
                           background: t.category===opt.value?opt.color+'22':'rgba(0,0,0,.04)',
                           color: t.category===opt.value?opt.color:'var(--fg)',
                           opacity: saving?0.5:1}}>
-                        {opt.icon} {opt.label}
+                        {opt.label}
                         {opt.impacts==='none'&&<span style={{fontSize:9,display:'block',color:'var(--muted)',fontWeight:400}}>won't affect numbers</span>}
                         {opt.impacts==='revenue'&&<span style={{fontSize:9,display:'block',color:'#10b981',fontWeight:400}}>counts as income</span>}
                         {opt.impacts==='mortgage'&&<span style={{fontSize:9,display:'block',color:'#ef4444',fontWeight:400}}>counts as mortgage</span>}
@@ -3129,6 +3243,14 @@ function PlaidCashflow({uid, accent}){
                       </button>
                     ))}
                   </div>
+                  {(t.category!=='INTERNAL_TRANSFER')&&<div style={{marginTop:6}}>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:'var(--muted)'}}>Assign to property:</div>
+                    <select value={t.property_id||''} onChange={(e)=>saveOverride(t, t.category, e.target.value?parseInt(e.target.value):null)}
+                      style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid rgba(0,0,0,.1)',fontSize:12,outline:'none'}}>
+                      <option value="">Unassigned</option>
+                      {props.map(p=><option key={p.id} value={p.id}>{p.address}</option>)}
+                    </select>
+                  </div>}
                   {saving&&<div style={{fontSize:11,color:'var(--muted)',marginTop:8,textAlign:'center'}}>Saving…</div>}
                 </div>
               )}
@@ -3358,7 +3480,7 @@ function NetWorthTab({user,portfolio,props}){
       </div>
 
       {/* ── CASHFLOW FROM BANK ───────────────────────────────────────────── */}
-      {plaidConnected&&<PlaidCashflow uid={user.id} accent={accent}/>}
+
 
       <div className="glass-card" style={{padding:20,marginTop:14}}>
         <div className="sec-hdr"><h4>Stocks &amp; ETFs</h4></div>
