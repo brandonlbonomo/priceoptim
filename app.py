@@ -171,15 +171,18 @@ def nuke_all_data():
     try:
         with get_db() as conn:
             cur = conn.cursor()
-            cur.execute("DELETE FROM plaid_txn_categories")
-            cur.execute("DELETE FROM plaid_items")
-            cur.execute("DELETE FROM properties")
-            cur.execute("DELETE FROM users")
+            # Delete in correct order to avoid foreign key constraint violations
+            cur.execute("TRUNCATE TABLE plaid_txn_categories CASCADE")
+            cur.execute("TRUNCATE TABLE plaid_items CASCADE")
+            cur.execute("TRUNCATE TABLE properties CASCADE")
+            cur.execute("TRUNCATE TABLE users CASCADE")
             conn.commit()
             cur.close()
         session.clear()
         return jsonify({'ok': True, 'message': 'All data deleted. Database reset.'})
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/me')
