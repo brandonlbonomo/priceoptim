@@ -165,6 +165,23 @@ def reset_account():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/nuke-all-data', methods=['POST'])
+def nuke_all_data():
+    """NUCLEAR OPTION: Delete ALL users and data. For dev/testing only."""
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM plaid_txn_categories")
+            cur.execute("DELETE FROM plaid_items")
+            cur.execute("DELETE FROM properties")
+            cur.execute("DELETE FROM users")
+            conn.commit()
+            cur.close()
+        session.clear()
+        return jsonify({'ok': True, 'message': 'All data deleted. Database reset.'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/me')
 def me():
     uid = session.get('user_id')
@@ -653,6 +670,7 @@ function Auth({onAuth}) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showReset, setShowReset] = useState(false);
+  const [showNuke, setShowNuke] = useState(false);
   
   const submit = async () => {
     const r = await fetch(isLogin ? '/api/login' : '/api/register', {
@@ -683,6 +701,20 @@ function Auth({onAuth}) {
     }
   };
   
+  const nukeEverything = async () => {
+    if (!confirm('DELETE ALL USERS AND DATA? This cannot be undone.')) return;
+    if (!confirm('Are you ABSOLUTELY sure? This deletes EVERYTHING.')) return;
+    const r = await fetch('/api/nuke-all-data', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const d = await r.json();
+    alert(d.message || 'All data deleted. You can now register fresh.');
+    setIsLogin(false);
+    setShowNuke(false);
+    setError('');
+  };
+  
   return React.createElement('div', {className: 'container', style: {maxWidth: 400, marginTop: 100}},
     React.createElement('div', {className: 'card'},
       React.createElement('h2', null, isLogin ? 'Login' : 'Register'),
@@ -697,6 +729,14 @@ function Auth({onAuth}) {
       showReset && React.createElement('div', {style: {marginTop: 12, padding: 12, background: '#fef2f2', borderRadius: 8}},
         React.createElement('div', {style: {fontSize: 12, color: '#dc2626', marginBottom: 8}}, 'This will delete your account and all data. You can then register again.'),
         React.createElement('button', {className: 'btn', onClick: resetAccount, style: {width: '100%', background: '#dc2626', color: 'white'}}, 'Delete Account & Reset')
+      ),
+      React.createElement('div', {style: {marginTop: 16, textAlign: 'center'}},
+        React.createElement('button', {onClick: () => setShowNuke(!showNuke), style: {background: 'none', border: 'none', color: '#6b7280', fontSize: 10, cursor: 'pointer', textDecoration: 'underline'}}, 'Nuclear Option')
+      ),
+      showNuke && React.createElement('div', {style: {marginTop: 12, padding: 12, background: '#000', borderRadius: 8}},
+        React.createElement('div', {style: {fontSize: 12, color: '#dc2626', marginBottom: 8, fontWeight: 700}}, '⚠️ DELETE ALL USERS & DATA ⚠️'),
+        React.createElement('div', {style: {fontSize: 10, color: '#fff', marginBottom: 8}}, 'This deletes EVERYTHING in the database. All users, properties, banks, transactions.'),
+        React.createElement('button', {className: 'btn', onClick: nukeEverything, style: {width: '100%', background: '#dc2626', color: 'white'}}, 'NUKE EVERYTHING')
       )
     )
   );
