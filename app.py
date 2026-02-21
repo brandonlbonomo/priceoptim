@@ -1,997 +1,178 @@
-import os, json, secrets, hashlib, hmac, time, base64, struct, urllib.request, urllib.parse, re
-from flask import Flask, request, session, jsonify, send_from_directory
+import os
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from contextlib import contextmanager
-import datetime as dt
+from plaid.api import plaid_api
+from plaid.model.link_token_create_request import LinkTokenCreateRequest
+from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.transactions_sync_request import TransactionsSyncRequest
+from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
+from plaid.model.products import Products
+from plaid.model.country_code import CountryCode
+from plaid import ApiClient, Configuration, Environment
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-CORS(app, supports_credentials=True)
+CORS(app, origins=os.getenv("FRONTEND_URL", "*"))
 
-DATABASE_URL = os.environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
-PLAID_CLIENT_ID = os.environ.get('PLAID_CLIENT_ID', '')
-PLAID_SECRET = os.environ.get('PLAID_SECRET', '')
-PLAID_ENV = os.environ.get('PLAID_ENV', 'production')
+# ── Plaid client setup ───────────────────────────────────────
+PLAID_ENV = os.getenv("PLAID_ENV", "development")
+PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
+PLAID_SECRET = os.getenv("PLAID_SECRET")
 
-@contextmanager
-def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
-    try:
-        yield conn
-    finally:
-        conn.close()
+env_map = {
+    "sandbox": Environment.Sandbox,
+    "development": Environment.Development,
+    "production": Environment.Production,
+}
 
-# ── DATABASE INIT ──────────────────────────────────────────────────────────────
-def init_db():
-    with get_db() as conn:
-        cur = conn.cursor()
-        
-        # Users
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Properties
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS properties (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                address TEXT NOT NULL,
-                purchase_price NUMERIC DEFAULT 0,
-                current_value NUMERIC DEFAULT 0,
-                down_payment NUMERIC DEFAULT 0,
-                equity NUMERIC DEFAULT 0,
-                mortgage NUMERIC DEFAULT 0,
-                monthly_revenue NUMERIC DEFAULT 0,
-                monthly_expenses NUMERIC DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Plaid items (bank connections)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS plaid_items (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                access_token TEXT NOT NULL,
-                item_id TEXT UNIQUE,
-                institution_name TEXT DEFAULT '',
-                institution_id TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Transaction categorizations
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS plaid_txn_categories (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                txn_id TEXT NOT NULL,
-                txn_name TEXT,
-                original_category TEXT,
-                user_category TEXT NOT NULL,
-                property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL,
-                amount NUMERIC,
-                txn_date DATE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, txn_id)
-            )
-        """)
-        
-        conn.commit()
-        cur.close()
+configuration = Configuration(
+    host=env_map.get(PLAID_ENV, Environment.Development),
+    api_key={
+        "clientId": PLAID_CLIENT_ID,
+        "secret": PLAID_SECRET,
+    }
+)
 
-init_db()
+api_client = ApiClient(configuration)
+plaid_client = plaid_api.PlaidApi(api_client)
 
-# ── AUTH ───────────────────────────────────────────────────────────────────────
-@app.route('/api/register', methods=['POST'])
-def register():
-    d = request.json or {}
-    email = d.get('email', '').lower().strip()
-    password = d.get('password', '')
-    
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-    
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute("INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id", 
-                       (email, pw_hash))
-            user_id = cur.fetchone()[0]
-            conn.commit()
-            cur.close()
-        
-        session['user_id'] = user_id
-        return jsonify({'ok': True, 'user_id': user_id})
-    except psycopg2.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 400
+# ── In-memory token store ────────────────────────────────────
+# Render services persist between requests (unlike serverless)
+# so this works reliably. For multi-instance setups use a DB.
+store = {
+    "access_token": None,
+    "item_id": None,
+    "cursor": None,
+}
 
-@app.route('/api/login', methods=['POST'])
-def login():
-    d = request.json or {}
-    email = d.get('email', '').lower().strip()
-    password = d.get('password', '')
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM users WHERE email=%s AND password_hash=%s", (email, pw_hash))
-        user = cur.fetchone()
-        cur.close()
-    
-    if not user:
-        return jsonify({'error': 'Invalid credentials'}), 401
-    
-    session['user_id'] = user['id']
-    return jsonify({'ok': True, 'user': dict(user)})
+# ── Health check ─────────────────────────────────────────────
+@app.route("/api/health")
+def health():
+    return jsonify({"ok": True, "linked": store["access_token"] is not None})
 
-@app.route('/api/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return jsonify({'ok': True})
+# ── Link status ───────────────────────────────────────────────
+@app.route("/api/link-status")
+def link_status():
+    return jsonify({
+        "linked": store["access_token"] is not None,
+        "item_id": store["item_id"],
+    })
 
-@app.route('/api/reset-account', methods=['POST'])
-def reset_account():
-    """Delete user account so they can re-register fresh"""
-    d = request.json or {}
-    email = d.get('email', '').lower().strip()
-    
-    if not email:
-        return jsonify({'error': 'Email required'}), 400
-    
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            # Delete user and all their data (cascades to properties, plaid_items, txn_categories)
-            cur.execute("DELETE FROM users WHERE email=%s", (email,))
-            deleted = cur.rowcount
-            conn.commit()
-            cur.close()
-        
-        if deleted > 0:
-            return jsonify({'ok': True, 'message': 'Account deleted. You can now register again.'})
-        else:
-            return jsonify({'error': 'No account found with that email'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/nuke-all-data', methods=['POST'])
-def nuke_all_data():
-    """NUCLEAR OPTION: Delete ALL users and data. For dev/testing only."""
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            # Delete in correct order to avoid foreign key constraint violations
-            cur.execute("TRUNCATE TABLE plaid_txn_categories CASCADE")
-            cur.execute("TRUNCATE TABLE plaid_items CASCADE")
-            cur.execute("TRUNCATE TABLE properties CASCADE")
-            cur.execute("TRUNCATE TABLE users CASCADE")
-            conn.commit()
-            cur.close()
-        session.clear()
-        return jsonify({'ok': True, 'message': 'All data deleted. Database reset.'})
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/me')
-def me():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id, email FROM users WHERE id=%s", (uid,))
-        user = cur.fetchone()
-        cur.close()
-    
-    return jsonify(dict(user) if user else {'error': 'User not found'})
-
-# ── PROPERTIES ─────────────────────────────────────────────────────────────────
-@app.route('/api/properties', methods=['GET', 'POST'])
-def properties():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    if request.method == 'GET':
-        with get_db() as conn:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT * FROM properties WHERE user_id=%s ORDER BY created_at DESC", (uid,))
-            props = [dict(r) for r in cur.fetchall()]
-            cur.close()
-        return jsonify(props)
-    
-    # POST - create property
-    d = request.json or {}
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            INSERT INTO properties (user_id, address, purchase_price, current_value, down_payment, equity, mortgage)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            RETURNING *
-        """, (uid, d.get('address', ''), float(d.get('purchase_price', 0)),
-              float(d.get('current_value') or d.get('purchase_price', 0)),
-              float(d.get('down_payment', 0)),
-              float(d.get('current_value', 0)) - (float(d.get('purchase_price', 0)) - float(d.get('down_payment', 0))),
-              float(d.get('mortgage', 0))))
-        prop = dict(cur.fetchone())
-        conn.commit()
-        cur.close()
-    
-    return jsonify(prop), 201
-
-@app.route('/api/properties/<int:pid>', methods=['PUT', 'DELETE'])
-def property_detail(pid):
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM properties WHERE id=%s AND user_id=%s", (pid, uid))
-        prop = cur.fetchone()
-        
-        if not prop:
-            cur.close()
-            return jsonify({'error': 'Not found'}), 404
-        
-        if request.method == 'DELETE':
-            cur.execute("DELETE FROM properties WHERE id=%s", (pid,))
-            conn.commit()
-            cur.close()
-            return jsonify({'ok': True})
-        
-        # PUT - update
-        d = request.json or {}
-        cur.execute("""
-            UPDATE properties 
-            SET address=%s, purchase_price=%s, current_value=%s, down_payment=%s, mortgage=%s
-            WHERE id=%s
-            RETURNING *
-        """, (d.get('address', prop['address']),
-              float(d.get('purchase_price', prop['purchase_price'])),
-              float(d.get('current_value', prop['current_value'])),
-              float(d.get('down_payment', prop['down_payment'])),
-              float(d.get('mortgage', prop['mortgage'])),
-              pid))
-        updated = dict(cur.fetchone())
-        conn.commit()
-        cur.close()
-        
-        return jsonify(updated)
-
-# ── PLAID ──────────────────────────────────────────────────────────────────────
-def plaid_post(path, payload):
-    """Helper to call Plaid API"""
-    url = f'https://{PLAID_ENV}.plaid.com{path}'
-    payload['client_id'] = PLAID_CLIENT_ID
-    payload['secret'] = PLAID_SECRET
-    
-    req = urllib.request.Request(url, json.dumps(payload).encode(), {'Content-Type': 'application/json'})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode('utf-8', 'ignore')
-        raise Exception(f'Plaid {e.code}: {body[:200]}')
-
-@app.route('/api/plaid/create-link-token', methods=['POST'])
+# ── Step 1: Create link token ─────────────────────────────────
+@app.route("/api/create-link-token", methods=["POST"])
 def create_link_token():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    d = request.json or {}
-    access_token = d.get('access_token')  # For update mode
-    
-    payload = {
-        'user': {'client_user_id': str(uid)},
-        'client_name': 'Property Pigeon',
-        'products': ['transactions'],
-        'country_codes': ['US'],
-        'language': 'en',
-    }
-    
-    if access_token:
-        payload['access_token'] = access_token
-    
-    result = plaid_post('/link/token/create', payload)
-    return jsonify({'link_token': result['link_token']})
-
-@app.route('/api/plaid/exchange-token', methods=['POST'])
-def exchange_token():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    d = request.json or {}
-    public_token = d.get('public_token')
-    
-    result = plaid_post('/item/public_token/exchange', {'public_token': public_token})
-    access_token = result['access_token']
-    item_id = result['item_id']
-    
-    inst_name = d.get('institution_name', 'Bank')
-    inst_id = d.get('institution_id', '')
-    
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM plaid_items WHERE item_id=%s AND user_id=%s", (item_id, uid))
-        existing = cur.fetchone()
-        
-        if existing:
-            cur.execute("UPDATE plaid_items SET access_token=%s WHERE item_id=%s", (access_token, item_id))
-        else:
-            cur.execute("""
-                INSERT INTO plaid_items (user_id, access_token, item_id, institution_name, institution_id)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (uid, access_token, item_id, inst_name, inst_id))
-        
-        conn.commit()
-        cur.close()
-    
-    return jsonify({'ok': True, 'item_id': item_id})
-
-@app.route('/api/plaid/accounts')
-def plaid_accounts():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM plaid_items WHERE user_id=%s", (uid,))
-        items = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    
-    results = []
-    for item in items:
-        try:
-            data = plaid_post('/accounts/balance/get', {'access_token': item['access_token']})
-            results.append({
-                'item_id': item['item_id'],
-                'institution': item['institution_name'],
-                'accounts': data.get('accounts', []),
-            })
-        except Exception as e:
-            results.append({
-                'item_id': item['item_id'],
-                'institution': item['institution_name'],
-                'error': str(e),
-                'accounts': [],
-            })
-    
-    return jsonify(results)
-
-@app.route('/api/plaid/transactions/<item_id>')
-def plaid_transactions(item_id):
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT access_token FROM plaid_items WHERE item_id=%s AND user_id=%s", (item_id, uid))
-        item = cur.fetchone()
-        cur.close()
-    
-    if not item:
-        return jsonify({'error': 'Not found'}), 404
-    
-    end = dt.date.today().isoformat()
-    start = (dt.date.today() - dt.timedelta(days=90)).isoformat()
-    
-    data = plaid_post('/transactions/get', {
-        'access_token': item['access_token'],
-        'start_date': start,
-        'end_date': end,
-        'options': {'count': 500}
-    })
-    
-    # Load existing user overrides
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT txn_id, user_category, property_id FROM plaid_txn_categories WHERE user_id=%s", (uid,))
-        overrides = {r['txn_id']: dict(r) for r in cur.fetchall()}
-        cur.close()
-    
-    txns = data.get('transactions', [])
-    for t in txns:
-        tid = t['transaction_id']
-        if tid in overrides:
-            t['auto_category'] = overrides[tid]['user_category']
-            t['property_id'] = overrides[tid]['property_id']
-            t['is_edited'] = True
-        else:
-            t['auto_category'] = auto_categorize(t.get('name', ''), t.get('amount', 0))
-            t['property_id'] = None
-            t['is_edited'] = False
-    
-    return jsonify({'transactions': txns})
-
-# ── TRANSACTION CATEGORIZATION ────────────────────────────────────────────────
-def auto_categorize(name, amount):
-    """Guess category from transaction name and amount"""
-    n = (name or '').upper()
-    
-    # Credits (negative amount in Plaid = money coming in)
-    if amount < 0:
-        if any(x in n for x in ['DEPOSIT', 'DDA', 'RENT', 'AIRBNB', 'VRBO', 'BOOKING', 'PAYPAL', 'VENMO', 'ZELLE', 'ACH CR', 'DIRECT DEP']):
-            return 'REVENUE'
-        if any(x in n for x in ['TRANSFER FROM', 'XFER FROM', 'ACH FROM']):
-            return 'INTERNAL_TRANSFER'
-        return 'REVENUE'  # Default credits to revenue
-    
-    # Debits (positive amount = money going out)
-    if any(x in n for x in ['MORTGAGE', 'LOAN PMT', 'LOAN PAY', 'MTG', 'HOME LOAN', 'LOANCARE', 'MR COOPER', 'PENNYMAC', 'SHELLPOINT', 'SPECIALIZED']):
-        return 'MORTGAGE'
-    if any(x in n for x in ['STATE FARM', 'ALLSTATE', 'GEICO', 'PROGRESSIVE', 'LIBERTY MUTUAL', 'INSURANCE', 'INSUR']):
-        return 'INSURANCE'
-    if any(x in n for x in ['HOA', 'HOMEOWNERS ASSOC', 'HOMEOWNER ASSOC', 'COMMUNITY ASSOC']):
-        return 'HOA'
-    if any(x in n for x in ['PROPERTY TAX', 'TAX COLLECTOR', 'COUNTY TAX', 'TREASURER']):
-        return 'PROPERTY_TAX'
-    if any(x in n for x in ['LOWES', 'HOME DEPOT', 'ACE HARDWARE', 'MAINTENANCE', 'REPAIR', 'PLUMBER', 'ELECTRIC', 'HVAC', 'CONTRACTOR']):
-        return 'MAINTENANCE'
-    if any(x in n for x in ['TRANSFER TO', 'XFER TO', 'ACH TO', 'ZELLE TO', 'ACH BATCH']):
-        return 'INTERNAL_TRANSFER'
-    
-    return 'EXPENSE'  # Default debits to general expense
-
-@app.route('/api/plaid/categorize', methods=['POST'])
-def categorize_transaction():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    d = request.json or {}
-    
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO plaid_txn_categories 
-            (user_id, txn_id, txn_name, original_category, user_category, property_id, amount, txn_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (user_id, txn_id) DO UPDATE
-            SET user_category=EXCLUDED.user_category, property_id=EXCLUDED.property_id
-        """, (uid, d['txn_id'], d.get('txn_name'), d.get('original_category'),
-              d['user_category'], d.get('property_id'), d.get('amount'), d.get('txn_date')))
-        conn.commit()
-        cur.close()
-    
-    # Sync to properties
-    sync_bank_to_properties(uid)
-    
-    return jsonify({'ok': True})
-
-def sync_bank_to_properties(uid):
-    """Update property monthly_revenue/expenses from categorized transactions"""
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT id FROM properties WHERE user_id=%s", (uid,))
-        props = [r['id'] for r in cur.fetchall()]
-        
-        start = (dt.date.today() - dt.timedelta(days=90)).isoformat()
-        
-        for pid in props:
-            cur.execute("""
-                SELECT user_category, SUM(ABS(amount)) as total
-                FROM plaid_txn_categories
-                WHERE user_id=%s AND property_id=%s AND txn_date >= %s
-                GROUP BY user_category
-            """, (uid, pid, start))
-            
-            cats = {r['user_category']: float(r['total']) for r in cur.fetchall()}
-            
-            revenue = cats.get('REVENUE', 0)
-            mortgage = cats.get('MORTGAGE', 0)
-            expenses = sum(cats.get(k, 0) for k in ['INSURANCE', 'HOA', 'PROPERTY_TAX', 'MAINTENANCE', 'EXPENSE'])
-            
-            # 90 days / 3 = monthly average
-            cur.execute("""
-                UPDATE properties
-                SET monthly_revenue=%s, monthly_expenses=%s, mortgage=%s
-                WHERE id=%s
-            """, (round(revenue/3, 2), round(expenses/3, 2), round(mortgage/3, 2), pid))
-        
-        conn.commit()
-        cur.close()
-
-@app.route('/api/plaid/categorized-transactions')
-def categorized_transactions():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
-            SELECT * FROM plaid_txn_categories 
-            WHERE user_id=%s 
-            ORDER BY txn_date DESC 
-            LIMIT 100
-        """, (uid,))
-        txns = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    
-    return jsonify(txns)
-
-# ── DASHBOARD ──────────────────────────────────────────────────────────────────
-@app.route('/api/dashboard')
-def dashboard():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM properties WHERE user_id=%s", (uid,))
-        props = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    
-    total_value = sum(float(p.get('current_value', 0)) for p in props)
-    total_equity = sum(float(p.get('equity', 0)) for p in props)
-    total_revenue = sum(float(p.get('monthly_revenue', 0)) for p in props)
-    total_expenses = sum(float(p.get('monthly_expenses', 0)) for p in props)
-    net_cf = total_revenue - total_expenses
-    
-    return jsonify({
-        'properties': props,
-        'total_value': round(total_value, 2),
-        'total_equity': round(total_equity, 2),
-        'monthly_revenue': round(total_revenue, 2),
-        'monthly_expenses': round(total_expenses, 2),
-        'net_cashflow': round(net_cf, 2),
-        'property_count': len(props),
-    })
-
-# ── QUARTERLY ──────────────────────────────────────────────────────────────────
-@app.route('/api/quarterly')
-def quarterly():
-    uid = session.get('user_id')
-    if not uid:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    with get_db() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM properties WHERE user_id=%s", (uid,))
-        props = [dict(r) for r in cur.fetchall()]
-        cur.close()
-    
-    total_value = sum(float(p.get('current_value', 0)) for p in props)
-    total_equity = sum(float(p.get('equity', 0)) for p in props)
-    monthly_revenue = sum(float(p.get('monthly_revenue', 0)) for p in props)
-    monthly_expenses = sum(float(p.get('monthly_expenses', 0)) for p in props)
-    
-    today = dt.date.today()
-    quarter = (today.month - 1) // 3 + 1
-    
-    return jsonify({
-        'year': today.year,
-        'quarter': quarter,
-        'total_value': round(total_value, 2),
-        'total_equity': round(total_equity, 2),
-        'gross_revenue': round(monthly_revenue * 3, 2),
-        'total_expenses': round(monthly_expenses * 3, 2),
-        'net_cashflow': round((monthly_revenue - monthly_expenses) * 3, 2),
-        'property_count': len(props),
-    })
-
-# ── FRONTEND ───────────────────────────────────────────────────────────────────
-HTML = '''<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Property Pigeon</title>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; }
-.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
-.btn-primary { background: #2563eb; color: white; }
-.btn-primary:hover { background: #1d4ed8; }
-input { width: 100%; padding: 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
-input:focus { outline: none; border-color: #2563eb; }
-h1 { font-size: 24px; margin-bottom: 8px; }
-h2 { font-size: 20px; margin-bottom: 12px; }
-h3 { font-size: 16px; margin-bottom: 10px; }
-.nav { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
-.nav-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-weight: 600; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-.nav-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
-.stat { text-align: center; }
-.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
-.stat-value { font-size: 28px; font-weight: 800; color: #111827; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.property { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
-.error { color: #dc2626; font-size: 14px; margin-top: 8px; }
-.txn { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f3f4f6; }
-.txn-cat { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-top: 4px; }
-</style>
-</head>
-<body>
-<div id="root"></div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
-<script>
-const {useState, useEffect} = React;
-
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('dashboard');
-  
-  useEffect(() => {
-    fetch('/api/me', {credentials: 'include'})
-      .then(r => r.json())
-      .then(d => {
-        if (!d.error) setUser(d);
-        setLoading(false);
-      });
-  }, []);
-  
-  if (loading) return React.createElement('div', {className: 'container'}, 'Loading...');
-  if (!user) return React.createElement(Auth, {onAuth: setUser});
-  
-  return React.createElement('div', {className: 'container'}, 
-    React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', marginBottom: 20}},
-      React.createElement('h1', null, '🐦 Property Pigeon'),
-      React.createElement('button', {className: 'btn', onClick: () => {
-        fetch('/api/logout', {method: 'POST', credentials: 'include'});
-        setUser(null);
-      }}, 'Logout')
-    ),
-    React.createElement('div', {className: 'nav'},
-      React.createElement('button', {className: `nav-btn ${tab==='dashboard'?'active':''}`, onClick: () => setTab('dashboard')}, 'Dashboard'),
-      React.createElement('button', {className: `nav-btn ${tab==='bank'?'active':''}`, onClick: () => setTab('bank')}, 'Bank'),
-      React.createElement('button', {className: `nav-btn ${tab==='analytics'?'active':''}`, onClick: () => setTab('analytics')}, 'Analytics')
-    ),
-    tab === 'dashboard' && React.createElement(Dashboard, {user}),
-    tab === 'bank' && React.createElement(Bank, {user}),
-    tab === 'analytics' && React.createElement(Analytics, {user})
-  );
-}
-
-function Auth({onAuth}) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [showReset, setShowReset] = useState(false);
-  const [showNuke, setShowNuke] = useState(false);
-  
-  const submit = async () => {
-    const r = await fetch(isLogin ? '/api/login' : '/api/register', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({email, password})
-    });
-    const d = await r.json();
-    if (d.error) setError(d.error);
-    else onAuth(d.user || {id: d.user_id, email});
-  };
-  
-  const resetAccount = async () => {
-    if (!confirm(`Delete all data for ${email} and start fresh?`)) return;
-    const r = await fetch('/api/reset-account', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({email})
-    });
-    const d = await r.json();
-    if (d.error) setError(d.error);
-    else {
-      setError('');
-      setIsLogin(false);
-      alert('Account deleted! You can now register again.');
-    }
-  };
-  
-  const nukeEverything = async () => {
-    if (!confirm('DELETE ALL USERS AND DATA? This cannot be undone.')) return;
-    if (!confirm('Are you ABSOLUTELY sure? This deletes EVERYTHING.')) return;
-    const r = await fetch('/api/nuke-all-data', {
-      method: 'POST',
-      credentials: 'include'
-    });
-    const d = await r.json();
-    alert(d.message || 'All data deleted. You can now register fresh.');
-    setIsLogin(false);
-    setShowNuke(false);
-    setError('');
-  };
-  
-  return React.createElement('div', {className: 'container', style: {maxWidth: 400, marginTop: 100}},
-    React.createElement('div', {className: 'card'},
-      React.createElement('h2', null, isLogin ? 'Login' : 'Register'),
-      React.createElement('input', {placeholder: 'Email', value: email, onChange: e => setEmail(e.target.value), style: {marginBottom: 12}}),
-      React.createElement('input', {type: 'password', placeholder: 'Password', value: password, onChange: e => setPassword(e.target.value), style: {marginBottom: 12}, onKeyDown: e => e.key === 'Enter' && submit()}),
-      React.createElement('button', {className: 'btn btn-primary', onClick: submit, style: {width: '100%'}}, isLogin ? 'Login' : 'Register'),
-      error && React.createElement('div', {className: 'error'}, error),
-      React.createElement('div', {style: {marginTop: 12, textAlign: 'center', fontSize: 14, display: 'flex', justifyContent: 'space-between'}},
-        React.createElement('a', {href: '#', onClick: e => {e.preventDefault(); setIsLogin(!isLogin); setError('');}}, isLogin ? 'Need an account?' : 'Have an account?'),
-        isLogin && React.createElement('a', {href: '#', onClick: e => {e.preventDefault(); setShowReset(!showReset);}, style: {color: '#dc2626'}}, 'Reset Account')
-      ),
-      showReset && React.createElement('div', {style: {marginTop: 12, padding: 12, background: '#fef2f2', borderRadius: 8}},
-        React.createElement('div', {style: {fontSize: 12, color: '#dc2626', marginBottom: 8}}, 'This will delete your account and all data. You can then register again.'),
-        React.createElement('button', {className: 'btn', onClick: resetAccount, style: {width: '100%', background: '#dc2626', color: 'white'}}, 'Delete Account & Reset')
-      ),
-      React.createElement('div', {style: {marginTop: 16, textAlign: 'center'}},
-        React.createElement('button', {onClick: () => setShowNuke(!showNuke), style: {background: 'none', border: 'none', color: '#6b7280', fontSize: 10, cursor: 'pointer', textDecoration: 'underline'}}, 'Nuclear Option')
-      ),
-      showNuke && React.createElement('div', {style: {marginTop: 12, padding: 12, background: '#000', borderRadius: 8}},
-        React.createElement('div', {style: {fontSize: 12, color: '#dc2626', marginBottom: 8, fontWeight: 700}}, '⚠️ DELETE ALL USERS & DATA ⚠️'),
-        React.createElement('div', {style: {fontSize: 10, color: '#fff', marginBottom: 8}}, 'This deletes EVERYTHING in the database. All users, properties, banks, transactions.'),
-        React.createElement('button', {className: 'btn', onClick: nukeEverything, style: {width: '100%', background: '#dc2626', color: 'white'}}, 'NUKE EVERYTHING')
-      )
-    )
-  );
-}
-
-function Dashboard({user}) {
-  const [data, setData] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  
-  useEffect(() => {
-    fetch('/api/dashboard', {credentials: 'include'})
-      .then(r => r.json())
-      .then(setData);
-  }, [showAdd]);
-  
-  if (!data) return React.createElement('div', null, 'Loading...');
-  
-  return React.createElement('div', null,
-    React.createElement('div', {className: 'grid', style: {marginBottom: 20}},
-      React.createElement('div', {className: 'card stat'},
-        React.createElement('div', {className: 'stat-label'}, 'REVENUE'),
-        React.createElement('div', {className: 'stat-value', style: {color: '#10b981'}}, '$' + data.monthly_revenue.toLocaleString())
-      ),
-      React.createElement('div', {className: 'card stat'},
-        React.createElement('div', {className: 'stat-label'}, 'EXPENSES'),
-        React.createElement('div', {className: 'stat-value', style: {color: '#ef4444'}}, '$' + data.monthly_expenses.toLocaleString())
-      ),
-      React.createElement('div', {className: 'card stat'},
-        React.createElement('div', {className: 'stat-label'}, 'NET CF'),
-        React.createElement('div', {className: 'stat-value'}, '$' + data.net_cashflow.toLocaleString())
-      )
-    ),
-    
-    React.createElement('div', {className: 'card'},
-      React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', marginBottom: 16}},
-        React.createElement('h3', null, 'Properties'),
-        React.createElement('button', {className: 'btn btn-primary', onClick: () => setShowAdd(!showAdd)}, showAdd ? 'Cancel' : '+ Add')
-      ),
-      
-      showAdd && React.createElement(AddProperty, {onAdd: () => setShowAdd(false)}),
-      
-      data.properties.map(p => React.createElement('div', {key: p.id, className: 'property'},
-        React.createElement('div', null,
-          React.createElement('div', {style: {fontWeight: 600}}, p.address),
-          React.createElement('div', {style: {fontSize: 12, color: '#6b7280'}}, 
-            'Rev: $' + (p.monthly_revenue || 0).toLocaleString() + ' | Exp: $' + (p.monthly_expenses || 0).toLocaleString()
-          )
-        ),
-        React.createElement('div', {style: {fontWeight: 700}}, '$' + p.current_value.toLocaleString())
-      ))
-    )
-  );
-}
-
-function AddProperty({onAdd}) {
-  const [form, setForm] = useState({address: '', purchase_price: '', current_value: '', down_payment: '', mortgage: ''});
-  
-  const save = async () => {
-    await fetch('/api/properties', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify(form)
-    });
-    onAdd();
-  };
-  
-  return React.createElement('div', {style: {padding: 16, background: '#f9fafb', borderRadius: 8, marginBottom: 16}},
-    React.createElement('input', {placeholder: 'Address', value: form.address, onChange: e => setForm({...form, address: e.target.value}), style: {marginBottom: 8}}),
-    React.createElement('input', {placeholder: 'Purchase Price', type: 'number', value: form.purchase_price, onChange: e => setForm({...form, purchase_price: e.target.value, current_value: e.target.value}), style: {marginBottom: 8}}),
-    React.createElement('input', {placeholder: 'Down Payment', type: 'number', value: form.down_payment, onChange: e => setForm({...form, down_payment: e.target.value}), style: {marginBottom: 8}}),
-    React.createElement('input', {placeholder: 'Monthly Mortgage', type: 'number', value: form.mortgage, onChange: e => setForm({...form, mortgage: e.target.value}), style: {marginBottom: 8}}),
-    React.createElement('button', {className: 'btn btn-primary', onClick: save}, 'Save')
-  );
-}
-
-function Bank({user}) {
-  const [items, setItems] = useState([]);
-  const [txns, setTxns] = useState([]);
-  const [props, setProps] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null);
-  
-  useEffect(() => {
-    fetch('/api/plaid/accounts', {credentials: 'include'})
-      .then(r => r.json())
-      .then(setItems);
-    fetch('/api/properties', {credentials: 'include'})
-      .then(r => r.json())
-      .then(setProps);
-  }, []);
-  
-  const connectBank = async () => {
-    const r = await fetch('/api/plaid/create-link-token', {method: 'POST', credentials: 'include'});
-    const {link_token} = await r.json();
-    
-    const handler = Plaid.create({
-      token: link_token,
-      onSuccess: async (public_token, metadata) => {
-        await fetch('/api/plaid/exchange-token', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          credentials: 'include',
-          body: JSON.stringify({public_token, institution_name: metadata.institution.name, institution_id: metadata.institution.institution_id})
-        });
-        window.location.reload();
-      }
-    });
-    handler.open();
-  };
-  
-  const loadTxns = async (item_id) => {
-    setSelectedItem(item_id);
-    const r = await fetch(`/api/plaid/transactions/${item_id}`, {credentials: 'include'});
-    const d = await r.json();
-    setTxns(d.transactions || []);
-  };
-  
-  const categorize = async (txn, category, property_id) => {
-    await fetch('/api/plaid/categorize', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({
-        txn_id: txn.transaction_id,
-        txn_name: txn.name,
-        original_category: txn.category ? txn.category[0] : '',
-        user_category: category,
-        property_id,
-        amount: txn.amount,
-        txn_date: txn.date
-      })
-    });
-    alert('Categorized! Properties updated.');
-  };
-  
-  return React.createElement('div', null,
-    React.createElement('div', {className: 'card'},
-      React.createElement('h3', null, 'Connected Banks'),
-      React.createElement('button', {className: 'btn btn-primary', onClick: connectBank, style: {marginTop: 12}}, '+ Connect Bank'),
-      items.map(item => React.createElement('div', {key: item.item_id, style: {marginTop: 16}},
-        React.createElement('div', {style: {fontWeight: 600, marginBottom: 8}}, item.institution),
-        item.error && React.createElement('div', {className: 'error'}, item.error),
-        !item.error && React.createElement('button', {className: 'btn', onClick: () => loadTxns(item.item_id)}, 'View Transactions')
-      ))
-    ),
-    
-    selectedItem && React.createElement('div', {className: 'card'},
-      React.createElement('h3', null, 'Transactions (Last 90 Days)'),
-      txns.map(t => React.createElement(Transaction, {key: t.transaction_id, txn: t, props, onCategorize: categorize}))
-    )
-  );
-}
-
-function Transaction({txn, props, onCategorize}) {
-  const [cat, setCat] = useState(txn.auto_category || '');
-  const [prop, setProp] = useState(txn.property_id ? String(txn.property_id) : '');
-  const [saved, setSaved] = useState(txn.is_edited || false);
-  
-  const save = async () => {
-    await onCategorize(txn, cat, prop || null);
-    setSaved(true);
-  };
-  
-  const catColors = {
-    REVENUE: '#10b981', MORTGAGE: '#ef4444', INSURANCE: '#f59e0b',
-    HOA: '#f59e0b', PROPERTY_TAX: '#f59e0b', MAINTENANCE: '#8b5cf6',
-    EXPENSE: '#6b7280', INTERNAL_TRANSFER: '#94a3b8'
-  };
-  
-  return React.createElement('div', {className: 'txn', style: {background: saved ? '#f0fdf4' : 'white'}},
-    React.createElement('div', {style: {flex: 1}},
-      React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 8}},
-        React.createElement('div', {style: {fontWeight: 600}}, txn.name),
-        saved && React.createElement('span', {style: {fontSize: 10, background: '#10b98122', color: '#10b981', padding: '2px 6px', borderRadius: 4, fontWeight: 700}}, '✓ SAVED'),
-        !saved && React.createElement('span', {style: {fontSize: 10, background: (catColors[cat]||'#6b7280')+'22', color: catColors[cat]||'#6b7280', padding: '2px 6px', borderRadius: 4, fontWeight: 700}}, 'AUTO')
-      ),
-      React.createElement('div', {style: {fontSize: 12, color: '#6b7280', marginTop: 2}}, txn.date),
-      React.createElement('div', {style: {marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap'}},
-        React.createElement('select', {value: cat, onChange: e => {setCat(e.target.value); setSaved(false);}, style: {padding: '4px 8px', borderRadius: 6, border: `2px solid ${catColors[cat]||'#e5e7eb'}`, fontWeight: 600, color: catColors[cat]||'#000'}},
-          React.createElement('option', {value: 'REVENUE'}, 'Revenue'),
-          React.createElement('option', {value: 'MORTGAGE'}, 'Mortgage'),
-          React.createElement('option', {value: 'INSURANCE'}, 'Insurance'),
-          React.createElement('option', {value: 'HOA'}, 'HOA'),
-          React.createElement('option', {value: 'PROPERTY_TAX'}, 'Property Tax'),
-          React.createElement('option', {value: 'MAINTENANCE'}, 'Maintenance'),
-          React.createElement('option', {value: 'EXPENSE'}, 'Expense'),
-          React.createElement('option', {value: 'INTERNAL_TRANSFER'}, 'Internal Transfer')
-        ),
-        React.createElement('select', {value: prop, onChange: e => {setProp(e.target.value); setSaved(false);}, style: {padding: '4px 8px', borderRadius: 6, border: '1.5px solid #e5e7eb'}},
-          React.createElement('option', {value: ''}, 'No property'),
-          props.map(p => React.createElement('option', {key: p.id, value: String(p.id)}, p.address.length > 30 ? p.address.substring(0,30)+'...' : p.address))
-        ),
-        React.createElement('button', {className: 'btn btn-primary', onClick: save, style: {padding: '4px 14px'}}, 'Save')
-      )
-    ),
-    React.createElement('div', {style: {fontWeight: 700, fontSize: 16, color: txn.amount < 0 ? '#10b981' : '#111', marginLeft: 12, whiteSpace: 'nowrap'}}, 
-      (txn.amount < 0 ? '+' : '-') + '$' + Math.abs(txn.amount).toFixed(2)
-    )
-  );
-}
-
-function Analytics({user}) {
-  const [data, setData] = useState(null);
-  
-  useEffect(() => {
-    fetch('/api/quarterly', {credentials: 'include'})
-      .then(r => r.json())
-      .then(setData);
-  }, []);
-  
-  if (!data) return React.createElement('div', null, 'Loading...');
-  
-  return React.createElement('div', null,
-    React.createElement('div', {className: 'card'},
-      React.createElement('h3', null, `Q${data.quarter} ${data.year} Results`),
-      React.createElement('div', {className: 'grid', style: {marginTop: 16}},
-        React.createElement('div', {className: 'stat'},
-          React.createElement('div', {className: 'stat-label'}, 'REVENUE'),
-          React.createElement('div', {className: 'stat-value', style: {fontSize: 20, color: '#10b981'}}, '$' + data.gross_revenue.toLocaleString())
-        ),
-        React.createElement('div', {className: 'stat'},
-          React.createElement('div', {className: 'stat-label'}, 'EXPENSES'),
-          React.createElement('div', {className: 'stat-value', style: {fontSize: 20, color: '#ef4444'}}, '$' + data.total_expenses.toLocaleString())
-        ),
-        React.createElement('div', {className: 'stat'},
-          React.createElement('div', {className: 'stat-label'}, 'NET CF'),
-          React.createElement('div', {className: 'stat-value', style: {fontSize: 20}}, '$' + data.net_cashflow.toLocaleString())
-        ),
-        React.createElement('div', {className: 'stat'},
-          React.createElement('div', {className: 'stat-label'}, 'PORTFOLIO'),
-          React.createElement('div', {className: 'stat-value', style: {fontSize: 20}}, '$' + data.total_value.toLocaleString())
+    try:
+        request_data = LinkTokenCreateRequest(
+            user=LinkTokenCreateRequestUser(client_user_id="pigeon-user"),
+            client_name="Property Pigeon",
+            products=[Products("transactions")],
+            country_codes=[CountryCode("US")],
+            language="en",
         )
-      )
-    ),
-    
-    React.createElement('div', {className: 'card'},
-      React.createElement('h3', null, 'Projections'),
-      React.createElement('div', {style: {color: '#6b7280', fontSize: 14}}, 'Coming soon: 30-year forecasts based on your actual bank data')
-    )
-  );
-}
+        response = plaid_client.link_token_create(request_data)
+        return jsonify({"link_token": response["link_token"]})
+    except Exception as e:
+        print("create-link-token error:", str(e))
+        return jsonify({"error": "Failed to create link token"}), 500
 
-ReactDOM.render(React.createElement(App), document.getElementById('root'));
-</script>
-</body>
-</html>
-'''
+# ── Step 2: Exchange public token ─────────────────────────────
+@app.route("/api/exchange-token", methods=["POST"])
+def exchange_token():
+    public_token = request.json.get("public_token")
+    if not public_token:
+        return jsonify({"error": "public_token required"}), 400
+    try:
+        response = plaid_client.item_public_token_exchange(
+            ItemPublicTokenExchangeRequest(public_token=public_token)
+        )
+        store["access_token"] = response["access_token"]
+        store["item_id"] = response["item_id"]
+        store["cursor"] = None  # reset on new link
+        print("✅ Access token stored. Item ID:", store["item_id"])
+        return jsonify({"ok": True, "item_id": store["item_id"]})
+    except Exception as e:
+        print("exchange-token error:", str(e))
+        return jsonify({"error": "Failed to exchange token"}), 500
 
-@app.route('/')
-def index():
-    return HTML
+# ── Step 3: Sync transactions ─────────────────────────────────
+@app.route("/api/transactions/sync")
+def sync_transactions():
+    if not store["access_token"]:
+        return jsonify({"error": "No bank account linked yet"}), 400
+    try:
+        added, modified, removed = [], [], []
+        cursor = store["cursor"]
+        has_more = True
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+        while has_more:
+            req = TransactionsSyncRequest(
+                access_token=store["access_token"],
+                count=100,
+            )
+            if cursor:
+                req.cursor = cursor
+
+            response = plaid_client.transactions_sync(req)
+            data = response.to_dict()
+
+            added += data.get("added", [])
+            modified += data.get("modified", [])
+            removed += data.get("removed", [])
+            has_more = data.get("has_more", False)
+            cursor = data.get("next_cursor")
+
+        store["cursor"] = cursor
+
+        def normalize(tx):
+            amount = tx.get("amount", 0)
+            return {
+                "id": tx.get("transaction_id"),
+                "date": str(tx.get("date", "")),
+                "payee": tx.get("merchant_name") or tx.get("name", ""),
+                "amount": amount,
+                # Plaid: positive amount = money OUT, negative = money IN
+                "type": "out" if amount > 0 else "in",
+                "category": (tx.get("personal_finance_category") or {}).get("primary"),
+                "pending": tx.get("pending", False),
+                "property": None,
+            }
+
+        return jsonify({
+            "added": [normalize(t) for t in added],
+            "modified": [normalize(t) for t in modified],
+            "removed": [r.get("transaction_id") for r in removed],
+            "total": len(added),
+        })
+    except Exception as e:
+        print("sync error:", str(e))
+        return jsonify({"error": "Failed to sync transactions"}), 500
+
+# ── Step 4: Account balances ──────────────────────────────────
+@app.route("/api/balances")
+def balances():
+    if not store["access_token"]:
+        return jsonify({"error": "No bank account linked yet"}), 400
+    try:
+        response = plaid_client.accounts_balance_get(
+            AccountsBalanceGetRequest(access_token=store["access_token"])
+        )
+        accounts = []
+        for a in response["accounts"]:
+            accounts.append({
+                "name": a["name"],
+                "type": str(a["type"]),
+                "current": a["balances"]["current"],
+                "available": a["balances"].get("available"),
+                "currency": a["balances"].get("iso_currency_code", "USD"),
+            })
+        return jsonify({"accounts": accounts})
+    except Exception as e:
+        print("balances error:", str(e))
+        return jsonify({"error": "Failed to fetch balances"}), 500
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
