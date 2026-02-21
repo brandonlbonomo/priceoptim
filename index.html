@@ -86,23 +86,6 @@ function TagMenu({ tx, onTag, onClose }) {
   );
 }
 
-function PropPL({ prop, txs }) {
-  const rev = txs.filter(t=>t.type==="in").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const exp = txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const cf  = rev - exp;
-  return (
-    <div style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${prop.color}25`,padding:"16px 20px",borderLeft:`3px solid ${prop.color}`}}>
-      <div style={{fontSize:10,color:prop.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontWeight:700}}>{prop.label}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Revenue</div><div style={{fontSize:16,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(rev)}</div></div>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Expenses</div><div style={{fontSize:16,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(exp)}</div></div>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Cash Flow</div><div style={{fontSize:16,fontWeight:800,color:cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(cf)}</div></div>
-      </div>
-      {txs.length===0&&<div style={{fontSize:11,color:"#444",marginTop:8,fontFamily:"monospace"}}>No transactions tagged yet</div>}
-    </div>
-  );
-}
-
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Feed");
