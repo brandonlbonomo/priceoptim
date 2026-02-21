@@ -22,14 +22,15 @@ PLAID_ENV = os.getenv("PLAID_ENV", "development")
 PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
 PLAID_SECRET = os.getenv("PLAID_SECRET")
 
+# plaid-python 38.x uses string URLs, not Environment constants
 env_map = {
-    "sandbox":     plaid.Environment.Sandbox,
-    "development": plaid.Environment.Development,
-    "production":  plaid.Environment.Production,
+    "sandbox":     "https://sandbox.plaid.com",
+    "development": "https://development.plaid.com",
+    "production":  "https://production.plaid.com",
 }
 
 configuration = plaid.Configuration(
-    host=env_map.get(PLAID_ENV, plaid.Environment.Development),
+    host=env_map.get(PLAID_ENV, "https://development.plaid.com"),
     api_key={
         "clientId": PLAID_CLIENT_ID,
         "secret":   PLAID_SECRET,
@@ -106,10 +107,7 @@ def sync_transactions():
         has_more = True
 
         while has_more:
-            kwargs = {
-                "access_token": store["access_token"],
-                "count": 100,
-            }
+            kwargs = {"access_token": store["access_token"], "count": 100}
             if cursor:
                 kwargs["cursor"] = cursor
 
