@@ -14,15 +14,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__)
-CORS(app, origins=os.getenv("FRONTEND_URL", "*"))
+# Serve index.html from the same folder as app.py
+app = Flask(__name__, static_folder=".", static_url_path="")
+CORS(app, origins="*")
 
 # ── Plaid client setup ───────────────────────────────────────
-PLAID_ENV = os.getenv("PLAID_ENV", "development")
+PLAID_ENV       = os.getenv("PLAID_ENV", "development")
 PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
-PLAID_SECRET = os.getenv("PLAID_SECRET")
+PLAID_SECRET    = os.getenv("PLAID_SECRET")
 
-# plaid-python 38.x uses string URLs, not Environment constants
 env_map = {
     "sandbox":     "https://sandbox.plaid.com",
     "development": "https://development.plaid.com",
@@ -37,7 +37,7 @@ configuration = plaid.Configuration(
     }
 )
 
-api_client = plaid.ApiClient(configuration)
+api_client   = plaid.ApiClient(configuration)
 plaid_client = plaid_api.PlaidApi(api_client)
 
 # ── In-memory token store ────────────────────────────────────
@@ -46,6 +46,11 @@ store = {
     "item_id":      None,
     "cursor":       None,
 }
+
+# ── Serve frontend ────────────────────────────────────────────
+@app.route("/")
+def frontend():
+    return app.send_static_file("index.html")
 
 # ── Health check ─────────────────────────────────────────────
 @app.route("/api/health")
