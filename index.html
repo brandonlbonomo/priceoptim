@@ -18,69 +18,87 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
-const { useState, useMemo, useEffect, useCallback, useRef } = React;
+const { useState, useMemo, useEffect, useCallback } = React;
 
-const BACKEND = "";  // same origin — Render serves both
+const BACKEND = "";
 
 const fmt$ = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n||0);
 const fmtPct = n => (n==null||isNaN(n)) ? "—" : `${n.toFixed(1)}%`;
 const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d; } };
 
-// ── Tag buckets ───────────────────────────────────────────────
-const BUCKETS = [
-  { id:"airbnb",   label:"Airbnb Portfolio", short:"Airbnb",    color:"#c8ff00" },
-  { id:"pierce",   label:"1703 Pierce Ave",  short:"Pierce Ave", color:"#60cfff" },
-  { id:"llc",      label:"General LLC",      short:"LLC",        color:"#c084fc" },
-  { id:"transfer", label:"Internal Transfer",short:"Transfer",   color:"#888888" },
+// ── Properties & Buckets ──────────────────────────────────────
+// Individual properties — used for tagging
+const PROPERTIES = [
+  { id:"lockwood", label:"Lockwood",         color:"#c8ff00", group:"airbnb" },
+  { id:"everton",  label:"Everton",           color:"#a8e000", group:"airbnb" },
+  { id:"bstreet",  label:"B Street",          color:"#88c000", group:"airbnb" },
+  { id:"pierce",   label:"Pierce Ave",        color:"#60cfff", group:"pierce" },
+  { id:"llc",      label:"General LLC",       color:"#c084fc", group:"llc"    },
+  { id:"transfer", label:"Internal Transfer", color:"#666666", group:"transfer"},
 ];
+
+const AIRBNB_PROPS = PROPERTIES.filter(p=>p.group==="airbnb");
 
 // ── Local storage ─────────────────────────────────────────────
 const LS = {
   get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
   set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} },
 };
-
-const TAGS_KEY     = "pg_tags";
-const AUTOTAG_KEY  = "pg_auto";
-const TX_KEY       = "pg_txs";
-
+const TAGS_KEY    = "pg_tags_v2";
+const AUTOTAG_KEY = "pg_auto_v2";
+const TX_KEY      = "pg_txs_v2";
 const DEFAULT_AUTO = {
-  "AIRBNB": "airbnb", "AIRBNB PAYMENTS": "airbnb",
-  "HOUSING AUTHORITY": "pierce", "HOUSING AUTHORITY PMT": "pierce",
+  "AIRBNB PAYMENTS":"lockwood",
+  "AIRBNB":"lockwood",
+  "HOUSING AUTHORITY":"pierce",
 };
 
 // ── Components ────────────────────────────────────────────────
 function Badge({ id, small }) {
-  const b = BUCKETS.find(x=>x.id===id);
-  const pad = small ? "2px 7px" : "3px 10px";
-  const fs  = small ? 10 : 11;
-  if (!b) return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:"rgba(255,200,0,0.12)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.3)"}}>UNTAGGED</span>;
-  return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:`${b.color}15`,color:b.color,border:`1px solid ${b.color}35`}}>{b.short.toUpperCase()}</span>;
+  const p = PROPERTIES.find(x=>x.id===id);
+  const pad = small?"2px 7px":"3px 10px";
+  const fs  = small?10:11;
+  if (!p) return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:"rgba(255,200,0,0.12)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.3)"}}>UNTAGGED</span>;
+  return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`}}>{p.label.toUpperCase()}</span>;
 }
 
-function Tile({ label, value, sub, accent="#e0e0e0", span=1 }) {
+function Tile({ label, value, sub, accent="#e0e0e0" }) {
   return (
-    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",padding:"18px 20px",gridColumn:`span ${span}`}}>
+    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",padding:"18px 20px"}}>
       <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:7}}>{label}</div>
-      <div style={{fontSize:20,fontWeight:800,color:accent,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{value}</div>
+      <div style={{fontSize:19,fontWeight:800,color:accent,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{value}</div>
       {sub&&<div style={{fontSize:11,color:"#444",marginTop:4}}>{sub}</div>}
     </div>
   );
 }
 
-function SectionHead({ label }) {
-  return <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"28px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>{label}</div>;
-}
-
 function TagMenu({ tx, onTag, onClose }) {
   return (
-    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
-      {BUCKETS.map(b=>(
-        <button key={b.id} onClick={()=>onTag(tx.id, b.id)} style={{background:`${b.color}15`,color:b.color,border:`1px solid ${b.color}40`,borderRadius:6,padding:"5px 12px",fontSize:11,fontFamily:"monospace",fontWeight:700}}>
-          {b.short}
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",padding:"10px 0 4px"}}>
+      {PROPERTIES.map(p=>(
+        <button key={p.id} onClick={()=>onTag(tx.id,p.id)}
+          style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}40`,borderRadius:6,padding:"5px 13px",fontSize:11,fontFamily:"monospace",fontWeight:700}}>
+          {p.label}
         </button>
       ))}
-      <button onClick={onClose} style={{background:"transparent",color:"#555",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"5px 9px",fontSize:11,fontFamily:"monospace"}}>✕</button>
+      <button onClick={onClose} style={{background:"transparent",color:"#555",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:"monospace"}}>✕</button>
+    </div>
+  );
+}
+
+function PropPL({ prop, txs }) {
+  const rev = txs.filter(t=>t.type==="in").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const exp = txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const cf  = rev - exp;
+  return (
+    <div style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${prop.color}25`,padding:"16px 20px",borderLeft:`3px solid ${prop.color}`}}>
+      <div style={{fontSize:10,color:prop.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontWeight:700}}>{prop.label}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Revenue</div><div style={{fontSize:16,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(rev)}</div></div>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Expenses</div><div style={{fontSize:16,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(exp)}</div></div>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:4}}>Cash Flow</div><div style={{fontSize:16,fontWeight:800,color:cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(cf)}</div></div>
+      </div>
+      {txs.length===0&&<div style={{fontSize:11,color:"#444",marginTop:8,fontFamily:"monospace"}}>No transactions tagged yet</div>}
     </div>
   );
 }
@@ -88,190 +106,135 @@ function TagMenu({ tx, onTag, onClose }) {
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Feed");
-  const [txs, setTxs]           = useState(() => LS.get(TX_KEY) || []);
-  const [tags, setTags]         = useState(() => LS.get(TAGS_KEY) || {});
-  const [autoTags, setAutoTags] = useState(() => LS.get(AUTOTAG_KEY) || DEFAULT_AUTO);
+  const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
+  const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
+  const [autoTags, setAutoTags] = useState(()=>LS.get(AUTOTAG_KEY)||DEFAULT_AUTO);
   const [tagging, setTagging]   = useState(null);
-  const [linkedAccounts, setLinkedAccounts] = useState([]);
+  const [linkedAccounts, setLinked] = useState([]);
   const [syncing, setSyncing]   = useState(false);
   const [status, setStatus]     = useState(null);
   const [linking, setLinking]   = useState(false);
   const [feedFilter, setFeedFilter] = useState("untagged");
 
-  // Check linked accounts on mount
-  useEffect(() => {
-    fetch(`${BACKEND}/api/link-status`)
-      .then(r=>r.json())
-      .then(d=>setLinkedAccounts(d.accounts||[]))
-      .catch(()=>{});
-  }, []);
+  useEffect(()=>{
+    fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{});
+  },[]);
 
-  // Apply auto-tags
-  const applyAuto = useCallback((newTxs, at, cur) => {
-    const next = {...cur};
-    newTxs.forEach(tx => {
-      if (next[tx.id]) return;
-      const key = Object.keys(at).find(k => tx.payee?.toUpperCase().includes(k.toUpperCase()));
-      if (key) next[tx.id] = at[key];
+  const applyAuto = useCallback((newTxs,at,cur)=>{
+    const next={...cur};
+    newTxs.forEach(tx=>{
+      if(next[tx.id]) return;
+      const key=Object.keys(at).find(k=>tx.payee?.toUpperCase().includes(k.toUpperCase()));
+      if(key) next[tx.id]=at[key];
     });
     return next;
-  }, []);
+  },[]);
 
-  // Sync from Plaid
-  const sync = useCallback(async () => {
+  const sync = useCallback(async()=>{
     setSyncing(true); setStatus(null);
     try {
-      const res  = await fetch(`${BACKEND}/api/transactions/sync`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-
-      setTxs(prev => {
-        const map = Object.fromEntries(prev.map(t=>[t.id,t]));
-        data.removed.forEach(id => delete map[id]);
-        data.modified.forEach(tx => { map[tx.id] = tx; });
-        data.added.forEach(tx => { if (!map[tx.id]) map[tx.id] = tx; });
-        const arr = Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
-        LS.set(TX_KEY, arr);
-        return arr;
+      const res=await fetch(`${BACKEND}/api/transactions/sync`);
+      const data=await res.json();
+      if(data.error) throw new Error(data.error);
+      setTxs(prev=>{
+        const map=Object.fromEntries(prev.map(t=>[t.id,t]));
+        data.removed.forEach(id=>delete map[id]);
+        data.modified.forEach(tx=>{map[tx.id]=tx;});
+        data.added.forEach(tx=>{if(!map[tx.id]) map[tx.id]=tx;});
+        const arr=Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
+        LS.set(TX_KEY,arr); return arr;
       });
-
-      setTags(prev => {
-        const updated = applyAuto(data.added, autoTags, prev);
-        LS.set(TAGS_KEY, updated);
-        return updated;
+      setTags(prev=>{
+        const updated=applyAuto(data.added,autoTags,prev);
+        LS.set(TAGS_KEY,updated); return updated;
       });
+      const n=data.added.filter(t=>!t.pending).length;
+      setStatus(n>0?`${n} new transactions pulled`:"Up to date");
+    } catch(e){setStatus("Sync failed: "+e.message);}
+    finally{setSyncing(false);}
+  },[autoTags,applyAuto]);
 
-      const newCount = data.added.filter(t=>!t.pending).length;
-      setStatus(newCount > 0 ? `${newCount} new transactions pulled` : "Up to date");
-    } catch(e) { setStatus("Sync failed: " + e.message); }
-    finally { setSyncing(false); }
-  }, [autoTags, applyAuto]);
-
-  // Connect bank
-  const connectBank = useCallback(async () => {
+  const connectBank = useCallback(async()=>{
     setLinking(true); setStatus(null);
     try {
-      const res = await fetch(`${BACKEND}/api/create-link-token`, {method:"POST"});
-      const { link_token, error } = await res.json();
-      if (error) throw new Error(error);
-
-      const handler = window.Plaid.create({
-        token: link_token,
-        onSuccess: async (public_token, metadata) => {
-          const name = metadata?.institution?.name || "Bank Account";
-          await fetch(`${BACKEND}/api/exchange-token`, {
-            method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ public_token, account_name: name }),
-          });
+      const res=await fetch(`${BACKEND}/api/create-link-token`,{method:"POST"});
+      const {link_token,error}=await res.json();
+      if(error) throw new Error(error);
+      window.Plaid.create({
+        token:link_token,
+        onSuccess:async(public_token,metadata)=>{
+          const name=metadata?.institution?.name||"Bank Account";
+          await fetch(`${BACKEND}/api/exchange-token`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({public_token,account_name:name})});
           setStatus(`${name} connected! Syncing...`);
-          const ls = await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
-          setLinkedAccounts(ls.accounts||[]);
-          setTimeout(sync, 800);
+          const ls=await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
+          setLinked(ls.accounts||[]);
+          setTimeout(sync,800);
         },
-        onExit: err => { if(err) setStatus("Exited: "+err.display_message); },
-      });
-      handler.open();
-    } catch(e) { setStatus("Could not open Plaid: "+e.message); }
-    finally { setLinking(false); }
-  }, [sync]);
+        onExit:err=>{if(err) setStatus("Exited: "+err.display_message);}
+      }).open();
+    } catch(e){setStatus("Could not open Plaid: "+e.message);}
+    finally{setLinking(false);}
+  },[sync]);
 
-  // Remove account
-  const removeAccount = async (item_id) => {
-    await fetch(`${BACKEND}/api/remove-account`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id})});
-    setLinkedAccounts(prev=>prev.filter(a=>a.item_id!==item_id));
+  const removeAccount=async(item_id)=>{
+    await fetch(`${BACKEND}/api/remove-account`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id})});
+    setLinked(prev=>prev.filter(a=>a.item_id!==item_id));
   };
 
-  // Tag a transaction
-  function doTag(txId, bucketId) {
-    const tx = txs.find(t=>t.id===txId);
-    const nextTags = {...tags, [txId]: bucketId};
-
-    // learn auto-tag if not transfer/llc
-    if (tx?.payee && bucketId !== "transfer" && bucketId !== "llc") {
-      const key = tx.payee.toUpperCase();
-      const nextAuto = {...autoTags, [key]: bucketId};
-      // apply to all matching untagged
-      txs.forEach(t => {
-        if (!nextTags[t.id] && t.payee?.toUpperCase() === key) nextTags[t.id] = bucketId;
-      });
-      setAutoTags(nextAuto);
-      LS.set(AUTOTAG_KEY, nextAuto);
+  function doTag(txId,propId){
+    const tx=txs.find(t=>t.id===txId);
+    const nextTags={...tags,[txId]:propId};
+    if(tx?.payee && propId!=="transfer" && propId!=="llc"){
+      const key=tx.payee.toUpperCase();
+      const nextAuto={...autoTags,[key]:propId};
+      txs.forEach(t=>{if(!nextTags[t.id]&&t.payee?.toUpperCase()===key) nextTags[t.id]=propId;});
+      setAutoTags(nextAuto); LS.set(AUTOTAG_KEY,nextAuto);
     }
-
-    setTags(nextTags);
-    LS.set(TAGS_KEY, nextTags);
-    setTagging(null);
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
   }
 
-  // Enrich transactions with tags
-  const enriched = useMemo(() =>
-    txs.filter(t=>!t.pending).map(tx => ({
-      ...tx,
-      bucket: tags[tx.id] || null,
-    }))
-  , [txs, tags]);
+  const enriched=useMemo(()=>txs.filter(t=>!t.pending).map(tx=>({...tx,propId:tags[tx.id]||null})),[txs,tags]);
+  const untagged=enriched.filter(t=>!t.propId);
+  const tagged  =enriched.filter(t=>t.propId);
 
-  const untagged = enriched.filter(t=>!t.bucket);
-  const tagged   = enriched.filter(t=>t.bucket);
-
-  // ── Derived metrics from tagged transactions only ──────────
-  const metrics = useMemo(() => {
-    const byBucket = (id, type) => tagged.filter(t=>t.bucket===id&&(type?t.type===type:true));
-    const sumAmt   = txs => txs.reduce((s,t)=>s+Math.abs(t.amount),0);
-
-    const airbnbRev  = sumAmt(byBucket("airbnb","in"));
-    const airbnbExp  = sumAmt(byBucket("airbnb","out"));
-    const airbnbCF   = airbnbRev - airbnbExp;
-
-    const pierceRev  = sumAmt(byBucket("pierce","in"));
-    const pierceExp  = sumAmt(byBucket("pierce","out"));
-    const pierceCF   = pierceRev - pierceExp;
-
-    const llcExp     = sumAmt(byBucket("llc","out"));
-
-    const totalRev   = airbnbRev + pierceRev;
-    const totalExp   = airbnbExp + pierceExp + llcExp;
-    const totalCF    = totalRev - totalExp;
-
-    // Month grouping for charts
-    const byMonth = {};
-    tagged.filter(t=>t.bucket!=="transfer").forEach(t => {
-      const mo = t.date?.slice(0,7) || "unknown";
-      if (!byMonth[mo]) byMonth[mo] = {rev:0,exp:0};
-      if (t.type==="in")  byMonth[mo].rev += Math.abs(t.amount);
-      if (t.type==="out") byMonth[mo].exp += Math.abs(t.amount);
+  // ── Metrics ──────────────────────────────────────────────
+  const metrics=useMemo(()=>{
+    const forProp=(id,type)=>tagged.filter(t=>t.propId===id&&(type?t.type===type:true));
+    const sumAmt =arr=>arr.reduce((s,t)=>s+Math.abs(t.amount),0);
+    const propMetrics={};
+    PROPERTIES.forEach(p=>{
+      const rev=sumAmt(forProp(p.id,"in"));
+      const exp=sumAmt(forProp(p.id,"out"));
+      propMetrics[p.id]={rev,exp,cf:rev-exp,txs:tagged.filter(t=>t.propId===p.id)};
     });
-    const months = Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
+    const airbnbRev=AIRBNB_PROPS.reduce((s,p)=>s+propMetrics[p.id].rev,0);
+    const airbnbExp=AIRBNB_PROPS.reduce((s,p)=>s+propMetrics[p.id].exp,0);
+    const pierceRev=propMetrics.pierce.rev;
+    const pierceExp=propMetrics.pierce.exp;
+    const llcExp   =propMetrics.llc.exp;
+    const totalRev =airbnbRev+pierceRev;
+    const totalExp =airbnbExp+pierceExp+llcExp;
 
-    return { airbnbRev,airbnbExp,airbnbCF,pierceRev,pierceExp,pierceCF,llcExp,totalRev,totalExp,totalCF,months };
-  }, [tagged]);
+    // Monthly breakdown
+    const byMonth={};
+    tagged.filter(t=>t.propId!=="transfer").forEach(t=>{
+      const mo=t.date?.slice(0,7)||"?";
+      if(!byMonth[mo]) byMonth[mo]={rev:0,exp:0};
+      if(t.type==="in")  byMonth[mo].rev+=Math.abs(t.amount);
+      if(t.type==="out") byMonth[mo].exp+=Math.abs(t.amount);
+    });
+    const months=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
 
-  const TABS = ["Portfolio","Airbnb","Pierce Ave","Feed"];
-  const hasBank = linkedAccounts.length > 0;
+    return {propMetrics,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF:totalRev-totalExp,months};
+  },[tagged]);
 
-  const hdr = (active) => ({
-    background: active?"#c8ff00":"transparent",
-    color: active?"#000":"#666",
-    border:"1px solid",
-    borderColor: active?"#c8ff00":"rgba(255,255,255,0.09)",
-    borderRadius:8, padding:"7px 18px",
-    fontSize:12, fontWeight:active?700:500,
-    fontFamily:"monospace", transition:"all 0.15s",
-    position:"relative",
-  });
+  const hasBank=linkedAccounts.length>0;
+  const TABS=["Portfolio","Airbnb","Pierce Ave","Feed"];
+  const maxMonth=Math.max(...metrics.months.map(([,v])=>v.rev+v.exp),1);
+  const displayTxs=feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
-  const g3 = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:2, marginBottom:2 };
-  const g4 = { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:2, marginBottom:2 };
-
-  // Feed filter options
-  const feedOptions = [
-    {k:"untagged", l:`Untagged (${untagged.length})`},
-    {k:"tagged",   l:"Tagged"},
-    {k:"all",      l:"All"},
-  ];
-  const displayTxs = feedFilter==="untagged" ? untagged : feedFilter==="tagged" ? tagged : enriched;
-
-  const maxMonth = Math.max(...metrics.months.map(([,v])=>v.rev+v.exp), 1);
+  const hdr=active=>({background:active?"#c8ff00":"transparent",color:active?"#000":"#666",border:"1px solid",borderColor:active?"#c8ff00":"rgba(255,255,255,0.09)",borderRadius:8,padding:"7px 18px",fontSize:12,fontWeight:active?700:500,fontFamily:"monospace",transition:"all 0.15s",position:"relative"});
+  const g3={display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:2,marginBottom:2};
 
   return (
     <div style={{minHeight:"100vh",background:"#080808",color:"#e0e0e0"}}>
@@ -282,7 +245,7 @@ function App() {
           <div style={{width:28,height:28,borderRadius:6,background:"#c8ff00",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>🐦</div>
           <div>
             <div style={{fontSize:14,fontWeight:700}}>Property Pigeon</div>
-            <div style={{fontSize:9,color:"#555",fontFamily:"monospace",letterSpacing:"0.1em"}}>AIRBNB · SECTION 8 · LLC</div>
+            <div style={{fontSize:9,color:"#555",fontFamily:"monospace",letterSpacing:"0.1em"}}>LOCKWOOD · EVERTON · B STREET · PIERCE</div>
           </div>
         </div>
         <div style={{display:"flex",gap:5,alignItems:"center"}}>
@@ -302,19 +265,19 @@ function App() {
         </div>
       </div>
 
-      {/* Status bar */}
-      {(status||linkedAccounts.length>0) && (
-        <div style={{background:"rgba(255,255,255,0.02)",borderBottom:"1px solid rgba(255,255,255,0.05)",padding:"8px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+      {/* STATUS BAR */}
+      {(status||hasBank)&&(
+        <div style={{background:"rgba(255,255,255,0.02)",borderBottom:"1px solid rgba(255,255,255,0.05)",padding:"7px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
             {linkedAccounts.map(a=>(
               <div key={a.item_id} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(200,255,0,0.06)",border:"1px solid rgba(200,255,0,0.15)",borderRadius:6,padding:"3px 10px"}}>
                 <div style={{width:5,height:5,borderRadius:"50%",background:"#c8ff00"}}/>
                 <span style={{fontSize:11,fontFamily:"monospace",color:"#c8ff00"}}>{a.name}</span>
-                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"#444",fontSize:12,lineHeight:1,cursor:"pointer",padding:"0 0 0 2px"}}>×</button>
+                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"#444",fontSize:13,lineHeight:1,cursor:"pointer",paddingLeft:3}}>×</button>
               </div>
             ))}
           </div>
-          {status&&<div style={{fontSize:11,color:"#555",fontFamily:"monospace",flexShrink:0}}>{status}</div>}
+          {status&&<div style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{status}</div>}
         </div>
       )}
 
@@ -323,106 +286,104 @@ function App() {
         {/* ── PORTFOLIO ── */}
         {tab==="Portfolio"&&(
           <div>
-            <div style={{marginBottom:24}}>
+            <div style={{marginBottom:22}}>
               <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em"}}>All Properties · Live from Plaid</div>
               <div style={{fontSize:22,fontWeight:700,marginTop:3}}>Portfolio Overview</div>
             </div>
 
-            {!hasBank&&<div style={{textAlign:"center",padding:"60px 0",color:"#444"}}><div style={{fontSize:36,marginBottom:12}}>🏦</div><div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:6}}>No bank connected</div><div style={{fontSize:13}}>Click "+ Add Bank" in the header to connect via Plaid.</div></div>}
+            {!hasBank&&<EmptyBank onConnect={connectBank}/>}
 
-            {hasBank&&(
-              <>
-                <div style={g3}>
-                  {[{l:"Gross Revenue",v:fmt$(metrics.totalRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.totalExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.totalCF),a:metrics.totalCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                    <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"26px 22px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                      <div style={{fontSize:32,fontWeight:800,color:c.a,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{c.v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{...g4, marginTop:2}}>
-                  <Tile label="Airbnb Revenue"  value={fmt$(metrics.airbnbRev)}  accent="#c8ff00"/>
-                  <Tile label="Airbnb Expenses" value={fmt$(metrics.airbnbExp)}  accent="#ff5c5c"/>
-                  <Tile label="Pierce Revenue"  value={fmt$(metrics.pierceRev)}  accent="#60cfff"/>
-                  <Tile label="Pierce Expenses" value={fmt$(metrics.pierceExp)}  accent="#ff5c5c"/>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:2,marginBottom:2}}>
-                  <Tile label="Airbnb Cash Flow"  value={fmt$(metrics.airbnbCF)} accent={metrics.airbnbCF>=0?"#c8ff00":"#ff5c5c"}/>
-                  <Tile label="Pierce Cash Flow"  value={fmt$(metrics.pierceCF)} accent={metrics.pierceCF>=0?"#c8ff00":"#ff5c5c"}/>
-                  <Tile label="General LLC Exp"   value={fmt$(metrics.llcExp)}   accent="#c084fc"/>
-                </div>
+            {hasBank&&<>
+              <div style={g3}>
+                {[{l:"Gross Revenue",v:fmt$(metrics.totalRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.totalExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.totalCF),a:metrics.totalCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                  <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"24px 22px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
+                    <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
+                    <div style={{fontSize:30,fontWeight:800,color:c.a,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{c.v}</div>
+                  </div>
+                ))}
+              </div>
 
-                {/* Bar chart */}
-                {metrics.months.length>0&&(
-                  <div style={{background:"rgba(255,255,255,0.02)",padding:"22px 22px 14px",border:"1px solid rgba(255,255,255,0.06)",marginTop:20}}>
-                    <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:18}}>Monthly Revenue vs Expenses (last 12 mo)</div>
-                    <div style={{display:"flex",gap:3,alignItems:"flex-end",height:80}}>
-                      {metrics.months.map(([mo,v])=>(
-                        <div key={mo} style={{flex:1,display:"flex",gap:1,alignItems:"flex-end",height:"100%"}}>
-                          <div style={{flex:1,background:"#c8ff00",opacity:0.8,height:`${Math.max(3,(v.rev/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
-                          <div style={{flex:1,background:"#ff5c5c",opacity:0.7,height:`${Math.max(3,(v.exp/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{display:"flex",marginTop:6}}>
-                      {metrics.months.map(([mo])=>(
-                        <div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"#444",fontFamily:"monospace"}}>{mo.slice(5)}</div>
-                      ))}
-                    </div>
-                    <div style={{display:"flex",gap:16,marginTop:10}}>
-                      {[["#c8ff00","Revenue"],["#ff5c5c","Expenses"]].map(([c,l])=>(
-                        <div key={l} style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:8,height:8,background:c,borderRadius:2}}/><span style={{fontSize:10,color:"#555",fontFamily:"monospace"}}>{l}</span></div>
-                      ))}
+              {/* Per-group summary */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,marginTop:2,marginBottom:2}}>
+                {[
+                  {l:"Airbnb Portfolio (3 units)",rev:metrics.airbnbRev,exp:metrics.airbnbExp,cf:metrics.airbnbCF,color:"#c8ff00"},
+                  {l:"Pierce Ave · Section 8",    rev:metrics.pierceRev,exp:metrics.pierceExp,cf:metrics.pierceCF,color:"#60cfff"},
+                ].map(r=>(
+                  <div key={r.l} style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${r.color}20`,padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
+                    <div style={{fontSize:10,color:r.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>{r.l}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>REVENUE</div><div style={{fontSize:16,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(r.rev)}</div></div>
+                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>EXPENSES</div><div style={{fontSize:16,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(r.exp)}</div></div>
+                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>CASH FLOW</div><div style={{fontSize:16,fontWeight:800,color:r.cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(r.cf)}</div></div>
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
 
-                {/* Tagged tx count */}
-                <div style={{marginTop:16,display:"flex",gap:12}}>
-                  <div style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{tagged.length} tagged transactions · {untagged.length} untagged</div>
-                  {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"#ffb800",fontFamily:"monospace",background:"none",border:"none",textDecoration:"underline"}}>tag now →</button>}
+              {/* General LLC */}
+              {metrics.llcExp>0&&(
+                <div style={{background:"rgba(192,132,252,0.05)",border:"1px solid rgba(192,132,252,0.15)",padding:"14px 20px",borderLeft:"3px solid #c084fc",marginBottom:2}}>
+                  <div style={{fontSize:10,color:"#c084fc",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>General LLC Expenses</div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#c084fc",fontFamily:"monospace"}}>{fmt$(metrics.llcExp)}</div>
                 </div>
-              </>
-            )}
+              )}
+
+              {/* Monthly chart */}
+              {metrics.months.length>0&&(
+                <div style={{background:"rgba(255,255,255,0.02)",padding:"20px 20px 14px",border:"1px solid rgba(255,255,255,0.06)",marginTop:16}}>
+                  <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16}}>Monthly Revenue vs Expenses</div>
+                  <div style={{display:"flex",gap:3,alignItems:"flex-end",height:70}}>
+                    {metrics.months.map(([mo,v])=>(
+                      <div key={mo} style={{flex:1,display:"flex",gap:1,alignItems:"flex-end",height:"100%"}}>
+                        <div style={{flex:1,background:"#c8ff00",opacity:0.8,height:`${Math.max(3,(v.rev/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
+                        <div style={{flex:1,background:"#ff5c5c",opacity:0.7,height:`${Math.max(3,(v.exp/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",marginTop:5}}>
+                    {metrics.months.map(([mo])=><div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"#444",fontFamily:"monospace"}}>{mo.slice(5)}</div>)}
+                  </div>
+                </div>
+              )}
+
+              <div style={{marginTop:14,display:"flex",gap:10,alignItems:"center"}}>
+                <div style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{tagged.length} tagged · {untagged.length} untagged</div>
+                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"#ffb800",fontFamily:"monospace",background:"none",border:"none",textDecoration:"underline"}}>tag now →</button>}
+              </div>
+            </>}
           </div>
         )}
 
         {/* ── AIRBNB ── */}
         {tab==="Airbnb"&&(
           <div>
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:10,color:"#c8ff00",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>● STR Portfolio</div>
-              <div style={{fontSize:22,fontWeight:700}}>Airbnb Portfolio · 3 Units</div>
-              <div style={{fontSize:12,color:"#444",marginTop:4}}>Numbers derived from Plaid transactions tagged "Airbnb"</div>
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:10,color:"#c8ff00",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>● Airbnb Portfolio</div>
+              <div style={{fontSize:22,fontWeight:700}}>Short-Term Rentals · 3 Units</div>
+              <div style={{fontSize:12,color:"#444",marginTop:4}}>Lockwood + Everton + B Street · tagged transactions only</div>
             </div>
 
-            {metrics.airbnbRev===0&&metrics.airbnbExp===0?(
-              <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
-                <div style={{fontSize:32,marginBottom:12}}>📊</div>
-                <div style={{fontSize:14,color:"#666",marginBottom:6}}>No Airbnb transactions tagged yet</div>
-                <button onClick={()=>setTab("Feed")} style={{fontSize:12,color:"#c8ff00",fontFamily:"monospace",background:"none",border:"1px solid rgba(200,255,0,0.3)",borderRadius:6,padding:"7px 16px",cursor:"pointer"}}>Go to Feed →</button>
-              </div>
-            ):(
-              <>
-                <div style={g3}>
-                  {[{l:"Gross Revenue",v:fmt$(metrics.airbnbRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.airbnbExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.airbnbCF),a:metrics.airbnbCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                    <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"24px 22px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                      <div style={{fontSize:28,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
-                    </div>
-                  ))}
+            {/* Combined Airbnb total */}
+            <div style={g3}>
+              {[{l:"Total Revenue",v:fmt$(metrics.airbnbRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.airbnbExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.airbnbCF),a:metrics.airbnbCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"22px 20px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
+                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
                 </div>
-                <div style={{...g4,marginTop:2}}>
-                  <Tile label="Avg Monthly Revenue" value={fmt$(metrics.airbnbRev/Math.max(1,metrics.months.length))} accent="#c8ff00"/>
-                  <Tile label="Avg Monthly Expense" value={fmt$(metrics.airbnbExp/Math.max(1,metrics.months.length))} accent="#ff5c5c"/>
-                  <Tile label="Avg Monthly CF" value={fmt$(metrics.airbnbCF/Math.max(1,metrics.months.length))} accent={metrics.airbnbCF>=0?"#c8ff00":"#ff5c5c"}/>
-                  <Tile label="Expense Ratio" value={fmtPct(metrics.airbnbRev>0?(metrics.airbnbExp/metrics.airbnbRev)*100:0)} />
-                </div>
+              ))}
+            </div>
 
-                <SectionHead label="Airbnb Transactions" />
-                <TxTable txs={tagged.filter(t=>t.bucket==="airbnb")} tags={tags} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
-              </>
-            )}
+            {/* Individual property breakdown */}
+            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>Individual Properties</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+              {AIRBNB_PROPS.map(p=>(
+                <PropPL key={p.id} prop={p} txs={metrics.propMetrics[p.id].txs}/>
+              ))}
+            </div>
+
+            {/* All Airbnb transactions */}
+            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>All Airbnb Transactions</div>
+            <TxTable txs={AIRBNB_PROPS.flatMap(p=>metrics.propMetrics[p.id].txs)} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
           </div>
         )}
 
@@ -432,48 +393,33 @@ function App() {
             <div style={{marginBottom:20}}>
               <div style={{fontSize:10,color:"#60cfff",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>● Section 8</div>
               <div style={{fontSize:22,fontWeight:700}}>1703 Pierce Ave · Niagara Falls</div>
-              <div style={{fontSize:12,color:"#444",marginTop:4}}>Numbers derived from Plaid transactions tagged "Pierce Ave"</div>
+              <div style={{fontSize:12,color:"#444",marginTop:4}}>Tagged transactions only</div>
             </div>
 
-            {metrics.pierceRev===0&&metrics.pierceExp===0?(
-              <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
-                <div style={{fontSize:32,marginBottom:12}}>🏠</div>
-                <div style={{fontSize:14,color:"#666",marginBottom:6}}>No Pierce Ave transactions tagged yet</div>
-                <button onClick={()=>setTab("Feed")} style={{fontSize:12,color:"#60cfff",fontFamily:"monospace",background:"none",border:"1px solid rgba(96,207,255,0.3)",borderRadius:6,padding:"7px 16px",cursor:"pointer"}}>Go to Feed →</button>
-              </div>
-            ):(
-              <>
-                <div style={g3}>
-                  {[{l:"Gross Rent",v:fmt$(metrics.pierceRev),a:"#60cfff"},{l:"Total Expenses",v:fmt$(metrics.pierceExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.pierceCF),a:metrics.pierceCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                    <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"24px 22px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                      <div style={{fontSize:28,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
-                    </div>
-                  ))}
+            <div style={g3}>
+              {[{l:"Gross Rent",v:fmt$(metrics.pierceRev),a:"#60cfff"},{l:"Total Expenses",v:fmt$(metrics.pierceExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.pierceCF),a:metrics.pierceCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"22px 20px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
+                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
+                  <div style={{fontSize:26,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:2,marginTop:2,marginBottom:2}}>
-                  <Tile label="Avg Monthly Rent"    value={fmt$(metrics.pierceRev/Math.max(1,metrics.months.length))} accent="#60cfff"/>
-                  <Tile label="Avg Monthly Expense" value={fmt$(metrics.pierceExp/Math.max(1,metrics.months.length))} accent="#ff5c5c"/>
-                  <Tile label="Expense Ratio"       value={fmtPct(metrics.pierceRev>0?(metrics.pierceExp/metrics.pierceRev)*100:0)}/>
-                </div>
+              ))}
+            </div>
 
-                <SectionHead label="Pierce Ave Transactions" />
-                <TxTable txs={tagged.filter(t=>t.bucket==="pierce")} tags={tags} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
-              </>
-            )}
+            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>Pierce Ave Transactions</div>
+            <TxTable txs={metrics.propMetrics.pierce.txs} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
           </div>
         )}
 
         {/* ── FEED ── */}
         {tab==="Feed"&&(
           <div>
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:18}}>
               <div>
                 <div style={{fontSize:22,fontWeight:700}}>Transaction Feed</div>
-                <div style={{fontSize:12,color:"#444",marginTop:3}}>Tag each transaction · drives all numbers in every tab</div>
+                <div style={{fontSize:12,color:"#444",marginTop:3}}>Tag each transaction to a property · drives all numbers everywhere</div>
               </div>
-              <div style={{display:"flex",gap:6}}>
-                {feedOptions.map(o=>(
+              <div style={{display:"flex",gap:5}}>
+                {[{k:"untagged",l:`Untagged (${untagged.length})`},{k:"tagged",l:"Tagged"},{k:"all",l:"All"}].map(o=>(
                   <button key={o.k} onClick={()=>setFeedFilter(o.k)} style={{background:feedFilter===o.k?"rgba(255,255,255,0.08)":"transparent",color:feedFilter===o.k?"#e0e0e0":"#555",border:"1px solid",borderColor:feedFilter===o.k?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.07)",borderRadius:6,padding:"6px 13px",fontSize:11,fontFamily:"monospace"}}>
                     {o.l}
                   </button>
@@ -484,50 +430,50 @@ function App() {
             {!hasBank&&(
               <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
                 <div style={{fontSize:40,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:6}}>No bank connected</div>
+                <div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:14}}>No bank connected</div>
                 <button onClick={connectBank} style={{background:"#c8ff00",color:"#000",border:"none",borderRadius:8,padding:"11px 24px",fontSize:13,fontWeight:700,fontFamily:"monospace"}}>Connect Bank →</button>
               </div>
             )}
 
             {hasBank&&displayTxs.length===0&&(
               <div style={{textAlign:"center",padding:"50px 0",color:"#444",fontSize:13}}>
-                {feedFilter==="untagged" ? "All transactions tagged ✓" : "No transactions yet — sync to pull from Plaid"}
+                {feedFilter==="untagged"?"All transactions tagged ✓":"No transactions yet — hit Sync"}
               </div>
             )}
 
             {hasBank&&displayTxs.length>0&&(
               <div style={{border:"1px solid rgba(255,255,255,0.07)"}}>
-                <div style={{display:"grid",gridTemplateColumns:"90px 40px 1fr 110px 120px 120px",padding:"10px 18px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
-                  <span>Date</span><span>Dir</span><span>Payee</span><span>Amount</span><span>Account</span><span>Tag</span>
+                <div style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 100px 140px",padding:"9px 16px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
+                  <span>Date</span><span></span><span>Payee</span><span>Amount</span><span>Account</span><span>Property</span>
                 </div>
-                {displayTxs.map((tx,i)=>(
+                {displayTxs.map(tx=>(
                   <div key={tx.id}>
-                    <div
-                      onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
-                      style={{display:"grid",gridTemplateColumns:"90px 40px 1fr 110px 120px 120px",padding:"13px 18px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer",background:tagging===tx.id?"rgba(255,255,255,0.03)":"transparent",transition:"background 0.1s"}}
-                      onMouseEnter={e=>{ if(tagging!==tx.id) e.currentTarget.style.background="rgba(255,255,255,0.02)"; }}
-                      onMouseLeave={e=>{ if(tagging!==tx.id) e.currentTarget.style.background="transparent"; }}
+                    <div onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+                      style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 100px 140px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}
                     >
                       <span style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{fmtDate(tx.date)}</span>
-                      <span style={{fontSize:14,textAlign:"center"}}>{tx.type==="in"?"↓":"↑"}</span>
+                      <span style={{fontSize:13,textAlign:"center",color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"↓":"↑"}</span>
                       <div>
-                        <div style={{fontSize:13,fontFamily:"monospace"}}>{tx.payee}</div>
-                        {tx.account&&<div style={{fontSize:10,color:"#444",marginTop:2}}>{tx.account}</div>}
+                        <div style={{fontSize:12,fontFamily:"monospace"}}>{tx.payee}</div>
+                        {tx.account&&<div style={{fontSize:10,color:"#444",marginTop:1}}>{tx.account}</div>}
                       </div>
                       <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>
                         {tx.type==="in"?"+":"-"}{fmt$(Math.abs(tx.amount))}
                       </span>
                       <span style={{fontSize:10,color:"#444",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account}</span>
                       <div onClick={e=>e.stopPropagation()}>
-                        {tagging===tx.id?(
-                          <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
-                        ):(
-                          tx.bucket ? <Badge id={tx.bucket} small/> : <button onClick={e=>{e.stopPropagation();setTagging(tx.id);}} style={{background:"rgba(255,184,0,0.1)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.25)",borderRadius:5,padding:"4px 10px",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Tag →</button>
-                        )}
+                        {tagging===tx.id
+                          ? <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                          : tx.propId
+                            ? <span onClick={e=>{e.stopPropagation();setTagging(tx.id);}}><Badge id={tx.propId} small/></span>
+                            : <button onClick={e=>{e.stopPropagation();setTagging(tx.id);}} style={{background:"rgba(255,184,0,0.1)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.25)",borderRadius:5,padding:"4px 10px",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Tag →</button>
+                        }
                       </div>
                     </div>
                     {tagging===tx.id&&(
-                      <div style={{padding:"0 18px 14px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                      <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
                         <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
                       </div>
                     )}
@@ -538,14 +484,14 @@ function App() {
 
             {/* Auto-tag rules */}
             {Object.keys(autoTags).length>0&&(
-              <div style={{marginTop:24,padding:"18px 20px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-                <div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12}}>Auto-Tag Rules (learned)</div>
+              <div style={{marginTop:22,padding:"16px 18px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
+                <div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules (learned)</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {Object.entries(autoTags).map(([payee,bid])=>(
-                    <div key={payee} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:5,padding:"4px 10px"}}>
-                      <span style={{fontSize:10,fontFamily:"monospace",color:"#888"}}>{payee}</span>
+                  {Object.entries(autoTags).map(([payee,pid])=>(
+                    <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:5,padding:"3px 10px"}}>
+                      <span style={{fontSize:10,fontFamily:"monospace",color:"#777"}}>{payee}</span>
                       <span style={{color:"#444",fontSize:10}}>→</span>
-                      <Badge id={bid} small/>
+                      <Badge id={pid} small/>
                     </div>
                   ))}
                 </div>
@@ -553,39 +499,68 @@ function App() {
             )}
           </div>
         )}
-
       </div>
     </div>
   );
 }
 
-// ── Reusable transaction table for property tabs ──────────────
+function EmptyBank({ onConnect }) {
+  return (
+    <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
+      <div style={{fontSize:36,marginBottom:12}}>🏦</div>
+      <div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:6}}>No bank connected</div>
+      <div style={{fontSize:13,marginBottom:20}}>Click "+ Add Bank" in the header to connect via Plaid.</div>
+    </div>
+  );
+}
+
 function TxTable({ txs, tagging, setTagging, doTag }) {
-  if (!txs.length) return <div style={{color:"#444",fontSize:13,padding:"20px 0"}}>No transactions yet.</div>;
+  const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!sorted.length) return <div style={{color:"#444",fontSize:13,padding:"20px 0",fontFamily:"monospace"}}>No transactions tagged yet.</div>;
   return (
     <div style={{border:"1px solid rgba(255,255,255,0.07)"}}>
-      <div style={{display:"grid",gridTemplateColumns:"90px 40px 1fr 110px 100px",padding:"10px 18px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
-        <span>Date</span><span>Dir</span><span>Payee</span><span>Amount</span><span>Re-tag</span>
+      <div style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 140px",padding:"9px 16px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
+        <span>Date</span><span></span><span>Payee</span><span>Amount</span><span>Property</span>
       </div>
-      {txs.sort((a,b)=>b.date.localeCompare(a.date)).map((tx,i)=>(
+      {sorted.map(tx=>(
         <div key={tx.id}>
-          <div onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{display:"grid",gridTemplateColumns:"90px 40px 1fr 110px 100px",padding:"12px 18px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer"}}
+          <div onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+            style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 140px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer"}}
             onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
             onMouseLeave={e=>e.currentTarget.style.background="transparent"}
           >
-            <span style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{tx.date?.slice(5)}</span>
-            <span style={{fontSize:14,textAlign:"center"}}>{tx.type==="in"?"↓":"↑"}</span>
+            <span style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{fmtDate(tx.date)}</span>
+            <span style={{fontSize:13,textAlign:"center",color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"↓":"↑"}</span>
             <span style={{fontSize:12,fontFamily:"monospace"}}>{tx.payee}</span>
             <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"+":"-"}{fmt$(Math.abs(tx.amount))}</span>
-            <span style={{fontSize:10,color:"#555",fontFamily:"monospace"}}>click to re-tag</span>
+            <div onClick={e=>e.stopPropagation()}>
+              <span onClick={e=>{e.stopPropagation();setTagging(tx.id);}}><Badge id={tx.propId} small/></span>
+            </div>
           </div>
           {tagging===tx.id&&(
-            <div style={{padding:"0 18px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+            <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
               <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
             </div>
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function PropPL({ prop, txs }) {
+  const rev=txs.filter(t=>t.type==="in").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const exp=txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const cf=rev-exp;
+  return (
+    <div style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${prop.color}25`,padding:"16px 18px",borderLeft:`3px solid ${prop.color}`}}>
+      <div style={{fontSize:10,color:prop.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontWeight:700}}>{prop.label}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Revenue</div><div style={{fontSize:15,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(rev)}</div></div>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Expenses</div><div style={{fontSize:15,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(exp)}</div></div>
+        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Cash Flow</div><div style={{fontSize:15,fontWeight:800,color:cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(cf)}</div></div>
+      </div>
+      {txs.length===0&&<div style={{fontSize:10,color:"#444",marginTop:8,fontFamily:"monospace"}}>No transactions tagged</div>}
     </div>
   );
 }
