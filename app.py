@@ -1,4 +1,5 @@
 import os
+import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import plaid
@@ -14,11 +15,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Serve index.html from the same folder as app.py
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app, origins="*")
 
-# ── Plaid client setup ───────────────────────────────────────
 PLAID_ENV       = os.getenv("PLAID_ENV", "development")
 PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
 PLAID_SECRET    = os.getenv("PLAID_SECRET")
@@ -31,41 +30,53 @@ env_map = {
 
 configuration = plaid.Configuration(
     host=env_map.get(PLAID_ENV, "https://development.plaid.com"),
-    api_key={
-        "clientId": PLAID_CLIENT_ID,
-        "secret":   PLAID_SECRET,
-    }
+    api_key={"clientId": PLAID_CLIENT_ID, "secret": PLAID_SECRET}
 )
-
 api_client   = plaid.ApiClient(configuration)
 plaid_client = plaid_api.PlaidApi(api_client)
 
-# ── In-memory token store ────────────────────────────────────
-store = {
-    "access_token": None,
-    "item_id":      None,
-    "cursor":       None,
-}
+# ── Persistent store ─────────────────────────────────────────
+# store = {
+#   "accounts": [ { "access_token": "...", "item_id": "...", "cursor": "...", "name": "..." } ]
+# }
+STORE_FILE = "plaid_store.json"
 
-# ── Serve frontend ────────────────────────────────────────────
+def load_store():
+    try:
+        with open(STORE_FILE, "r") as f:
+            data = json.load(f)
+            if "accounts" not in data:
+                data["accounts"] = []
+            return data
+    except Exception:
+        return {"accounts": []}
+
+def save_store(data):
+    try:
+        with open(STORE_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print("Failed to save store:", e)
+
+store = load_store()
+
+# ── Frontend ──────────────────────────────────────────────────
 @app.route("/")
 def frontend():
     return app.send_static_file("index.html")
 
-# ── Health check ─────────────────────────────────────────────
+# ── Health ────────────────────────────────────────────────────
 @app.route("/api/health")
 def health():
-    return jsonify({"ok": True, "linked": store["access_token"] is not None})
+    return jsonify({"ok": True, "account_count": len(store["accounts"])})
 
 # ── Link status ───────────────────────────────────────────────
 @app.route("/api/link-status")
 def link_status():
-    return jsonify({
-        "linked":  store["access_token"] is not None,
-        "item_id": store["item_id"],
-    })
+    accounts = [{"item_id": a["item_id"], "name": a.get("name", "Bank Account")} for a in store["accounts"]]
+    return jsonify({"linked": len(store["accounts"]) > 0, "accounts": accounts})
 
-# ── Step 1: Create link token ─────────────────────────────────
+# ── Create link token ─────────────────────────────────────────
 @app.route("/api/create-link-token", methods=["POST"])
 def create_link_token():
     try:
@@ -80,100 +91,134 @@ def create_link_token():
         return jsonify({"link_token": response["link_token"]})
     except Exception as e:
         print("create-link-token error:", str(e))
-        return jsonify({"error": "Failed to create link token"}), 500
+        return jsonify({"error": str(e)}), 500
 
-# ── Step 2: Exchange public token ─────────────────────────────
+# ── Exchange token ────────────────────────────────────────────
 @app.route("/api/exchange-token", methods=["POST"])
 def exchange_token():
-    public_token = request.json.get("public_token")
+    public_token  = request.json.get("public_token")
+    account_name  = request.json.get("account_name", "Bank Account")
     if not public_token:
         return jsonify({"error": "public_token required"}), 400
     try:
         response = plaid_client.item_public_token_exchange(
             ItemPublicTokenExchangeRequest(public_token=public_token)
         )
-        store["access_token"] = response["access_token"]
-        store["item_id"]      = response["item_id"]
-        store["cursor"]       = None
-        print("✅ Linked. Item ID:", store["item_id"])
-        return jsonify({"ok": True, "item_id": store["item_id"]})
+        access_token = response["access_token"]
+        item_id      = response["item_id"]
+
+        # Check if already linked (re-link updates cursor only)
+        existing = next((a for a in store["accounts"] if a["item_id"] == item_id), None)
+        if existing:
+            existing["access_token"] = access_token
+            existing["cursor"]       = None
+            existing["name"]         = account_name
+        else:
+            store["accounts"].append({
+                "access_token": access_token,
+                "item_id":      item_id,
+                "cursor":       None,
+                "name":         account_name,
+            })
+
+        save_store(store)
+        print(f"✅ Linked: {account_name} ({item_id})")
+        return jsonify({"ok": True, "item_id": item_id})
     except Exception as e:
         print("exchange-token error:", str(e))
-        return jsonify({"error": "Failed to exchange token"}), 500
+        return jsonify({"error": str(e)}), 500
 
-# ── Step 3: Sync transactions ─────────────────────────────────
+# ── Remove account ────────────────────────────────────────────
+@app.route("/api/remove-account", methods=["POST"])
+def remove_account():
+    item_id = request.json.get("item_id")
+    store["accounts"] = [a for a in store["accounts"] if a["item_id"] != item_id]
+    save_store(store)
+    return jsonify({"ok": True})
+
+# ── Sync all accounts ─────────────────────────────────────────
 @app.route("/api/transactions/sync")
 def sync_transactions():
-    if not store["access_token"]:
+    if not store["accounts"]:
         return jsonify({"error": "No bank account linked yet"}), 400
-    try:
-        added, modified, removed = [], [], []
-        cursor   = store["cursor"]
-        has_more = True
 
-        while has_more:
-            kwargs = {"access_token": store["access_token"], "count": 100}
-            if cursor:
-                kwargs["cursor"] = cursor
+    all_added, all_modified, all_removed = [], [], []
 
-            response = plaid_client.transactions_sync(
-                TransactionsSyncRequest(**kwargs)
-            )
-            data = response.to_dict()
+    for account in store["accounts"]:
+        try:
+            added, modified, removed = [], [], []
+            cursor   = account.get("cursor")
+            has_more = True
 
-            added    += data.get("added",    [])
-            modified += data.get("modified", [])
-            removed  += data.get("removed",  [])
-            has_more  = data.get("has_more", False)
-            cursor    = data.get("next_cursor")
+            while has_more:
+                kwargs = {"access_token": account["access_token"], "count": 100}
+                if cursor:
+                    kwargs["cursor"] = cursor
+                response = plaid_client.transactions_sync(TransactionsSyncRequest(**kwargs))
+                data     = response.to_dict()
+                added    += data.get("added",    [])
+                modified += data.get("modified", [])
+                removed  += data.get("removed",  [])
+                has_more  = data.get("has_more", False)
+                cursor    = data.get("next_cursor")
 
-        store["cursor"] = cursor
+            account["cursor"] = cursor
 
-        def normalize(tx):
-            amount = tx.get("amount", 0)
-            return {
-                "id":       tx.get("transaction_id"),
-                "date":     str(tx.get("date", "")),
-                "payee":    tx.get("merchant_name") or tx.get("name", ""),
-                "amount":   amount,
-                "type":     "out" if amount > 0 else "in",
-                "category": (tx.get("personal_finance_category") or {}).get("primary"),
-                "pending":  tx.get("pending", False),
-                "property": None,
-            }
+            def normalize(tx):
+                amount = tx.get("amount", 0)
+                return {
+                    "id":        tx.get("transaction_id"),
+                    "date":      str(tx.get("date", "")),
+                    "payee":     tx.get("merchant_name") or tx.get("name", ""),
+                    "amount":    amount,
+                    # Plaid: positive = money OUT, negative = money IN
+                    "type":      "out" if amount > 0 else "in",
+                    "category":  (tx.get("personal_finance_category") or {}).get("primary"),
+                    "pending":   tx.get("pending", False),
+                    "account":   account.get("name", "Bank Account"),
+                    "bucket":    None,  # tagged bucket: airbnb / pierce / llc / transfer
+                }
 
-        return jsonify({
-            "added":    [normalize(t) for t in added],
-            "modified": [normalize(t) for t in modified],
-            "removed":  [r.get("transaction_id") for r in removed],
-            "total":    len(added),
-        })
-    except Exception as e:
-        print("sync error:", str(e))
-        return jsonify({"error": "Failed to sync transactions"}), 500
+            all_added    += [normalize(t) for t in added]
+            all_modified += [normalize(t) for t in modified]
+            all_removed  += [r.get("transaction_id") for r in removed]
 
-# ── Step 4: Account balances ──────────────────────────────────
+        except Exception as e:
+            print(f"Sync error for {account.get('name')}: {e}")
+            continue
+
+    save_store(store)
+
+    return jsonify({
+        "added":    all_added,
+        "modified": all_modified,
+        "removed":  all_removed,
+        "total":    len(all_added),
+    })
+
+# ── Balances ──────────────────────────────────────────────────
 @app.route("/api/balances")
 def balances():
-    if not store["access_token"]:
+    if not store["accounts"]:
         return jsonify({"error": "No bank account linked yet"}), 400
-    try:
-        response = plaid_client.accounts_balance_get(
-            AccountsBalanceGetRequest(access_token=store["access_token"])
-        )
-        accounts = []
-        for a in response["accounts"]:
-            accounts.append({
-                "name":      a["name"],
-                "type":      str(a["type"]),
-                "current":   a["balances"]["current"],
-                "available": a["balances"].get("available"),
-                "currency":  a["balances"].get("iso_currency_code", "USD"),
-            })
-        return jsonify({"accounts": accounts})
-    except Exception as e:
-        print("balances error:", str(e))
-        return jsonify({"error": "Failed to fetch balances"}), 500
+    all_accounts = []
+    for account in store["accounts"]:
+        try:
+            response = plaid_client.accounts_balance_get(
+                AccountsBalanceGetRequest(access_token=account["access_token"])
+            )
+            for a in response["accounts"]:
+                all_accounts.append({
+                    "bank":      account.get("name", "Bank Account"),
+                    "name":      a["name"],
+                    "type":      str(a["type"]),
+                    "current":   a["balances"]["current"],
+                    "available": a["balances"].get("available"),
+                    "currency":  a["balances"].get("iso_currency_code", "USD"),
+                })
+        except Exception as e:
+            print(f"Balance error for {account.get('name')}: {e}")
+    return jsonify({"accounts": all_accounts})
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
