@@ -1,1 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Pigeon</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080808; color: #e0e0e0; font-family: 'DM Sans', -apple-system, sans-serif; min-height: 100vh; }
+    button { cursor: pointer; font-family: inherit; }
+    .mono { font-family: 'Space Mono', 'Courier New', monospace; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
 
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect, useCallback } = React;
+
+const BACKEND_URL = "https://propertypigeon.onrender.com";
+
+const fmt$ = (n) => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 }).format(n||0);
+const fmtPct = (n) => (n==null||isNaN(n)) ? "—" : `${n.toFixed(1)}%`;
+
+const PROPERTIES = [
+  { id:"airbnb", label:"Airbnb Portfolio", short:"Airbnb",     color:"#c8ff00" },
+  { id:"pierce", label:"1703 Pierce Ave",  short:"Pierce Ave", color:"#60cfff" },
+];
+
+const AIRBNB_MONTHLY = [
+  { month:"Jan", revenue:14200, expenses:9100 },
+  { month:"Feb", revenue:11000, expenses:9200 },
+  { month:"Mar", revenue:18800, expenses:9500 },
+  { month:"Apr", revenue:17600, expenses:9300 },
+  { month:"May", revenue:19200, expenses:9400 },
+  { month:"Jun", revenue:22800, expenses:9800 },
+  { month:"Jul", revenue:24600, expenses:10200 },
+  { month:"Aug", revenue:23100, expenses:10000 },
+  { month:"Sep", revenue:18400, expenses:9500 },
+  { month:"Oct", revenue:20200, expenses:9700 },
+  { month:"Nov", revenue:13800, expenses:9000 },
+  { month:"Dec", revenue:11900, expenses:8900 },
+];
+const PIERCE_MONTHLY = [
+  { month:"Jan", revenue:1450, expenses:2010 },
+  { month:"Feb", revenue:1450, expenses:1980 },
+  { month:"Mar", revenue:1450, expenses:2020 },
+  { month:"Apr", revenue:1450, expenses:1990 },
+  { month:"May", revenue:1450, expenses:2000 },
+  { month:"Jun", revenue:1450, expenses:2050 },
+  { month:"Jul", revenue:1450, expenses:2030 },
+  { month:"Aug", revenue:1450, expenses:2010 },
+  { month:"Sep", revenue:1450, expenses:1970 },
+  { month:"Oct", revenue:1450, expenses:2000 },
+  { month:"Nov", revenue:1450, expenses:2020 },
+  { month:"Dec", revenue:1450, expenses:1990 },
+];
+const NIGHTS_DATA   = [118,136,152,144,158,174,186,179,148,162,112,96];
+const AIRBNB_UNITS  = 3;
+const NIGHTS_MO     = AIRBNB_UNITS * 30;
+const PIERCE        = { value:165000, mortgage:112000, downPaid:28000, purchasePrice:140000, monthlyRent:1450, vacant:false };
+const AIRBNB_PORT   = { value:1320000, mortgage:980000, downPaid:220000, purchasePrice:1100000 };
+const sum           = (arr,k) => arr.reduce((s,x)=>s+(x[k]||0),0);
+
+const STORAGE_KEY  = "pigeon_tx_tags";
+const AUTOTAG_KEY  = "pigeon_autotags";
+const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"airbnb","AIRBNB":"airbnb","HOUSING AUTHORITY":"pierce","WELLS FARGO MORTGAGE":"pierce","CHASE MORTGAGE":"airbnb" };
+
+function loadTags()     { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}"); } catch { return {}; } }
+function saveTags(t)    { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch {} }
+function loadAutoTags() { try { return JSON.parse(localStorage.getItem(AUTOTAG_KEY)||JSON.stringify(DEFAULT_AUTO)); } catch { return DEFAULT_AUTO; } }
+function saveAutoTags(t){ try { localStorage.setItem(AUTOTAG_KEY, JSON.stringify(t)); } catch {} }
+
+function TagBadge({ property, small }) {
+  const p = property ? PROPERTIES.find(x=>x.id===property) : null;
+  const s = { borderRadius:4, padding: small?"2px 7px":"3px 10px", fontSize: small?10:11, fontFamily:"monospace", fontWeight:600 };
+  if (!p) return <span style={{...s, background:"rgba(255,200,0,0.15)", color:"#ffb800", border:"1px solid rgba(255,184,0,0.3)"}}>UNTAGGED</span>;
+  return <span style={{...s, background:`${p.color}18`, color:p.color, border:`1px solid ${p.color}40`}}>{p.short.toUpperCase()}</span>;
+}
+
+function Tile({ label, value, sub, accent="#e0e0e0" }) {
+  return (
+    <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", padding:"20px 22px" }}>
+      <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"monospace", marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:20, fontWeight:800, color:accent, fontFamily:"'Space Mono',monospace", letterSpacing:"-0.02em" }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:"#444", marginTop:5 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab]           = useState("Portfolio");
+  const [transactions, setTxs]  = useState([]);
+  const [tags, setTags]         = useState(loadTags);
+  const [autoTags, setAutoTags] = useState(loadAutoTags);
+  const [tagging, setTagging]   = useState(null);
+  const [linked, setLinked]     = useState(false);
+  const [syncing, setSyncing]   = useState(false);
+  const [status, setStatus]     = useState(null);
+  const [linking, setLinking]   = useState(false);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/link-status`)
+      .then(r=>r.json()).then(d=>setLinked(d.linked)).catch(()=>{});
+  }, []);
+
+  const applyAutoTags = useCallback((txs, at, cur) => {
+    const next = {...cur};
+    txs.forEach(tx => {
+      if (!next[tx.id]) {
+        const hit = Object.entries(at).find(([p])=>tx.payee?.toUpperCase().includes(p));
+        if (hit) next[tx.id] = hit[1];
+      }
+    });
+    return next;
+  }, []);
+
+  const syncTx = useCallback(async () => {
+    if (!linked) return;
+    setSyncing(true); setStatus(null);
+    try {
+      const res  = await fetch(`${BACKEND_URL}/api/transactions/sync`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setTxs(prev => {
+        const m = Object.fromEntries(prev.map(t=>[t.id,t]));
+        data.removed.forEach(id=>delete m[id]);
+        data.modified.forEach(tx=>{ m[tx.id]=tx; });
+        data.added.forEach(tx=>{ if(!m[tx.id]) m[tx.id]=tx; });
+        return Object.values(m).sort((a,b)=>new Date(b.date)-new Date(a.date));
+      });
+      setTags(prev=>{ const u=applyAutoTags(data.added,autoTags,prev); saveTags(u); return u; });
+      setStatus(`Synced ${data.added.length} new transactions`);
+    } catch(e) { setStatus("Sync failed — "+e.message); }
+    finally { setSyncing(false); }
+  }, [linked, autoTags, applyAutoTags]);
+
+  useEffect(() => { if (linked) syncTx(); }, [linked]);
+
+  const connectBank = useCallback(async () => {
+    setLinking(true); setStatus(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/create-link-token`, {method:"POST"});
+      const { link_token, error } = await res.json();
+      if (error) throw new Error(error);
+      const handler = window.Plaid.create({
+        token: link_token,
+        onSuccess: async (public_token) => {
+          await fetch(`${BACKEND_URL}/api/exchange-token`, {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({public_token}),
+          });
+          setLinked(true);
+          setStatus("Bank connected! Pulling transactions...");
+          setTimeout(syncTx, 800);
+        },
+        onExit: (err) => { if (err) setStatus("Exited: "+err.display_message); },
+      });
+      handler.open();
+    } catch(e) { setStatus("Could not open Plaid Link: "+e.message); }
+    finally { setLinking(false); }
+  }, [syncTx]);
+
+  function assignTag(txId, propId) {
+    const tx = transactions.find(t=>t.id===txId);
+    const next = {...tags, [txId]:propId};
+    if (tx?.payee) {
+      const at = {...autoTags, [tx.payee.toUpperCase()]:propId};
+      transactions.forEach(t=>{ if(!next[t.id]&&t.payee?.toUpperCase()===tx.payee.toUpperCase()) next[t.id]=propId; });
+      setAutoTags(at); saveAutoTags(at);
+    }
+    setTags(next); saveTags(next); setTagging(null);
+  }
+
+  const enriched  = useMemo(()=>transactions.map(tx=>({...tx,property:tags[tx.id]||null})),[transactions,tags]);
+  const untagged  = enriched.filter(t=>!t.property&&!t.pending);
+  const tagged    = enriched.filter(t=>t.property);
+
+  const portfolio = useMemo(()=>{
+    const mo  = AIRBNB_MONTHLY.map((a,i)=>({revenue:a.revenue+PIERCE_MONTHLY[i].revenue,expenses:a.expenses+PIERCE_MONTHLY[i].expenses}));
+    const rev = sum(mo,"revenue"), exp=sum(mo,"expenses"), cf=rev-exp;
+    const equity=AIRBNB_PORT.value-AIRBNB_PORT.mortgage+PIERCE.value-PIERCE.mortgage;
+    const totalValue=AIRBNB_PORT.value+PIERCE.value, totalDown=AIRBNB_PORT.downPaid+PIERCE.downPaid;
+    const appreciation=(AIRBNB_PORT.value-AIRBNB_PORT.purchasePrice)+(PIERCE.value-PIERCE.purchasePrice);
+    const noi=rev-exp*0.45, capRate=(noi/totalValue)*100, coc=(cf/totalDown)*100;
+    return {rev,exp,cf,equity,totalValue,totalDown,appreciation,noi,capRate,coc,monthly:mo};
+  },[]);
+
+  const airbnb = useMemo(()=>{
+    const rev=sum(AIRBNB_MONTHLY,"revenue"),exp=sum(AIRBNB_MONTHLY,"expenses"),cf=rev-exp;
+    const tn=NIGHTS_DATA.reduce((s,n)=>s+n,0), avail=NIGHTS_MO*12;
+    const occ=(tn/avail)*100, adr=rev/tn, revpar=rev/avail;
+    const debt=exp*0.55, noi=rev-(exp-debt);
+    return {rev,exp,cf,tn,avail,occ,adr,revpar,noi,capRate:(noi/AIRBNB_PORT.value)*100,coc:(cf/AIRBNB_PORT.downPaid)*100,grm:AIRBNB_PORT.value/rev,dscr:noi/debt,equity:AIRBNB_PORT.value-AIRBNB_PORT.mortgage,appreciation:AIRBNB_PORT.value-AIRBNB_PORT.purchasePrice};
+  },[]);
+
+  const pierce = useMemo(()=>{
+    const rev=sum(PIERCE_MONTHLY,"revenue"),exp=sum(PIERCE_MONTHLY,"expenses"),cf=rev-exp;
+    const debt=1640*12, noi=rev-(exp-debt);
+    return {rev,exp,cf,noi,capRate:(noi/PIERCE.value)*100,coc:(cf/PIERCE.downPaid)*100,equity:PIERCE.value-PIERCE.mortgage,appreciation:PIERCE.value-PIERCE.purchasePrice,dscr:noi/debt};
+  },[]);
+
+  const maxRev = Math.max(...portfolio.monthly.map(m=>m.revenue));
+  const TABS   = ["Portfolio","Airbnb","Pierce Ave","Plaid Feed"];
+
+  const btn = (active) => ({
+    background: active?"#c8ff00":"transparent", color: active?"#000":"#666",
+    border:"1px solid", borderColor: active?"#c8ff00":"rgba(255,255,255,0.09)",
+    borderRadius:8, padding:"7px 18px", fontSize:12, fontWeight: active?700:500,
+    fontFamily:"monospace", transition:"all 0.15s", position:"relative",
+  });
+
+  const row3 = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:2, marginBottom:2 };
+  const row4 = { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:2, marginBottom:2 };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#080808", color:"#e0e0e0" }}>
+
+      {/* HEADER */}
+      <div style={{ padding:"18px 36px", borderBottom:"1px solid rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"rgba(8,8,8,0.97)", backdropFilter:"blur(12px)", zIndex:100 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:30, height:30, borderRadius:7, background:"#c8ff00", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🐦</div>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700 }}>Property Pigeon</div>
+            <div style={{ fontSize:10, color:"#555", fontFamily:"monospace", letterSpacing:"0.1em" }}>4 UNITS · AIRBNB + SECTION 8</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          {TABS.map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={btn(tab===t)}>
+              {t}
+              {t==="Plaid Feed"&&untagged.length>0&&(
+                <span style={{ position:"absolute", top:-6, right:-6, background:"#ffb800", color:"#000", borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>{untagged.length}</span>
+              )}
+            </button>
+          ))}
+          {linked&&<button onClick={syncTx} disabled={syncing} style={{ background:"transparent", color:syncing?"#555":"#c8ff00", border:"1px solid", borderColor:syncing?"#333":"rgba(200,255,0,0.3)", borderRadius:8, padding:"7px 14px", fontSize:12, fontFamily:"monospace", marginLeft:4 }}>{syncing?"Syncing...":"↻ Sync"}</button>}
+        </div>
+      </div>
+
+      <div style={{ maxWidth:1100, margin:"0 auto", padding:"36px 36px 80px" }}>
+
+        {/* PORTFOLIO */}
+        {tab==="Portfolio"&&(
+          <div>
+            <div style={{ marginBottom:28 }}>
+              <div style={{ fontSize:11, color:"#555", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em" }}>All Properties Combined</div>
+              <div style={{ fontSize:24, fontWeight:700, marginTop:4 }}>Portfolio Overview · 2025</div>
+            </div>
+            <div style={row3}>
+              {[{label:"Gross Revenue",value:fmt$(portfolio.rev),sub:"Annual — all units",accent:"#c8ff00"},{label:"Total Expenses",value:fmt$(portfolio.exp),sub:"Annual — all units",accent:"#ff5c5c"},{label:"Net Cash Flow",value:fmt$(portfolio.cf),sub:"After all expenses",accent:portfolio.cf>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                <div key={c.label} style={{ background:"rgba(255,255,255,0.03)", padding:"28px 26px", borderRight:"1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"monospace", marginBottom:10 }}>{c.label}</div>
+                  <div style={{ fontSize:34, fontWeight:800, color:c.accent, fontFamily:"'Space Mono',monospace", letterSpacing:"-0.02em" }}>{c.value}</div>
+                  <div style={{ fontSize:11, color:"#444", marginTop:5 }}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+            <div style={row4}>
+              <Tile label="NOI" value={fmt$(portfolio.noi)} />
+              <Tile label="Total Equity" value={fmt$(portfolio.equity)} accent="#60cfff" />
+              <Tile label="Total Appreciation" value={fmt$(portfolio.appreciation)} accent="#60cfff" />
+              <Tile label="Monthly Cash Flow" value={fmt$(portfolio.cf/12)} accent={portfolio.cf>=0?"#c8ff00":"#ff5c5c"} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:2, marginBottom:28 }}>
+              <Tile label="Blended Cap Rate" value={fmtPct(portfolio.capRate)} accent="#c084fc" sub="Portfolio NOI ÷ total value" />
+              <Tile label="Cash-on-Cash" value={fmtPct(portfolio.coc)} accent="#c084fc" sub="CF ÷ total down paid" />
+              <Tile label="Total Portfolio Value" value={fmt$(portfolio.totalValue)} sub="Market value — all units" />
+            </div>
+            {/* Split */}
+            <div style={{ border:"1px solid rgba(255,255,255,0.07)", marginBottom:28 }}>
+              <div style={{ padding:"14px 24px", borderBottom:"1px solid rgba(255,255,255,0.06)", fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.1em" }}>Property Split</div>
+              {[{label:"Airbnb Portfolio",rev:airbnb.rev,exp:airbnb.exp,cf:airbnb.cf,color:"#c8ff00"},{label:"1703 Pierce Ave",rev:pierce.rev,exp:pierce.exp,cf:pierce.cf,color:"#60cfff"}].map(r=>(
+                <div key={r.label} style={{ display:"grid", gridTemplateColumns:"200px 1fr 1fr 1fr", padding:"18px 24px", borderBottom:"1px solid rgba(255,255,255,0.04)", fontSize:14, alignItems:"center" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:7, height:7, borderRadius:"50%", background:r.color }}/><span style={{ fontWeight:600 }}>{r.label}</span></div>
+                  <span style={{ color:"#c8ff00" }}>{fmt$(r.rev)}</span>
+                  <span style={{ color:"#ff5c5c" }}>{fmt$(r.exp)}</span>
+                  <span style={{ color:r.cf>=0?"#c8ff00":"#ff5c5c", fontWeight:700 }}>{fmt$(r.cf)}</span>
+                </div>
+              ))}
+              <div style={{ display:"grid", gridTemplateColumns:"200px 1fr 1fr 1fr", padding:"10px 24px", fontSize:10, color:"#444", fontFamily:"monospace" }}><span/><span>REVENUE</span><span>EXPENSES</span><span>CASH FLOW</span></div>
+            </div>
+            {/* Bar chart */}
+            <div style={{ background:"rgba(255,255,255,0.02)", padding:"24px 24px 16px", border:"1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:20 }}>Monthly Revenue — All Units 2025</div>
+              <div style={{ display:"flex", gap:4, alignItems:"flex-end", height:80 }}>
+                {portfolio.monthly.map((m,i)=>(
+                  <div key={i} style={{ flex:1, display:"flex", alignItems:"flex-end", height:"100%" }}>
+                    <div style={{ flex:1, background:"#c8ff00", opacity:0.85, height:`${Math.max(4,(m.revenue/maxRev)*100)}%`, borderRadius:"2px 2px 0 0" }}/>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex", marginTop:6 }}>
+                {["J","F","M","A","M","J","J","A","S","O","N","D"].map((l,i)=><div key={i} style={{ flex:1, textAlign:"center", fontSize:9, color:"#444", fontFamily:"monospace" }}>{l}</div>)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AIRBNB */}
+        {tab==="Airbnb"&&(
+          <div>
+            <div style={{ marginBottom:28 }}>
+              <div style={{ fontSize:11, color:"#c8ff00", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:4 }}>● STR Portfolio</div>
+              <div style={{ fontSize:24, fontWeight:700 }}>Airbnb Portfolio · 3 Units</div>
+            </div>
+            <div style={row3}>
+              {[{label:"Gross Revenue",value:fmt$(airbnb.rev),accent:"#c8ff00"},{label:"Total Expenses",value:fmt$(airbnb.exp),accent:"#ff5c5c"},{label:"Net Cash Flow",value:fmt$(airbnb.cf),accent:airbnb.cf>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                <div key={c.label} style={{ background:"rgba(255,255,255,0.03)", padding:"26px 24px", borderRight:"1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"monospace", marginBottom:10 }}>{c.label}</div>
+                  <div style={{ fontSize:30, fontWeight:800, color:c.accent, fontFamily:"'Space Mono',monospace" }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={row4}><Tile label="NOI" value={fmt$(airbnb.noi)}/><Tile label="Equity" value={fmt$(airbnb.equity)} accent="#60cfff"/><Tile label="Appreciation" value={fmt$(airbnb.appreciation)} accent="#60cfff"/><Tile label="Monthly Cash Flow" value={fmt$(airbnb.cf/12)} accent={airbnb.cf>=0?"#c8ff00":"#ff5c5c"}/></div>
+            <div style={row4}><Tile label="Cap Rate" value={fmtPct(airbnb.capRate)} accent="#c084fc" sub="NOI ÷ market value"/><Tile label="Cash-on-Cash" value={fmtPct(airbnb.coc)} accent="#c084fc" sub="CF ÷ down paid"/><Tile label="GRM" value={`${airbnb.grm.toFixed(1)}x`} sub="Gross rent multiplier"/><Tile label="DSCR" value={airbnb.dscr.toFixed(2)} accent={airbnb.dscr>=1.25?"#c8ff00":"#ff5c5c"} sub="Debt service coverage"/></div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:2, marginBottom:28 }}><Tile label="Occupancy" value={fmtPct(airbnb.occ)} sub={`${airbnb.tn} of ${airbnb.avail} nights`}/><Tile label="ADR" value={fmt$(airbnb.adr)} sub="Average daily rate"/><Tile label="RevPAR" value={fmt$(airbnb.revpar)} sub="Revenue per avail night"/></div>
+            <div style={{ border:"1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 1fr 1fr 1fr", padding:"12px 22px", background:"rgba(255,255,255,0.04)", fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase" }}>
+                <span>Mo</span><span>Revenue</span><span>Expenses</span><span>Cash Flow</span><span>Occupancy</span><span>ADR</span>
+              </div>
+              {AIRBNB_MONTHLY.map((m,i)=>{const cf=m.revenue-m.expenses,occ=(NIGHTS_DATA[i]/NIGHTS_MO)*100,adr=m.revenue/NIGHTS_DATA[i];return(
+                <div key={i} style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 1fr 1fr 1fr", padding:"14px 22px", borderBottom:"1px solid rgba(255,255,255,0.04)", fontSize:13 }}>
+                  <span style={{ color:"#555", fontFamily:"monospace", fontSize:11 }}>{m.month}</span>
+                  <span style={{ color:"#c8ff00", fontWeight:600 }}>{fmt$(m.revenue)}</span>
+                  <span style={{ color:"#ff5c5c" }}>{fmt$(m.expenses)}</span>
+                  <span style={{ color:cf>=0?"#c8ff00":"#ff5c5c", fontWeight:600 }}>{fmt$(cf)}</span>
+                  <span>{fmtPct(occ)}</span><span>{fmt$(adr)}</span>
+                </div>
+              );})}
+              <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 1fr 1fr 1fr", padding:"16px 22px", background:"rgba(200,255,0,0.04)", borderTop:"1px solid rgba(200,255,0,0.12)", fontSize:13, fontWeight:700 }}>
+                <span style={{ color:"#555", fontSize:10, fontFamily:"monospace" }}>TOTAL</span>
+                <span style={{ color:"#c8ff00" }}>{fmt$(airbnb.rev)}</span><span style={{ color:"#ff5c5c" }}>{fmt$(airbnb.exp)}</span>
+                <span style={{ color:airbnb.cf>=0?"#c8ff00":"#ff5c5c" }}>{fmt$(airbnb.cf)}</span>
+                <span>{fmtPct(airbnb.occ)}</span><span>{fmt$(airbnb.adr)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PIERCE AVE */}
+        {tab==="Pierce Ave"&&(
+          <div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:11, color:"#60cfff", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:4 }}>● Section 8</div>
+              <div style={{ fontSize:24, fontWeight:700 }}>1703 Pierce Ave · Niagara Falls</div>
+            </div>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:PIERCE.vacant?"rgba(255,92,92,0.1)":"rgba(100,220,100,0.1)", border:`1px solid ${PIERCE.vacant?"#ff5c5c":"#4dbb4d"}40`, borderRadius:8, padding:"8px 16px", marginBottom:24 }}>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:PIERCE.vacant?"#ff5c5c":"#4dbb4d" }}/>
+              <span style={{ fontSize:12, fontFamily:"monospace", color:PIERCE.vacant?"#ff5c5c":"#4dbb4d", fontWeight:600 }}>{PIERCE.vacant?"VACANT":"OCCUPIED · Housing Authority Paying"}</span>
+            </div>
+            <div style={row3}>
+              {[{label:"Annual Rent",value:fmt$(pierce.rev),accent:"#60cfff"},{label:"Annual Expenses",value:fmt$(pierce.exp),accent:"#ff5c5c"},{label:"Net Cash Flow",value:fmt$(pierce.cf),accent:pierce.cf>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
+                <div key={c.label} style={{ background:"rgba(255,255,255,0.03)", padding:"26px 24px", borderRight:"1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ fontSize:10, color:"#555", textTransform:"uppercase", letterSpacing:"0.12em", fontFamily:"monospace", marginBottom:10 }}>{c.label}</div>
+                  <div style={{ fontSize:30, fontWeight:800, color:c.accent, fontFamily:"'Space Mono',monospace" }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:2, marginBottom:2 }}><Tile label="NOI" value={fmt$(pierce.noi)} sub="Net operating income"/><Tile label="Cap Rate" value={fmtPct(pierce.capRate)} accent="#c084fc" sub="NOI ÷ market value"/><Tile label="Cash-on-Cash" value={fmtPct(pierce.coc)} accent="#c084fc" sub="CF ÷ down paid"/></div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:2, marginBottom:28 }}><Tile label="Equity" value={fmt$(pierce.equity)} accent="#60cfff"/><Tile label="Appreciation" value={fmt$(pierce.appreciation)} accent="#60cfff"/><Tile label="DSCR" value={pierce.dscr.toFixed(2)} accent={pierce.dscr>=1?"#c8ff00":"#ff5c5c"} sub="Debt service coverage"/></div>
+            <div style={{ border:"1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 1fr", padding:"12px 22px", background:"rgba(255,255,255,0.04)", fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase" }}>
+                <span>Mo</span><span>Rent Received</span><span>Expenses</span><span>Cash Flow</span>
+              </div>
+              {PIERCE_MONTHLY.map((m,i)=>{const cf=m.revenue-m.expenses;return(
+                <div key={i} style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 1fr", padding:"14px 22px", borderBottom:"1px solid rgba(255,255,255,0.04)", fontSize:13 }}>
+                  <span style={{ color:"#555", fontFamily:"monospace", fontSize:11 }}>{m.month}</span>
+                  <span style={{ color:"#60cfff", fontWeight:600 }}>{fmt$(m.revenue)}</span>
+                  <span style={{ color:"#ff5c5c" }}>{fmt$(m.expenses)}</span>
+                  <span style={{ color:cf>=0?"#c8ff00":"#ff5c5c", fontWeight:600 }}>{fmt$(cf)}</span>
+                </div>
+              );})}
+            </div>
+          </div>
+        )}
+
+        {/* PLAID FEED */}
+        {tab==="Plaid Feed"&&(
+          <div>
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:28 }}>
+              <div>
+                <div style={{ fontSize:24, fontWeight:700 }}>Transaction Feed</div>
+                <div style={{ color:"#444", fontSize:13, marginTop:4 }}>{linked?"Live via Plaid · syncs daily · click any row to re-tag":"Connect your bank to get started"}</div>
+              </div>
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                {untagged.length>0&&<div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,184,0,0.08)", border:"1px solid rgba(255,184,0,0.2)", borderRadius:8, padding:"10px 16px" }}><div style={{ width:7, height:7, borderRadius:"50%", background:"#ffb800" }}/><span style={{ fontSize:12, fontFamily:"monospace", color:"#ffb800", fontWeight:600 }}>{untagged.length} UNTAGGED</span></div>}
+                {!linked&&<button onClick={connectBank} disabled={linking} style={{ background:"#c8ff00", color:"#000", border:"none", borderRadius:8, padding:"11px 22px", fontSize:13, fontWeight:700, fontFamily:"monospace" }}>{linking?"Opening...":"Connect Bank →"}</button>}
+              </div>
+            </div>
+
+            {status&&<div style={{ marginBottom:20, padding:"10px 16px", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, fontSize:12, color:"#888", fontFamily:"monospace" }}>{status}</div>}
+
+            {!linked&&(
+              <div style={{ textAlign:"center", padding:"60px 0", color:"#444" }}>
+                <div style={{ fontSize:48, marginBottom:16 }}>🏦</div>
+                <div style={{ fontSize:18, fontWeight:600, color:"#888", marginBottom:8 }}>No bank connected yet</div>
+                <div style={{ fontSize:13 }}>Click "Connect Bank" above to link via Plaid.</div>
+              </div>
+            )}
+
+            {linked&&untagged.length>0&&(
+              <div style={{ marginBottom:32 }}>
+                <div style={{ fontSize:10, color:"#ffb800", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:12 }}>⚠ Untagged Queue — Needs Assignment</div>
+                <div style={{ border:"1px solid rgba(255,184,0,0.2)", background:"rgba(255,184,0,0.03)" }}>
+                  {untagged.map((tx,i)=>(
+                    <div key={tx.id} style={{ display:"grid", gridTemplateColumns:"90px 1fr 110px 1fr", padding:"16px 22px", borderBottom:i<untagged.length-1?"1px solid rgba(255,184,0,0.1)":"none", alignItems:"center", gap:12 }}>
+                      <span style={{ fontSize:11, color:"#555", fontFamily:"monospace" }}>{tx.date}</span>
+                      <div><div style={{ fontSize:13, fontFamily:"monospace" }}>{tx.payee}</div>{tx.category&&<div style={{ fontSize:10, color:"#555", marginTop:2 }}>{tx.category}</div>}</div>
+                      <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:14, color:tx.type==="in"?"#c8ff00":"#ff5c5c" }}>{tx.type==="in"?"+":""}{fmt$(Math.abs(tx.amount))}</span>
+                      {tagging===tx.id?(
+                        <div style={{ display:"flex", gap:6 }}>
+                          {PROPERTIES.map(p=><button key={p.id} onClick={()=>assignTag(tx.id,p.id)} style={{ background:`${p.color}18`, color:p.color, border:`1px solid ${p.color}50`, borderRadius:6, padding:"6px 12px", fontSize:11, fontFamily:"monospace", fontWeight:700 }}>{p.short}</button>)}
+                          <button onClick={()=>setTagging(null)} style={{ background:"transparent", color:"#555", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"6px 10px", fontSize:11, fontFamily:"monospace" }}>✕</button>
+                        </div>
+                      ):<button onClick={()=>setTagging(tx.id)} style={{ background:"rgba(255,184,0,0.12)", color:"#ffb800", border:"1px solid rgba(255,184,0,0.3)", borderRadius:6, padding:"7px 14px", fontSize:11, fontFamily:"monospace", fontWeight:700 }}>Tag →</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {linked&&tagged.length>0&&(
+              <div>
+                <div style={{ fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:12 }}>Tagged Transactions</div>
+                <div style={{ border:"1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"90px 1fr 110px 120px", padding:"12px 22px", background:"rgba(255,255,255,0.04)", fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase" }}>
+                    <span>Date</span><span>Payee</span><span>Amount</span><span>Property</span>
+                  </div>
+                  {tagged.map((tx,i)=>(
+                    <div key={tx.id} onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{ display:"grid", gridTemplateColumns:"90px 1fr 110px 120px", padding:"15px 22px", borderBottom:i<tagged.length-1?"1px solid rgba(255,255,255,0.04)":"none", alignItems:"center", fontSize:13, cursor:"pointer" }}>
+                      <span style={{ fontSize:11, color:"#555", fontFamily:"monospace" }}>{tx.date}</span>
+                      <div>
+                        <div style={{ fontFamily:"monospace", fontSize:12 }}>{tx.payee}</div>
+                        {tagging===tx.id&&<div style={{ display:"flex", gap:6, marginTop:8 }}>
+                          {PROPERTIES.map(p=><button key={p.id} onClick={e=>{e.stopPropagation();assignTag(tx.id,p.id);}} style={{ background:`${p.color}18`, color:p.color, border:`1px solid ${p.color}50`, borderRadius:6, padding:"5px 10px", fontSize:10, fontFamily:"monospace", fontWeight:700 }}>{p.short}</button>)}
+                          <button onClick={e=>{e.stopPropagation();setTagging(null);}} style={{ background:"transparent", color:"#555", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"5px 8px", fontSize:10, fontFamily:"monospace" }}>✕</button>
+                        </div>}
+                      </div>
+                      <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:14, color:tx.type==="in"?"#c8ff00":"#ff5c5c" }}>{tx.type==="in"?"+":""}{fmt$(Math.abs(tx.amount))}</span>
+                      <TagBadge property={tx.property} small />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {Object.keys(autoTags).length>0&&(
+              <div style={{ marginTop:28, padding:"20px 24px", background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize:10, color:"#555", fontFamily:"monospace", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:14 }}>Auto-Tag Rules</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                  {Object.entries(autoTags).map(([payee,propId])=>(
+                    <div key={payee} style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:6, padding:"6px 12px" }}>
+                      <span style={{ fontSize:11, fontFamily:"monospace", color:"#aaa" }}>{payee}</span>
+                      <span style={{ color:"#555" }}>→</span>
+                      <TagBadge property={propId} small />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
