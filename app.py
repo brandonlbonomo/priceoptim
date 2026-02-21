@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+import plaid
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -9,7 +10,6 @@ from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
-from plaid import ApiClient, Configuration, Environment
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,29 +23,27 @@ PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
 PLAID_SECRET = os.getenv("PLAID_SECRET")
 
 env_map = {
-    "sandbox": Environment.Sandbox,
-    "development": Environment.Development,
-    "production": Environment.Production,
+    "sandbox":     plaid.Environment.Sandbox,
+    "development": plaid.Environment.Development,
+    "production":  plaid.Environment.Production,
 }
 
-configuration = Configuration(
-    host=env_map.get(PLAID_ENV, Environment.Development),
+configuration = plaid.Configuration(
+    host=env_map.get(PLAID_ENV, plaid.Environment.Development),
     api_key={
         "clientId": PLAID_CLIENT_ID,
-        "secret": PLAID_SECRET,
+        "secret":   PLAID_SECRET,
     }
 )
 
-api_client = ApiClient(configuration)
+api_client = plaid.ApiClient(configuration)
 plaid_client = plaid_api.PlaidApi(api_client)
 
 # ── In-memory token store ────────────────────────────────────
-# Render services persist between requests (unlike serverless)
-# so this works reliably. For multi-instance setups use a DB.
 store = {
     "access_token": None,
-    "item_id": None,
-    "cursor": None,
+    "item_id":      None,
+    "cursor":       None,
 }
 
 # ── Health check ─────────────────────────────────────────────
@@ -57,7 +55,7 @@ def health():
 @app.route("/api/link-status")
 def link_status():
     return jsonify({
-        "linked": store["access_token"] is not None,
+        "linked":  store["access_token"] is not None,
         "item_id": store["item_id"],
     })
 
@@ -65,14 +63,14 @@ def link_status():
 @app.route("/api/create-link-token", methods=["POST"])
 def create_link_token():
     try:
-        request_data = LinkTokenCreateRequest(
+        req = LinkTokenCreateRequest(
             user=LinkTokenCreateRequestUser(client_user_id="pigeon-user"),
             client_name="Property Pigeon",
             products=[Products("transactions")],
             country_codes=[CountryCode("US")],
             language="en",
         )
-        response = plaid_client.link_token_create(request_data)
+        response = plaid_client.link_token_create(req)
         return jsonify({"link_token": response["link_token"]})
     except Exception as e:
         print("create-link-token error:", str(e))
@@ -89,9 +87,9 @@ def exchange_token():
             ItemPublicTokenExchangeRequest(public_token=public_token)
         )
         store["access_token"] = response["access_token"]
-        store["item_id"] = response["item_id"]
-        store["cursor"] = None  # reset on new link
-        print("✅ Access token stored. Item ID:", store["item_id"])
+        store["item_id"]      = response["item_id"]
+        store["cursor"]       = None
+        print("✅ Linked. Item ID:", store["item_id"])
         return jsonify({"ok": True, "item_id": store["item_id"]})
     except Exception as e:
         print("exchange-token error:", str(e))
@@ -104,47 +102,48 @@ def sync_transactions():
         return jsonify({"error": "No bank account linked yet"}), 400
     try:
         added, modified, removed = [], [], []
-        cursor = store["cursor"]
+        cursor   = store["cursor"]
         has_more = True
 
         while has_more:
-            req = TransactionsSyncRequest(
-                access_token=store["access_token"],
-                count=100,
-            )
+            kwargs = {
+                "access_token": store["access_token"],
+                "count": 100,
+            }
             if cursor:
-                req.cursor = cursor
+                kwargs["cursor"] = cursor
 
-            response = plaid_client.transactions_sync(req)
+            response = plaid_client.transactions_sync(
+                TransactionsSyncRequest(**kwargs)
+            )
             data = response.to_dict()
 
-            added += data.get("added", [])
+            added    += data.get("added",    [])
             modified += data.get("modified", [])
-            removed += data.get("removed", [])
-            has_more = data.get("has_more", False)
-            cursor = data.get("next_cursor")
+            removed  += data.get("removed",  [])
+            has_more  = data.get("has_more", False)
+            cursor    = data.get("next_cursor")
 
         store["cursor"] = cursor
 
         def normalize(tx):
             amount = tx.get("amount", 0)
             return {
-                "id": tx.get("transaction_id"),
-                "date": str(tx.get("date", "")),
-                "payee": tx.get("merchant_name") or tx.get("name", ""),
-                "amount": amount,
-                # Plaid: positive amount = money OUT, negative = money IN
-                "type": "out" if amount > 0 else "in",
+                "id":       tx.get("transaction_id"),
+                "date":     str(tx.get("date", "")),
+                "payee":    tx.get("merchant_name") or tx.get("name", ""),
+                "amount":   amount,
+                "type":     "out" if amount > 0 else "in",
                 "category": (tx.get("personal_finance_category") or {}).get("primary"),
-                "pending": tx.get("pending", False),
+                "pending":  tx.get("pending", False),
                 "property": None,
             }
 
         return jsonify({
-            "added": [normalize(t) for t in added],
+            "added":    [normalize(t) for t in added],
             "modified": [normalize(t) for t in modified],
-            "removed": [r.get("transaction_id") for r in removed],
-            "total": len(added),
+            "removed":  [r.get("transaction_id") for r in removed],
+            "total":    len(added),
         })
     except Exception as e:
         print("sync error:", str(e))
@@ -162,11 +161,11 @@ def balances():
         accounts = []
         for a in response["accounts"]:
             accounts.append({
-                "name": a["name"],
-                "type": str(a["type"]),
-                "current": a["balances"]["current"],
+                "name":      a["name"],
+                "type":      str(a["type"]),
+                "current":   a["balances"]["current"],
                 "available": a["balances"].get("available"),
-                "currency": a["balances"].get("iso_currency_code", "USD"),
+                "currency":  a["balances"].get("iso_currency_code", "USD"),
             })
         return jsonify({"accounts": accounts})
     except Exception as e:
