@@ -36,12 +36,13 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #eef2f7;
+      background: #f5f5f7;
       color: var(--text);
-      font-family: 'Figtree', -apple-system, sans-serif;
+      font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       position: relative;
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
     body::before {
@@ -100,33 +101,44 @@
       backdrop-filter: blur(16px);
     }
 
-    /* Nav */
-    .nav {
+    /* Top header */
+    .top-header {
       position: sticky; top: 0; z-index: 100;
-      padding: 14px 28px;
-      background: rgba(248,250,252,0.55);
-      backdrop-filter: blur(32px) saturate(1.8);
-      -webkit-backdrop-filter: blur(32px) saturate(1.8);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      padding: 12px 16px 10px;
+      background: rgba(245,245,247,0.88);
+      backdrop-filter: blur(28px) saturate(1.6);
+      -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
       display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-tab {
-      background: transparent;
+    /* Bottom tab bar */
+    .tab-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(245,245,247,0.92);
+      backdrop-filter: blur(28px) saturate(1.6);
+      -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display: flex; align-items: center; justify-content: space-around;
+      padding: 8px 0 max(8px,env(safe-area-inset-bottom));
+    }
+    .tab-item {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px 12px;
+      background: transparent; border: none;
       color: var(--text-3);
-      border: none;
-      padding: 7px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-      position: relative;
+      font-size: 10px; font-weight: 500;
+      transition: all 0.15s;
+      min-width: 52px;
     }
-    .nav-tab.active {
-      background: rgba(0,0,0,0.07);
-      color: var(--text);
-      font-weight: 600;
+    .tab-item.active { color: var(--text); }
+    .tab-item svg { transition: all 0.15s; }
+    .tab-item.active svg { transform: scale(1.05); }
+    .nav-tab {
+      background: transparent; color: var(--text-3); border: none;
+      padding: 7px 16px; border-radius: 20px; font-size: 13px;
+      font-weight: 500; transition: all 0.2s; position: relative;
     }
-    .nav-tab:hover:not(.active) { color: var(--text-2); }
+    .nav-tab.active { background: rgba(0,0,0,0.07); color: var(--text); font-weight: 600; }
 
     /* Pills */
     .pill {
@@ -260,6 +272,30 @@
     .tx-row:hover { background: rgba(0,0,0,0.03); }
     .tx-row:last-child { border-bottom: none; }
 
+    /* Page content — accounts for fixed bottom tab bar */
+    .page { padding: 0 16px 100px; max-width: 640px; margin: 0 auto; }
+    .page-header { padding: 20px 0 16px; }
+    .section-title {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 10px; margin-top: 22px;
+    }
+    .card {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(0,0,0,0.07);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .card-padded { padding: 16px 18px; }
+    .stat-row { display: flex; align-items: baseline; gap: 8px; }
+    .big-num { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+    .sub-num { font-size: 13px; color: var(--text-3); }
+    @media (max-width: 420px) {
+      .big-num { font-size: 26px; }
+      .stat-num { font-size: 28px; }
+    }
+
     /* Metric card */
     .metric-card {
       background: rgba(255,255,255,0.55);
@@ -328,36 +364,97 @@ function PropBadge({ id, small }) {
   return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:`${p.color}18`,color:p.color,border:`1px solid ${p.color}30`}}>{p.label.toUpperCase()}</span>;
 }
 
-// ── TagMenu ───────────────────────────────────────────────────
+// ── TagMenu — in vs out logic ────────────────────────────────
+// Money IN:  Airbnb (portfolio) | Pierce Ave | Internal Transfer | Delete
+// Money OUT: Lockwood | Everton | B Street | Pierce | LLC | Internal Transfer | Delete
 function TagMenu({ tx, onTag, onClose, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const isIn = tx.type === "in";
+
+  const inOptions  = [
+    {id:"airbnb", label:"Airbnb"},
+    {id:"pierce", label:"Pierce Ave"},
+    {id:"transfer",label:"Transfer"},
+  ];
+  const outOptions = [
+    {id:"lockwood",label:"Lockwood"},
+    {id:"everton", label:"Everton"},
+    {id:"bstreet", label:"B Street"},
+    {id:"pierce",  label:"Pierce Ave"},
+    {id:"llc",     label:"LLC"},
+    {id:"transfer",label:"Transfer"},
+  ];
+  const opts = isIn ? inOptions : outOptions;
+
+  const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(0,0,0,0.1)",background:"rgba(255,255,255,0.7)",color:"var(--text)",transition:"all 0.12s"};
+
   return (
-    <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px",alignItems:"center"}}>
-      {PROPERTIES.map((p,i)=>(
-        <React.Fragment key={p.id}>
-          {i===1&&<div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>}
-          {i===5&&<div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>}
-          <button onClick={()=>onTag(tx.id,p.id)} style={{
-            background:p.id==="airbnb"?"rgba(48,209,88,0.12)":"rgba(0,0,0,0.04)",
-            color:p.id==="airbnb"?"#30d158":"var(--text)",
-            border:p.id==="airbnb"?"1px solid rgba(48,209,88,0.35)":"1px solid rgba(0,0,0,0.1)",
-            borderRadius:8,padding:"5px 12px",fontSize:11,
-            fontFamily:"'JetBrains Mono',monospace",fontWeight:p.id==="airbnb"?700:600,cursor:"pointer"
+    <div style={{padding:"10px 0 6px"}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+        {opts.map(p=>(
+          <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{
+            ...btnBase,
+            background: tx.propId===p.id ? "rgba(0,0,0,0.1)" : btnBase.background,
+            fontWeight: tx.propId===p.id ? 700 : 600,
           }}>
             {p.label}
           </button>
-        </React.Fragment>
-      ))}
-      <div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>
-      {confirmDelete
-        ? <>
-            <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>Sure?</span>
-            <button onClick={()=>{onDelete(tx.id);onClose();}} style={{background:"rgba(255,69,58,0.15)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.4)",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>Yes, delete</button>
-            <button onClick={()=>setConfirmDelete(false)} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>Cancel</button>
-          </>
-        : <button onClick={()=>setConfirmDelete(true)} style={{background:"rgba(255,69,58,0.07)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.25)",borderRadius:8,padding:"5px 11px",fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>🗑 Delete</button>
-      }
-      <button onClick={onClose} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        {confirmDelete
+          ? <>
+              <span style={{fontSize:11,color:"var(--text-3)"}}>Delete this transaction?</span>
+              <button onClick={()=>{onDelete(tx.id);onClose();}} style={{...btnBase,background:"rgba(255,69,58,0.12)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",padding:"5px 12px"}}>Confirm</button>
+              <button onClick={()=>setConfirmDelete(false)} style={{...btnBase,padding:"5px 10px",fontSize:11}}>Cancel</button>
+            </>
+          : <button onClick={()=>setConfirmDelete(true)} style={{...btnBase,background:"rgba(255,69,58,0.07)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.2)",padding:"5px 12px",fontSize:11}}>Delete</button>
+        }
+        <button onClick={onClose} style={{...btnBase,padding:"5px 10px",fontSize:11,marginLeft:"auto"}}>Done</button>
+      </div>
+    </div>
+  );
+}
+
+// ── MiniBar — compact sparkline bar chart ─────────────────────
+function MiniBar({ months, valueKey, color, label, fmt=null }) {
+  const [hov, setHov] = useState(null);
+  const H = 72;
+  const vals = months.map(([,v])=> {
+    if(valueKey==="net") return v.rev-v.exp;
+    if(valueKey==="margin") return v.rev>0?((v.rev-v.exp)/v.rev)*100:0;
+    return v[valueKey]||0;
+  });
+  const max = Math.max(...vals.map(Math.abs), 1);
+  if(months.length===0) return <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)",fontSize:11}}>No data yet</div>;
+  return (
+    <div style={{position:"relative"}}>
+      <div style={{display:"flex",gap:2,alignItems:"flex-end",height:H}}>
+        {months.map(([mo,v],i)=>{
+          const val = vals[i];
+          const px  = Math.max(3, Math.round((Math.abs(val)/max)*H));
+          const c   = color || (val>=0?"#30d158":"#ff453a");
+          return (
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative"}}
+              onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
+              <div style={{width:"100%",borderRadius:"2px 2px 0 0",background:hov===i?c:`${c}bb`,height:px,transition:"height 0.3s ease"}}/>
+              {hov===i&&(
+                <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",left:"50%",fontSize:11}}>
+                  <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}</div>
+                  <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",marginTop:4}}>
+        {months.map(([mo],i)=>(
+          <div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",
+            opacity: months.length>12 ? (i%3===0?1:0) : 1
+          }}>{moLabel(mo).split(" ")[0]}</div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -637,7 +734,7 @@ function InvestModal({ invest, onSave, onClose }) {
 
 // ── TxList ────────────────────────────────────────────────────
 // ── TxList with bulk select ───────────────────────────────────
-function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDelete, filter, setFilter }) {
+function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDelete, filter, setFilter, getSuggestion }) {
   const [selected, setSelected] = useState(new Set());
 
   const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
@@ -715,10 +812,17 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
                     {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                   </span>
-                  <div onClick={e=>e.stopPropagation()}>
+                  <div onClick={e=>e.stopPropagation()} style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
                     <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
                       <PropBadge id={tx.propId} small/>
                     </span>
+                    {!tx.propId&&getSuggestion&&getSuggestion(tx)&&(
+                      <span style={{fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",cursor:"pointer"}}
+                        onClick={e=>{e.stopPropagation();doTag(tx.id,getSuggestion(tx));}}
+                        title="Click to apply auto-tag suggestion">
+                        💡 {getSuggestion(tx)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {tagging===tx.id&&(
@@ -776,15 +880,19 @@ function App() {
     }).catch(()=>{});
   },[]);
 
+  // Auto-tag: record suggestions only — user must confirm via Feed
   const applyAuto = useCallback((newTxs,at,cur)=>{
-    const next={...cur};
-    newTxs.forEach(tx=>{
-      if(next[tx.id]) return;
-      const key=Object.keys(at).find(k=>tx.payee?.toUpperCase().includes(k.toUpperCase()));
-      if(key) next[tx.id]=at[key];
-    });
-    return next;
+    // NO auto-application — just return existing tags unchanged
+    // Auto-tag suggestions shown in Feed but not applied until user clicks
+    return cur;
   },[]);
+
+  // Get auto-tag suggestion for a tx (used in Feed to show hint)
+  const getSuggestion = useCallback((tx)=>{
+    if(tags[tx.id]) return null;
+    const key=Object.keys(autoTags).find(k=>tx.payee?.toUpperCase().includes(k.toUpperCase()));
+    return key ? autoTags[key] : null;
+  },[tags,autoTags]);
 
   // Load all server-stored transactions (deduplicated server-side)
   const loadAll = useCallback(async(silent=false)=>{
@@ -876,11 +984,14 @@ function App() {
   }
 
   function doDelete(txId){
-    setTxs(prev=>{const arr=prev.filter(t=>t.id!==txId); LS.set(TX_KEY,arr); return arr;});
-    setTags(prev=>{const next={...prev}; delete next[txId]; LS.set(TAGS_KEY,next); return next;});
-    // Also delete from server
-    fetch(`${BACKEND}/api/transactions/delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[txId]})}).catch(()=>{});
-    setTagging(null);
+    // Soft-delete: tag as "deleted" so it stays visible in the archive
+    const nextTags={...tags,[txId]:"deleted"};
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
+  }
+
+  function doRestore(txId){
+    const nextTags={...tags}; delete nextTags[txId];
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
   }
 
   function doBulkTag(ids, propId){
@@ -890,18 +1001,16 @@ function App() {
   }
 
   function doBulkDelete(ids){
-    const idSet=new Set(ids);
-    setTxs(prev=>{const arr=prev.filter(t=>!idSet.has(t.id)); LS.set(TX_KEY,arr); return arr;});
-    setTags(prev=>{const next={...prev}; ids.forEach(id=>delete next[id]); LS.set(TAGS_KEY,next); return next;});
-    // Delete from server too
-    fetch(`${BACKEND}/api/transactions/delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})}).catch(()=>{});
+    const nextTags={...tags};
+    ids.forEach(id=>{ nextTags[id]="deleted"; });
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
   }
 
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
   const saveManual=vals=>{ setManualIncome(vals); LS.set(MANUAL_KEY,vals); };
 
   // Deduplicate by id — Plaid can return the same transaction more than once
-  const enriched=useMemo(()=>{
+  const allEnriched=useMemo(()=>{
     const seen=new Set();
     return txs.filter(t=>!t.pending).filter(t=>{
       if(seen.has(t.id)) return false;
@@ -909,8 +1018,11 @@ function App() {
       return true;
     }).map(tx=>({...tx,propId:tags[tx.id]||null}));
   },[txs,tags]);
-  const untagged=enriched.filter(t=>!t.propId);
-  const tagged  =enriched.filter(t=>t.propId);
+  // Active = not deleted or transferred (for all normal financial calcs)
+  const enriched = allEnriched.filter(t=>t.propId!=="deleted");
+  const archived  = allEnriched.filter(t=>t.propId==="deleted"||t.propId==="transfer");
+  const untagged  = enriched.filter(t=>!t.propId);
+  const tagged    = enriched.filter(t=>t.propId&&t.propId!=="transfer");
 
   // ── Metrics ──────────────────────────────────────────────
   const M=useMemo(()=>{
@@ -1005,606 +1117,227 @@ function App() {
   },[tagged,enriched,invest,manualIncome]);
 
   const hasBank=linked.length>0;
-  const TABS=["Portfolio","Airbnb","Pierce Ave","Projections","Quarterly","Feed"];
-
-  // Feed display
+  // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
+  const TABS=["Portfolio","Airbnb","Pierce","Feed","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
-  const feedDisplayed = txFilter==="in"?feedTxs.filter(t=>t.type==="in"):txFilter==="out"?feedTxs.filter(t=>t.type==="out"):feedTxs;
+
+  // Tab icons
+  const TAB_ICONS = {
+    "Portfolio": <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+    "Airbnb":    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    "Pierce":    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="2"/></svg>,
+    "Feed":      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+    "Archive":   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>,
+  };
 
   return (
-    <div style={{minHeight:"100vh"}}>
+    <div style={{minHeight:"100vh",background:"#f5f5f7"}}>
 
-      {/* NAV */}
-      <nav className="nav">
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="xrayGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="rgba(180,220,255,0.95)"/>
-                    <stop offset="100%" stopColor="rgba(120,180,255,0.70)"/>
-                  </linearGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="1.2" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                </defs>
-                {/* Body */}
-                <ellipse cx="17" cy="21" rx="8" ry="6.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
-                {/* Head */}
-                <circle cx="23" cy="13" r="4.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
-                {/* Neck connecting head to body */}
-                <path d="M20 16.5 C19 17.5 18 18.5 17.5 19.2" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
-                {/* Beak */}
-                <path d="M26.5 12.5 L30 11.5 L27 13.5" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                {/* Eye */}
-                <circle cx="24.5" cy="12" r="1" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none"/>
-                <circle cx="24.5" cy="12" r="0.3" fill="url(#xrayGrad)" opacity="0.8"/>
-                {/* Wing */}
-                <path d="M13 20 C10 17 8 15 9 13 C11 11 14 14 17 16" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
-                <path d="M10 18 C9 16 9.5 14.5 11 14" stroke="url(#xrayGrad)" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.6"/>
-                {/* Tail */}
-                <path d="M10 23 C8 24 6 25 5 24" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round"/>
-                <path d="M10.5 24.5 C8.5 26 7 27 5.5 26.5" stroke="url(#xrayGrad)" strokeWidth="0.8" fill="none" strokeLinecap="round" opacity="0.7"/>
-                {/* Legs */}
-                <path d="M16 27 L15 30 M15 30 L13.5 31.5 M15 30 L16 31.5" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
-                <path d="M19 27.5 L18.5 30.5 M18.5 30.5 L17 32 M18.5 30.5 L19.5 32" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
-                {/* Internal structure lines - x-ray feel */}
-                <path d="M17 19 L19 22 M18 19.5 L17 23" stroke="url(#xrayGrad)" strokeWidth="0.5" fill="none" opacity="0.35" strokeLinecap="round"/>
-                <path d="M22 12 L24 15 M23 11 L25 14" stroke="url(#xrayGrad)" strokeWidth="0.45" fill="none" opacity="0.3" strokeLinecap="round"/>
-              </svg>
-            </div>
-          <div>
-            <div style={{fontSize:14,fontWeight:700,letterSpacing:"-0.01em"}}>Property Pigeon</div>
-            <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>LOCKWOOD · EVERTON · B ST · PIERCE · 8 STR · 7 SEC8</div>
-          </div>
+      {/* TOP HEADER */}
+      <div className="top-header">
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
+          <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
         </div>
-        <div style={{display:"flex",gap:2,alignItems:"center"}}>
-          {TABS.map(t=>(
-            <button key={t} className={`nav-tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
-              {t}
-              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-4,right:-2,background:"rgba(0,0,0,0.12)",color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
-            </button>
-          ))}
-          <div style={{width:1,height:18,background:"rgba(255,255,255,0.1)",margin:"0 6px"}}/>
-          <button onClick={connectBank} disabled={linking} className="btn-ghost" style={{fontSize:12}}>
-            {linking?"Linking...":"+ Add Bank"}
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {status&&<span style={{fontSize:10,color:"var(--text-3)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{status}</span>}
+          <button onClick={sync} disabled={syncing||!hasBank} style={{background:"transparent",border:"none",color:syncing?"var(--text-3)":"var(--text-2)",fontSize:12,fontWeight:500,padding:"4px 8px",borderRadius:8,cursor:"pointer"}}>
+            {syncing?"…":"↻ Sync"}
           </button>
-          <button onClick={sync} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--green)"}}>
-            {syncing?"Syncing…":"↻ Sync"}
-          </button>
-          <button onClick={pullHistory} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--text-2)"}}>
-            ⬇ Pull History
-          </button>
-          <button onClick={()=>setShowManual(true)} className="btn-ghost" style={{fontSize:12}}>
-            ✎ Manual Income
+          <button onClick={()=>setShowManual(true)} style={{background:"transparent",border:"none",color:"var(--text-3)",fontSize:12,padding:"4px 8px",borderRadius:8,cursor:"pointer"}}>✎</button>
+          <button onClick={connectBank} disabled={linking} style={{background:"#1a1a2e",border:"none",color:"#fff",fontSize:11,fontWeight:600,padding:"6px 12px",borderRadius:10,cursor:"pointer"}}>
+            {linking?"…":"+ Bank"}
           </button>
         </div>
-      </nav>
+      </div>
 
-      {/* STATUS */}
-      {(hasBank||status)&&(
-        <div style={{padding:"8px 28px",background:"rgba(255,255,255,0.45)",borderBottom:"1px solid rgba(0,0,0,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {linked.map(a=>(
-              <div key={a.item_id} className="pill">
-                <div className="pill-dot"/>
-                <span style={{color:"var(--text-2)"}}>{a.name}</span>
-                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"var(--text-3)",fontSize:13,cursor:"pointer",lineHeight:1,marginLeft:2}}>×</button>
-              </div>
-            ))}
-          </div>
-          {status&&<div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{status}</div>}
-        </div>
-      )}
+      {/* CONTENT */}
+      <div className="page">
 
-      <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 28px 100px"}}>
-
-        {/* ── PORTFOLIO ── */}
+        {/* ── PORTFOLIO ─────────────────────────────────────────── */}
         {tab==="Portfolio"&&(
           <div className="fade-in">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
-              <div>
-                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>All Properties · Live from Plaid</div>
-                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Portfolio Overview</div>
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                <div className="big-num">{fmt$(M.totalRev)}</div>
+                <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
               </div>
-              <button onClick={()=>setShowInvest(true)} className="btn-ghost" style={{fontSize:12}}>⚙ Down Payments</button>
+              <div style={{display:"flex",gap:16,marginTop:6}}>
+                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.totalExp)} expenses</span>
+                <span style={{fontSize:13,color:M.totalCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.totalCF)} net</span>
+                {M.netMargin!==null&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct(M.netMargin)} margin</span>}
+              </div>
             </div>
 
-            {!hasBank&&(
-              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
-                <div style={{fontSize:40,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>No bank connected</div>
-                <div style={{fontSize:13,color:"var(--text-3)",marginBottom:20}}>Click "+ Add Bank" to connect via Plaid</div>
+            {/* Summary cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Airbnb Revenue",  v:fmt$(M.airbnbRev), sub:"8 units"},
+                {l:"Pierce Revenue",  v:fmt$(M.pierceRev), sub:"7 units"},
+                {l:"Total Expenses",  v:fmt$(M.totalExp),  sub:"all properties", red:true},
+                {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
+              ].map(c=>(
+                <div key={c.l} className="card card-padded">
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Month-by-month charts */}
+            {M.months.length>0&&(<>
+              <div className="section-title">Revenue · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <MiniBar months={M.months} valueKey="rev" color="#30d158"/>
               </div>
+
+              <div className="section-title">Expenses · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <MiniBar months={M.months} valueKey="exp" color="#ff453a"/>
+              </div>
+
+              <div className="section-title">Net Income · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <MiniBar months={M.months} valueKey="net" color={null}/>
+              </div>
+
+              <div className="section-title">Net Margin % · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <MiniBar months={M.months} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/>
+              </div>
+            </>)}
+
+            {/* 5-year projection */}
+            <div className="section-title">5-Year Projection</div>
+            <div className="card" style={{overflow:"hidden",marginBottom:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr 1fr",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 14px",gap:8}}>
+                {["Year","Revenue","Expenses","Net"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>)}
+              </div>
+              {M.projections.map((d,i)=>(
+                <div key={d.year} style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr 1fr",padding:"11px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
+                  <span style={{fontSize:12,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>{d.year}</span>
+                  <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
+                  <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
+                  <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CoC return */}
+            {M.annualCoc&&(
+              <>
+                <div className="section-title">Return on Investment</div>
+                <div className="card card-padded" style={{marginBottom:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {[
+                      {l:"Cash-on-Cash",v:fmtPct(M.annualCoc),sub:"annualized"},
+                      {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
+                    ].map(c=>(
+                      <div key={c.l}>
+                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                        <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
+                        <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setShowInvest(true)} style={{marginTop:12,fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>
+                    Edit down payments →
+                  </button>
+                </div>
+              </>
             )}
-
-            {hasBank&&<>
-              {/* Top 3 stats */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
-                {[
-                  {l:"Gross Revenue",v:fmt$(M.totalRev),a:"var(--green)"},
-                  {l:"Total Expenses",v:fmt$(M.totalExp),a:"var(--red)"},
-                  {l:"Net Cash Flow", v:fmt$(M.totalCF), a:M.totalCF>=0?"var(--green)":"var(--red)"},
-                ].map(c=>(
-                  <div key={c.l} className="glass" style={{padding:"22px 24px"}}>
-                    <div className="stat-label" style={{marginBottom:10}}>{c.l}</div>
-                    <div className="stat-num" style={{color:c.a}}>{c.v}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Real estate metrics */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
-                {[
-                  {l:"Net Margin",     v:fmtPct(M.netMargin),   sub:"Revenue → profit"},
-                  {l:"Cash-on-Cash",   v:fmtPct(M.cocReturn),   sub:"Total return on invested"},
-                  {l:"Annualized CoC", v:fmtPct(M.annualCoc),   sub:"Projected annual"},
-                  {l:"Expense Ratio",  v:fmtPct(M.totalRev>0?(M.totalExp/M.totalRev)*100:null), sub:"Expenses ÷ revenue"},
-                ].map(m=>(
-                  <div key={m.l} className="metric-card">
-                    <div className="stat-label" style={{marginBottom:8}}>{m.l}</div>
-                    <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.v==="—"?"var(--text-3)":"var(--text)",letterSpacing:"-0.02em"}}>{m.v}</div>
-                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:4}}>{m.sub}{m.l.includes("Cash")&&!invest.lockwood&&!invest.pierce?' · add down payment ↑':''}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Property split */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                {[
-                  {l:"Airbnb Portfolio (8 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
-                  {l:"Pierce Ave · Section 8 · 7 Units",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"var(--text)"},
-                ].map(r=>(
-                  <div key={r.l} className="glass" style={{padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
-                    <div style={{fontSize:10,color:r.color,fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14,fontWeight:700}}>{r.l}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-                      {[{l:"Revenue",v:r.rev,c:"var(--green)"},{l:"Expenses",v:r.exp,c:"var(--red)"},{l:"Cash Flow",v:r.cf,c:r.cf>=0?"var(--green)":"var(--red)"}].map(s=>(
-                        <div key={s.l}><div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>{s.l}</div><div style={{fontSize:18,fontWeight:700,color:s.c,fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(s.v)}</div></div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {M.llcExp>0&&(
-                <div className="glass" style={{padding:"14px 20px",marginBottom:10,borderLeft:"3px solid rgba(0,0,0,0.15)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div style={{fontSize:10,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>General LLC Expenses</div>
-                  <div style={{fontSize:20,fontWeight:700,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(M.llcExp)}</div>
-                </div>
-              )}
-
-              {/* Charts */}
-              {M.months.length>0&&(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                  <div className="glass" style={{padding:"20px"}}>
-                    <div className="stat-label" style={{marginBottom:14}}>Monthly Revenue</div>
-                    <BarChart months={M.months} colorKey="green" label="Revenue"/>
-                  </div>
-                  <div className="glass" style={{padding:"20px"}}>
-                    <div className="stat-label" style={{marginBottom:14}}>Monthly Expenses</div>
-                    <BarChart months={M.months} colorKey="red" label="Expenses"/>
-                  </div>
-                </div>
-              )}
-
-              {/* 5-year projections */}
-              
-
-              <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>
-                {tagged.length} tagged · {untagged.length} untagged
-                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"var(--text-2)",fontFamily:"'JetBrains Mono',monospace",background:"none",border:"none",textDecoration:"underline",marginLeft:8,cursor:"pointer"}}>tag now →</button>}
-              </div>
-            </>}
+            {!M.annualCoc&&(
+              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
+                + Add down payments to see CoC return
+              </button>
+            )}
           </div>
         )}
 
-        {/* ── AIRBNB ── */}
+        {/* ── AIRBNB ─────────────────────────────────────────────── */}
         {tab==="Airbnb"&&(
           <div className="fade-in">
-            <div style={{marginBottom:22}}>
-              <div style={{fontSize:10,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Airbnb Portfolio</div>
-              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 8 Units</div>
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
+              <div className="big-num">{fmt$(M.airbnbRev)}</div>
+              <div style={{display:"flex",gap:16,marginTop:6}}>
+                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.airbnbExp)} expenses</span>
+                <span style={{fontSize:13,color:M.airbnbCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.airbnbCF)} net</span>
+              </div>
             </div>
 
-            {/* Top stats — portfolio-level only, no per-property income */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              {[
-                {l:"Total Airbnb Revenue",v:fmt$(M.airbnbRev),a:"var(--green)",sub:"Deposited as portfolio lump sum"},
-                {l:"Total Airbnb Expenses",v:fmt$(M.airbnbExp),a:"var(--red)",sub:"Tracked per property below"},
-              ].map(c=>(
-                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
-                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
-                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
-                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:6}}>{c.sub}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Portfolio-level metrics */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
-              {[
-                {l:"Net Cash Flow",    v:fmt$(M.airbnbCF),  accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
-                {l:"Expense Ratio",   v:fmtPct(M.airbnbRev>0?(M.airbnbExp/M.airbnbRev)*100:null), accent:"var(--text)"},
-                {l:"Avg Monthly CF",  v:fmt$(M.airbnbCF/M.moCount), accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
-              ].map(m=>(
-                <div key={m.l} className="metric-card">
-                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
-                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.accent||"var(--text)"}}>{m.v}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Per-property EXPENSES only */}
-            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-              Expenses by Property
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
-              {["lockwood","everton","bstreet"].map(id=>{
-                const p=PROPERTIES.find(x=>x.id===id);
-                const pm=M.propM[id];
-                const expTxs=pm.txs.filter(t=>t.type==="out");
-                const pct=M.airbnbExp>0?(pm.exp/M.airbnbExp)*100:0;
+            {/* Per-property breakdown */}
+            <div className="section-title">By Property</div>
+            <div className="card" style={{marginBottom:8,overflow:"hidden"}}>
+              {["lockwood","everton","bstreet"].map((id,i)=>{
+                const pm=M.propM[id]; const p=PROPERTIES.find(x=>x.id===id);
                 return (
-                  <div key={id} className="glass" style={{padding:"16px 18px",borderTop:`2px solid ${p.color}`}}>
-                    <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>{p.label}</div>
-                    <div style={{marginBottom:10}}>
-                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>Total Expenses</div>
-                      <div style={{fontSize:22,fontWeight:700,color:"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</div>
-                    </div>
-                    {/* Expense share bar */}
-                    <div style={{background:"rgba(0,0,0,0.04)",borderRadius:4,height:4,marginBottom:6,overflow:"hidden"}}>
-                      <div style={{width:`${pct}%`,height:"100%",background:p.color,borderRadius:4,transition:"width 0.5s ease"}}/>
-                    </div>
-                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{pct.toFixed(0)}% of total expenses · {expTxs.length} transactions</div>
+                  <div key={id} style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",padding:"13px 16px",borderBottom:i<2?"1px solid rgba(0,0,0,0.05)":"none",gap:12,alignItems:"center"}}>
+                    <span style={{fontSize:13,fontWeight:600}}>{p.label}</span>
+                    <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt$(pm.rev)}</span>
+                    <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</span>
+                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:pm.cf>=0?"#30d158":"#ff453a"}}>{fmt$(pm.cf)}</span>
                   </div>
                 );
               })}
             </div>
 
-            {/* Side-by-side: Money In | Money Out */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,alignItems:"start"}}>
-              <div>
-                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-                  ↓ Money In · portfolio deposits
-                </div>
-                <TxList
-                  txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.includes(t.propId)||!t.propId))}
-                  tagging={tagging} setTagging={setTagging}
-                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-                  filter="in" setFilter={()=>{}}
-                />
-              </div>
-              <div>
-                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-                  ↑ Money Out · tag to property
-                </div>
-                <TxList
-                  txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
-                  tagging={tagging} setTagging={setTagging}
-                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-                  filter="out" setFilter={()=>{}}
-                />
-              </div>
-            </div>
-
-
-
-
-          </div>
-        )}
-
-        {/* ── PIERCE AVE ── */}
-        {tab==="Pierce Ave"&&(
-          <div className="fade-in">
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:10,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
-              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · 7 Units · Niagara Falls</div>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
-              {[{l:"Gross Rent",v:fmt$(M.pierceRev),a:"#30d158"},{l:"Total Expenses",v:fmt$(M.pierceExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.pierceCF),a:M.pierceCF>=0?"var(--green)":"var(--red)"}].map(c=>(
-                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
-                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
-                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
-              {[
-                {l:"Net Margin",     v:fmtPct(M.pierceRev>0?(M.pierceCF/M.pierceRev)*100:null)},
-                {l:"CoC Return",     v:fmtPct(M.propCoc.pierce)},
-                {l:"Avg Monthly CF", v:fmt$(M.pierceCF/M.moCount)},
-              ].map(m=>(
-                <div key={m.l} className="metric-card">
-                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
-                  <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>Pierce Ave Transactions</div>
+            {/* Money In */}
+            <div className="section-title">Money In · Deposits</div>
             <TxList
-              txs={M.propM.pierce.txs}
-              tagging={tagging} setTagging={setTagging} doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter={pierceTxFilter} setFilter={setPierceTxFilter}
+              txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.includes(t.propId)||!t.propId))}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter="in" setFilter={()=>{}} getSuggestion={getSuggestion}
+            />
+
+            {/* Money Out */}
+            <div className="section-title">Money Out · Expenses</div>
+            <TxList
+              txs={enriched.filter(t=>t.type==="out"&&AIRBNB_IDS.some(id=>t.propId===id||!t.propId))}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter="out" setFilter={()=>{}} getSuggestion={getSuggestion}
             />
           </div>
         )}
 
-        {/* ── PROJECTIONS ── */}
-        {tab==="Projections"&&(
+        {/* ── PIERCE ─────────────────────────────────────────────── */}
+        {tab==="Pierce"&&(
           <div className="fade-in">
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
-              <div>
-                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Based on current run rate</div>
-                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>5-Year Projections</div>
-              </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>Drag or hover to explore years</div>
-              </div>
-            </div>
-
-            <div className="glass" style={{padding:"24px",marginBottom:10}}>
-              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>
-                Revenue · Expenses · Net Income
-                <span style={{fontWeight:400,marginLeft:8,textTransform:"none",letterSpacing:0}}>3% revenue growth · 2% expense growth annually</span>
-              </div>
-              <ProjectionChart data={M.projections}/>
-            </div>
-
-            {/* Assumption controls */}
-            <div className="glass" style={{padding:"20px",marginBottom:10}}>
-              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Assumptions</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
-                {[
-                  {l:"Annual Revenue Growth",v:"3.0%",note:"Conservative STR/Section 8 estimate"},
-                  {l:"Annual Expense Growth",v:"2.0%",note:"Inflation-adjusted maintenance"},
-                  {l:"Base Period",v:`${M.moCount} months`,note:"Months of data used for run rate"},
-                ].map(a=>(
-                  <div key={a.l} style={{background:"rgba(255,255,255,0.4)",borderRadius:10,padding:"14px"}}>
-                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>{a.l}</div>
-                    <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>{a.v}</div>
-                    <div style={{fontSize:10,color:"var(--text-3)"}}>{a.note}</div>
-                  </div>
-                ))}
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
+              <div className="big-num">{fmt$(M.pierceRev)}</div>
+              <div style={{display:"flex",gap:16,marginTop:6}}>
+                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.pierceExp)} expenses</span>
+                <span style={{fontSize:13,color:M.pierceCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.pierceCF)} net</span>
               </div>
             </div>
 
-            {/* Year-by-year table */}
-            <div className="glass" style={{overflow:"hidden"}}>
-              <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 80px",padding:"9px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
-                {["YEAR","REVENUE","EXPENSES","NET INCOME","MARGIN"].map(h=>(
-                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
-                ))}
-              </div>
-              {M.projections.map((d,i)=>(
-                <div key={d.year} style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 80px",padding:"13px 18px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13}}>{d.year}{i===0?" (now)":""}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#30d158"}}>{fmt$(d.rev)}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#ff453a"}}>{fmt$(d.exp)}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text-2)"}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)}</span>
-                </div>
-              ))}
-            </div>
+            <div className="section-title">Transactions</div>
+            <TxList
+              txs={M.propM.pierce.txs}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter="all" setFilter={()=>{}} getSuggestion={getSuggestion}
+            />
           </div>
         )}
 
-        {/* ── QUARTERLY ── */}
-        {tab==="Quarterly"&&(
-          <div className="fade-in">
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Live from Plaid · all tagged transactions</div>
-              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly Reports</div>
-            </div>
-
-            {M.quarters.length===0&&(
-              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
-                <div style={{fontSize:32,marginBottom:12}}>📊</div>
-                <div style={{fontSize:15,fontWeight:600,marginBottom:6}}>No quarterly data yet</div>
-                <div style={{fontSize:12,color:"var(--text-3)"}}>Sync transactions and tag them to properties to see quarterly reports</div>
-              </div>
-            )}
-
-            {M.quarters.length>0&&(()=>{
-              // Group quarters by year for YoY comparison
-              const byYear = {};
-              M.quarters.forEach(q=>{ if(!byYear[q.year])byYear[q.year]={}; byYear[q.year][q.q]=q; });
-              const years = Object.keys(byYear).map(Number).sort();
-              const allQ  = [1,2,3,4];
-              const metrics = [
-                {key:"rev",    label:"Gross Revenue",  fmt:fmt$,    color:"#30d158"},
-                {key:"exp",    label:"Total Expenses",  fmt:fmt$,    color:"#ff453a"},
-                {key:"net",    label:"Net Income",      fmt:fmt$,    color:"var(--text)"},
-                {key:"margin", label:"Net Margin",      fmt:v=>`${v.toFixed(1)}%`, color:"var(--text)"},
-                {key:"expRatio",label:"Expense Ratio",  fmt:v=>`${v.toFixed(1)}%`, color:"var(--text)"},
-              ];
-
-              return (
-                <>
-                  {/* Quarter-over-quarter bar charts */}
-                  <div className="glass" style={{padding:"22px",marginBottom:10}}>
-                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:18}}>Quarter-over-Quarter · Revenue vs Expenses</div>
-                    <div style={{display:"flex",gap:4,alignItems:"flex-end",height:120,marginBottom:8}}>
-                      {M.quarters.map((q,i)=>{
-                        const maxV = Math.max(...M.quarters.flatMap(x=>[x.rev,x.exp]),1);
-                        return (
-                          <div key={q.key} style={{flex:1,display:"flex",gap:2,alignItems:"flex-end",position:"relative"}}>
-                            {/* Revenue bar */}
-                            <div style={{flex:1,background:"#30d15899",borderRadius:"3px 3px 0 0",height:`${(q.rev/maxV)*100}%`,minHeight:2,position:"relative",cursor:"default"}}
-                              title={`${q.label} Revenue: ${fmt$(q.rev)}`}/>
-                            {/* Expense bar */}
-                            <div style={{flex:1,background:"#ff453a99",borderRadius:"3px 3px 0 0",height:`${(q.exp/maxV)*100}%`,minHeight:2,cursor:"default"}}
-                              title={`${q.label} Expenses: ${fmt$(q.exp)}`}/>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{display:"flex",gap:4}}>
-                      {M.quarters.map(q=>(
-                        <div key={q.key} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden"}}>{q.label}</div>
-                      ))}
-                    </div>
-                    <div style={{display:"flex",gap:14,marginTop:10,justifyContent:"center"}}>
-                      {[{c:"#30d158",l:"Revenue"},{c:"#ff453a",l:"Expenses"}].map(x=>(
-                        <div key={x.l} style={{display:"flex",alignItems:"center",gap:5}}>
-                          <div style={{width:14,height:3,background:x.c,borderRadius:2}}/>
-                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{x.l}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Net margin trend */}
-                  <div className="glass" style={{padding:"22px",marginBottom:10}}>
-                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:18}}>Net Margin Trend</div>
-                    <div style={{display:"flex",gap:4,alignItems:"flex-end",height:70,marginBottom:8}}>
-                      {M.quarters.map(q=>{
-                        const pct = Math.max(0, q.margin);
-                        const color = q.margin>=0?"var(--text)":"#ff453a";
-                        return (
-                          <div key={q.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                            <span style={{fontSize:8,color:color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{q.margin.toFixed(0)}%</span>
-                            <div style={{width:"100%",background:`${color}99`,borderRadius:"3px 3px 0 0",height:`${Math.max(4,(pct/100)*60)}px`,minHeight:2}}/>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{display:"flex",gap:4}}>
-                      {M.quarters.map(q=>(
-                        <div key={q.key} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{q.label}</div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Full metrics table — QoQ */}
-                  <div className="glass" style={{overflow:"hidden",marginBottom:10}}>
-                    <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-                      <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>All Metrics · Quarter by Quarter</div>
-                    </div>
-                    {/* Header */}
-                    <div style={{display:"grid",gridTemplateColumns:`160px repeat(${M.quarters.length},1fr)`,padding:"8px 18px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8,overflowX:"auto"}}>
-                      <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>METRIC</span>
-                      {M.quarters.map(q=>(
-                        <span key={q.key} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",textAlign:"right"}}>{q.label}</span>
-                      ))}
-                    </div>
-                    {metrics.map((m,mi)=>(
-                      <div key={m.key} style={{display:"grid",gridTemplateColumns:`160px repeat(${M.quarters.length},1fr)`,padding:"11px 18px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,background:mi%2===0?"rgba(255,255,255,0.2)":"transparent"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:7}}>
-                          <div style={{width:3,height:14,background:m.color,borderRadius:2,flexShrink:0}}/>
-                          <span style={{fontSize:11,fontWeight:600,color:m.color}}>{m.label}</span>
-                        </div>
-                        {M.quarters.map((q,qi)=>{
-                          const val = q[m.key];
-                          const prev = qi>0?M.quarters[qi-1][m.key]:null;
-                          const delta = prev!==null&&prev!==0?((val-prev)/Math.abs(prev))*100:null;
-                          return (
-                            <div key={q.key} style={{textAlign:"right"}}>
-                              <div style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#30d158":"#ff453a"):m.color}}>{m.fmt(val||0)}</div>
-                              {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}%</div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Year-over-Year comparison */}
-                  {years.length>1&&(
-                    <div className="glass" style={{overflow:"hidden",marginBottom:10}}>
-                      <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-                        <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>Year-over-Year · Same Quarter Comparison</div>
-                      </div>
-                      {allQ.map(qNum=>{
-                        const hasData = years.some(y=>byYear[y]?.[qNum]);
-                        if(!hasData) return null;
-                        return (
-                          <div key={qNum} style={{borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-                            <div style={{padding:"10px 18px 6px",fontSize:10,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)",letterSpacing:"0.05em"}}>Q{qNum}</div>
-                            {metrics.map((m,mi)=>(
-                              <div key={m.key} style={{display:"grid",gridTemplateColumns:`160px repeat(${years.length},1fr)`,padding:"8px 18px 8px 26px",borderBottom:"1px solid rgba(0,0,0,0.03)",gap:8,background:mi%2===0?"rgba(255,255,255,0.15)":"transparent"}}>
-                                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                  <div style={{width:2,height:12,background:m.color,borderRadius:1,flexShrink:0}}/>
-                                  <span style={{fontSize:10,color:"var(--text-3)"}}>{m.label}</span>
-                                </div>
-                                {years.map((yr,yi)=>{
-                                  const q = byYear[yr]?.[qNum];
-                                  const val = q?q[m.key]:null;
-                                  const prevYrQ = yi>0?byYear[years[yi-1]]?.[qNum]:null;
-                                  const prevVal = prevYrQ?prevYrQ[m.key]:null;
-                                  const delta = val!==null&&prevVal!==null&&prevVal!==0?((val-prevVal)/Math.abs(prevVal))*100:null;
-                                  return (
-                                    <div key={yr} style={{textAlign:"right"}}>
-                                      {val!==null
-                                        ? <>
-                                            <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#30d158":"#ff453a"):m.color}}>{m.fmt(val)}</div>
-                                            {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}% YoY</div>}
-                                            <div style={{fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{yr}</div>
-                                          </>
-                                        : <span style={{fontSize:10,color:"var(--text-3)"}}>—</span>
-                                      }
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Current quarter snapshot */}
-                  {(()=>{
-                    const now = new Date();
-                    const curQ = Math.ceil((now.getMonth()+1)/3);
-                    const curQData = M.quarters.find(q=>q.year===now.getFullYear()&&q.q===curQ);
-                    if(!curQData) return null;
-                    const daysInQ = [0,90,91,92,92][curQ];
-                    const dayOfQ  = Math.min(now.getDate()+(([0,0,31,59,90,120,151,181,212,243,273,304,334][now.getMonth()])-(([0,0,0,90,90,181,181,181,273,273,273,365,365])[now.getMonth()])),daysInQ);
-                    const progress= Math.min(100,Math.round((dayOfQ/daysInQ)*100));
-                    return (
-                      <div className="glass" style={{padding:"20px",marginBottom:10}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-                          <div>
-                            <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Current Quarter · Q{curQ} {now.getFullYear()}</div>
-                            <div style={{fontSize:13,fontWeight:600}}>In Progress · {progress}% through the quarter</div>
-                          </div>
-                          <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{progress}%</div>
-                        </div>
-                        <div style={{height:4,background:"rgba(0,0,0,0.06)",borderRadius:4,marginBottom:16,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${progress}%`,background:"#30d158",borderRadius:4,transition:"width 0.5s"}}/>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                          {metrics.map(m=>(
-                            <div key={m.key} style={{background:"rgba(255,255,255,0.45)",borderRadius:10,padding:"12px",textAlign:"center"}}>
-                              <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{m.label}</div>
-                              <div style={{fontSize:14,fontWeight:800,color:m.color,fontFamily:"'JetBrains Mono',monospace"}}>{m.fmt(curQData[m.key]||0)}</div>
-                              <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>on pace: {m.fmt((curQData[m.key]||0)/(progress/100))}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* ── FEED ── */}
+        {/* ── FEED ───────────────────────────────────────────────── */}
         {tab==="Feed"&&(
           <div className="fade-in">
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:18}}>
+            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
-                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Transaction Feed</div>
-                <div style={{fontSize:12,color:"var(--text-3)",marginTop:3}}>Tag each transaction · drives all numbers everywhere</div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div className="big-num" style={{fontSize:26}}>{untagged.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>untagged</div>
+                </div>
               </div>
-              <div className="seg-ctrl">
+              <div className="seg-ctrl" style={{marginTop:4}}>
                 {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
                   <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
                 ))}
@@ -1612,41 +1345,129 @@ function App() {
             </div>
 
             {!hasBank&&(
-              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
-                <div style={{fontSize:40,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:16,fontWeight:600,marginBottom:14}}>No bank connected</div>
-                <button onClick={connectBank} className="btn-primary">Connect Bank →</button>
+              <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
+                <div style={{fontSize:32,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
+                <button onClick={connectBank} className="btn-primary">Connect Bank</button>
               </div>
             )}
 
-            {hasBank&&(
-              <>
-                <TxList
-                  txs={feedTxs}
-                  tagging={tagging} setTagging={setTagging}
-                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-                  filter={txFilter} setFilter={setTxFilter}
-                />
+            {hasBank&&<TxList
+              txs={feedTxs}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
+            />}
+          </div>
+        )}
 
-                {/* Auto-tag rules */}
-                {Object.keys(autoTags).length>0&&(
-                  <div style={{marginTop:20,padding:"16px 18px",background:"rgba(255,255,255,0.45)",border:"1px solid rgba(255,255,255,0.6)",borderRadius:12}}>
-                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                      {Object.entries(autoTags).map(([payee,pid])=>(
-                        <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:6,padding:"3px 10px"}}>
-                          <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
-                          <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
-                          <PropBadge id={pid} small/>
+        {/* ── ARCHIVE ─────────────────────────────────────────────── */}
+        {tab==="Archive"&&(
+          <div className="fade-in">
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive</div>
+              <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
+              <div style={{fontSize:12,color:"var(--text-3)",marginTop:4}}>Review and re-tag any transaction below.</div>
+            </div>
+
+            {archived.length===0&&(
+              <div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",padding:"48px 24px",fontSize:13}}>
+                Nothing here yet — deleted and transferred transactions appear here.
+              </div>
+            )}
+
+            {archived.length>0&&(
+              <div className="card" style={{overflow:"hidden"}}>
+                {[...archived].sort((a,b)=>b.date.localeCompare(a.date)).map((tx,i)=>(
+                  <div key={tx.id} style={{borderBottom:i<archived.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"64px 1fr auto auto",padding:"11px 14px",gap:8,alignItems:"center"}}>
+                      <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:500,lineHeight:1.3}}>{tx.payee}</div>
+                        <div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>
+                          {tx.propId==="deleted"?"🗑 Deleted":"↔ Transfer"} · {tx.account||""}
                         </div>
-                      ))}
+                      </div>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                        {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
+                      </span>
+                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
+                          Restore
+                        </button>
+                        {tx.type==="in"?(
+                          <button onClick={()=>{const p=PROPERTIES.find(x=>x.id!=="transfer"&&x.id!=="deleted"&&x.id!=="llc"&&x.group!=="airbnb"||x.id==="airbnb");doTag(tx.id,"airbnb");}} style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"#30d158",fontWeight:600}}>
+                            → Airbnb
+                          </button>
+                        ):(
+                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
+                            Re-tag
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {tagging===tx.id&&(
+                      <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(0,0,0,0.04)"}}>
+                        <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
+              </div>
+            )}
+
+            {/* Connected banks */}
+            {linked.length>0&&(
+              <>
+                <div className="section-title">Connected Banks</div>
+                <div className="card" style={{overflow:"hidden"}}>
+                  {linked.map((a,i)=>(
+                    <div key={a.item_id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderBottom:i<linked.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                      <span style={{fontSize:13,fontWeight:500}}>{a.name}</span>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>pullHistory()} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer"}}>↓ Pull History</button>
+                        <button onClick={()=>removeAccount(a.item_id)} style={{fontSize:11,color:"#ff453a",background:"none",border:"none",cursor:"pointer"}}>Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Auto-tag rules */}
+            {Object.keys(autoTags).length>0&&(
+              <>
+                <div className="section-title">Auto-Tag Rules <span style={{fontWeight:400,textTransform:"none",fontSize:9}}>(suggestions only — not applied automatically)</span></div>
+                <div className="card card-padded">
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {Object.entries(autoTags).map(([payee,pid])=>(
+                      <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:8,padding:"4px 10px"}}>
+                        <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
+                        <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
+                        <PropBadge id={pid} small/>
+                        <button onClick={()=>{const n={...autoTags};delete n[payee];setAutoTags(n);LS.set(AUTO_KEY,n);}} style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:12,lineHeight:1,padding:"0 2px"}}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
           </div>
         )}
+
+      </div>{/* end .page */}
+
+      {/* BOTTOM TAB BAR */}
+      <div className="tab-bar">
+        {TABS.map(t=>(
+          <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>setTab(t)}>
+            {TAB_ICONS[t]}
+            <span>{t==="Pierce"?"Pierce":t}</span>
+            {t==="Feed"&&untagged.length>0&&(
+              <div style={{position:"absolute",top:2,right:8,background:"#ff453a",borderRadius:"50%",width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#fff"}}>{untagged.length>99?"99+":untagged.length}</div>
+            )}
+          </button>
+        ))}
       </div>
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
