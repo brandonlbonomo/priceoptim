@@ -123,7 +123,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr 72px 1fr 1fr;
       align-items: end;
-      padding: 8px 16px max(20px,env(safe-area-inset-bottom));
+      padding: 10px 24px max(28px,env(safe-area-inset-bottom));
       gap: 0;
     }
     .tab-item {
@@ -939,7 +939,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
-const TABS=["Portfolio","Airbnb","Pierce","Feed","Quarterly","Projections","Archive"];
+const TABS=["Airbnb","Pierce","Portfolio","Quarterly","Feed","Projections","Archive"];
 
 // ── Main App ──────────────────────────────────────────────────
 function App() {
@@ -947,8 +947,9 @@ function App() {
   const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
-    // Portfolio is index 0 — starts at translateX(0)
-    if(trackRef.current) trackRef.current.style.transform = "translateX(0px)";
+    // Portfolio is index 2 — start centered on it
+    const initIdx = TABS.indexOf("Portfolio");
+    if(trackRef.current) trackRef.current.style.transform = `translateX(${-initIdx*window.innerWidth}px)`;
     // Measure actual header height for page-outer
     const h = headerRef.current?.offsetHeight || 56;
     const outer = document.querySelector(".page-outer");
@@ -1432,102 +1433,6 @@ function App() {
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
-        {/* ── PORTFOLIO ─────────────────────────────────────────── */}
-        <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
-            <div className="page-header">
-              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                <div className="big-num">{fmt$(M.totalRev)}</div>
-                <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
-              </div>
-              <div style={{display:"flex",gap:16,marginTop:6}}>
-                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.totalExp)} expenses</span>
-                <span style={{fontSize:13,color:M.totalCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.totalCF)} net</span>
-                {M.netMargin!==null&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct(M.netMargin)} margin</span>}
-              </div>
-            </div>
-
-            {/* Nudge to enter manual income if empty */}
-            {Object.keys(manualIncome).length===0&&(
-              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-                <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
-                <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
-              </div>
-            )}
-
-            {/* Summary cards */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              {[
-                {l:"Airbnb Revenue",  v:fmt$(M.airbnbRev), sub:"8 units"},
-                {l:"Pierce Revenue",  v:fmt$(M.pierceRev), sub:"7 units"},
-                {l:"Total Expenses",  v:fmt$(M.totalExp),  sub:"all properties", red:true},
-                {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
-              ].map(c=>(
-                <div key={c.l} className="card card-padded">
-                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
-                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
-                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Month-by-month charts */}
-            {M.months.length>0&&(<>
-              <div className="section-title">Revenue · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Expenses · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Net Income · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=marginal · red=negative</span></div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
-              </div>
-            </>)}
-
-
-
-            {/* CoC return */}
-            {M.annualCoc&&(
-              <>
-                <div className="section-title">Return on Investment</div>
-                <div className="card card-padded" style={{marginBottom:8}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    {[
-                      {l:"Cash-on-Cash",v:fmtPct(M.annualCoc),sub:"annualized"},
-                      {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
-                    ].map(c=>(
-                      <div key={c.l}>
-                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
-                        <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
-                        <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={()=>setShowInvest(true)} style={{marginTop:12,fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>
-                    Edit down payments →
-                  </button>
-                </div>
-              </>
-            )}
-            {!M.annualCoc&&(
-              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
-                + Add down payments to see CoC return
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
@@ -1712,38 +1617,98 @@ function App() {
           </div>
         </div>
 
-        {/* ── FEED ───────────────────────────────────────────────── */}
         <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
-            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
-              <div>
-                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <div className="big-num" style={{fontSize:26}}>{untagged.length}</div>
-                  <div style={{fontSize:13,color:"var(--text-3)"}}>untagged</div>
-                </div>
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                <div className="big-num">{fmt$(M.totalRev)}</div>
+                <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
               </div>
-              <div className="seg-ctrl" style={{marginTop:4}}>
-                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
-                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
-                ))}
+              <div style={{display:"flex",gap:16,marginTop:6}}>
+                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.totalExp)} expenses</span>
+                <span style={{fontSize:13,color:M.totalCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.totalCF)} net</span>
+                {M.netMargin!==null&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct(M.netMargin)} margin</span>}
               </div>
             </div>
 
-            {txs.length===0&&linked.length===0&&(
-              <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
-                <div style={{fontSize:32,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
-                <button onClick={connectBank} className="btn-primary">Connect Bank</button>
+            {/* Nudge to enter manual income if empty */}
+            {Object.keys(manualIncome).length===0&&(
+              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
+                <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
               </div>
             )}
 
-            {(txs.length>0||linked.length>0)&&<TxList
-              txs={feedTxs}
-              tagging={tagging} setTagging={setTagging}
-              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
-            />}
+            {/* Summary cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Airbnb Revenue",  v:fmt$(M.airbnbRev), sub:"8 units"},
+                {l:"Pierce Revenue",  v:fmt$(M.pierceRev), sub:"7 units"},
+                {l:"Total Expenses",  v:fmt$(M.totalExp),  sub:"all properties", red:true},
+                {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
+              ].map(c=>(
+                <div key={c.l} className="card card-padded">
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Month-by-month charts */}
+            {M.months.length>0&&(<>
+              <div className="section-title">Revenue · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Expenses · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Net Income · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=marginal · red=negative</span></div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
+              </div>
+            </>)}
+
+
+
+            {/* CoC return */}
+            {M.annualCoc&&(
+              <>
+                <div className="section-title">Return on Investment</div>
+                <div className="card card-padded" style={{marginBottom:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {[
+                      {l:"Cash-on-Cash",v:fmtPct(M.annualCoc),sub:"annualized"},
+                      {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
+                    ].map(c=>(
+                      <div key={c.l}>
+                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                        <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
+                        <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setShowInvest(true)} style={{marginTop:12,fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>
+                    Edit down payments →
+                  </button>
+                </div>
+              </>
+            )}
+            {!M.annualCoc&&(
+              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
+                + Add down payments to see CoC return
+              </button>
+            )}
           </div>
         </div>
 
@@ -1900,6 +1865,41 @@ function App() {
           </div>
           );
         })()}
+        </div>
+
+        {/* ── FEED ───────────────────────────────────────────────── */}
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
+            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div className="big-num" style={{fontSize:26}}>{untagged.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>untagged</div>
+                </div>
+              </div>
+              <div className="seg-ctrl" style={{marginTop:4}}>
+                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
+                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            {txs.length===0&&linked.length===0&&(
+              <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
+                <div style={{fontSize:32,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
+                <button onClick={connectBank} className="btn-primary">Connect Bank</button>
+              </div>
+            )}
+
+            {(txs.length>0||linked.length>0)&&<TxList
+              txs={feedTxs}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
+            />}
+          </div>
         </div>
 
         <div className="swipe-pane">
@@ -2135,20 +2135,22 @@ function App() {
 
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
-        {["Airbnb","Pierce","Portfolio","Quarterly","Feed"].map(t=>(
-          t==="Portfolio"
-          ? <button key={t} className={`tab-item-center${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
+        {["Airbnb","Pierce","Portfolio","Quarterly","Feed"].map(t=>{
+          const isActive = TABS[tabIdx]===t;
+          const isCenter = t==="Portfolio";
+          return isCenter
+          ? <button key={t} className={`tab-item-center${isActive?" active":""}`} onClick={()=>navigateTab(t)}>
               {TAB_ICONS[t]}
               <span>Portfolio</span>
             </button>
-          : <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>navigateTab(t)} style={{position:"relative"}}>
+          : <button key={t} className={`tab-item${isActive?" active":""}`} onClick={()=>navigateTab(t)} style={{position:"relative"}}>
               {TAB_ICONS[t]}
               <span>{t}</span>
               {t==="Feed"&&untagged.length>0&&(
                 <div style={{position:"absolute",top:2,right:"calc(50% - 16px)",background:"#ff453a",borderRadius:"50%",width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#fff"}}>{untagged.length>99?"99+":untagged.length}</div>
               )}
             </button>
-        ))}
+        })}
       </div>
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
