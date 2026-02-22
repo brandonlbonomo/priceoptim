@@ -577,61 +577,105 @@ function InvestModal({ invest, onSave, onClose }) {
 }
 
 // ── TxList ────────────────────────────────────────────────────
-function TxList({ txs, tagging, setTagging, doTag, doDelete, filter, setFilter }) {
+// ── TxList with bulk select ───────────────────────────────────
+function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDelete, filter, setFilter }) {
+  const [selected, setSelected] = useState(new Set());
+
   const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
   const sorted   = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+  const allSel   = sorted.length>0 && sorted.every(t=>selected.has(t.id));
+  const selCount = selected.size;
+
+  const toggle = (id,e) => { e && e.stopPropagation(); setSelected(p=>{const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n;}); setTagging(null); };
+  const toggleAll = () => setSelected(allSel ? new Set() : new Set(sorted.map(t=>t.id)));
+  const clearSel  = () => setSelected(new Set());
+
+  const handleBulkTag = pid => { doBulkTag([...selected], pid); clearSel(); };
+  const handleBulkDel = ()  => { doBulkDelete([...selected]); clearSel(); };
+
+  const Checkbox = ({id, checked}) => (
+    <div onClick={e=>toggle(id,e)} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"#0a84ff":"rgba(0,0,0,0.2)"}`,background:checked?"#0a84ff":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
+      {checked&&<span style={{color:"white",fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
+    </div>
+  );
 
   return (
     <div>
-      <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+      {/* Toolbar */}
+      <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
         <div className="seg-ctrl">
-          {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
-            <button key={k} className={`seg-btn${filter===k?" active":""}`} onClick={()=>setFilter(k)}>{l}</button>
+          {[["all","All"],["in","↓ In"],["out","↑ Out"]].map(([k,l])=>(
+            <button key={k} className={`seg-btn${filter===k?" active":""}`} onClick={()=>{setFilter(k);clearSel();}}>{l}</button>
           ))}
         </div>
         <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{sorted.length} transactions</span>
+
+        {selCount>0&&(
+          <div style={{display:"flex",gap:5,alignItems:"center",marginLeft:"auto",flexWrap:"wrap"}}>
+            <span style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)",marginRight:2}}>{selCount} selected —</span>
+            {PROPERTIES.filter(p=>p.id!=="transfer").map(p=>(
+              <button key={p.id} onClick={()=>handleBulkTag(p.id)}
+                style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`,borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
+                {p.label}
+              </button>
+            ))}
+            <button onClick={handleBulkDel}
+              style={{background:"rgba(255,69,58,0.1)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
+              🗑 Delete {selCount}
+            </button>
+            <button onClick={clearSel} style={{background:"rgba(0,0,0,0.05)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
+          </div>
+        )}
       </div>
 
       {sorted.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:13}}>No transactions</div>}
 
       {sorted.length>0&&(
         <div className="glass" style={{overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
-            {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
+          <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8,alignItems:"center"}}>
+            <Checkbox id="__all__" checked={allSel} onClick={e=>{e.stopPropagation();toggleAll();}}/>
+            {["DATE","","PAYEE","AMOUNT","PROPERTY"].map(h=>(
               <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
             ))}
           </div>
-          {sorted.map(tx=>(
-            <div key={tx.id}>
-              <div className="tx-row" onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}>
-                <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
-                <div>
-                  <div style={{fontSize:13,fontWeight:500,lineHeight:1.3}}>{tx.payee}</div>
-                  {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
-                </div>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
-                  {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
-                </span>
-                <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
-                <div onClick={e=>e.stopPropagation()}>
-                  <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
-                    <PropBadge id={tx.propId} small/>
+          {sorted.map(tx=>{
+            const isSel = selected.has(tx.id);
+            return (
+              <div key={tx.id}>
+                <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
+                  onClick={()=>{ if(selCount>0){toggle(tx.id);return;} setTagging(t=>t===tx.id?null:tx.id); }}
+                  onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(0,0,0,0.025)";}}
+                  onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                  <div onClick={e=>toggle(tx.id,e)}><Checkbox id={tx.id} checked={isSel}/></div>
+                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                  <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
+                  <div style={{overflow:"hidden"}}>
+                    <div style={{fontSize:13,fontWeight:500,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                    {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
+                  </div>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                    {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                   </span>
+                  <div onClick={e=>e.stopPropagation()}>
+                    <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
+                      <PropBadge id={tx.propId} small/>
+                    </span>
+                  </div>
                 </div>
+                {tagging===tx.id&&(
+                  <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+                    <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                  </div>
+                )}
               </div>
-              {tagging===tx.id&&(
-                <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
+
 
 // ── Main App ──────────────────────────────────────────────────
 function App() {
@@ -739,18 +783,25 @@ function App() {
   }
 
   function doDelete(txId){
-    setTxs(prev=>{
-      const arr=prev.filter(t=>t.id!==txId);
-      LS.set(TX_KEY,arr);
-      return arr;
-    });
-    setTags(prev=>{
-      const next={...prev};
-      delete next[txId];
-      LS.set(TAGS_KEY,next);
-      return next;
-    });
+    setTxs(prev=>{const arr=prev.filter(t=>t.id!==txId); LS.set(TX_KEY,arr); return arr;});
+    setTags(prev=>{const next={...prev}; delete next[txId]; LS.set(TAGS_KEY,next); return next;});
+    // Also delete from server
+    fetch(`${BACKEND}/api/transactions/delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:[txId]})}).catch(()=>{});
     setTagging(null);
+  }
+
+  function doBulkTag(ids, propId){
+    const nextTags={...tags};
+    ids.forEach(id=>{ nextTags[id]=propId; });
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
+  }
+
+  function doBulkDelete(ids){
+    const idSet=new Set(ids);
+    setTxs(prev=>{const arr=prev.filter(t=>!idSet.has(t.id)); LS.set(TX_KEY,arr); return arr;});
+    setTags(prev=>{const next={...prev}; ids.forEach(id=>delete next[id]); LS.set(TAGS_KEY,next); return next;});
+    // Delete from server too
+    fetch(`${BACKEND}/api/transactions/delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids})}).catch(()=>{});
   }
 
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
@@ -1199,7 +1250,7 @@ function App() {
             <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>Pierce Ave Transactions</div>
             <TxList
               txs={M.propM.pierce.txs}
-              tagging={tagging} setTagging={setTagging} doTag={doTag} doDelete={doDelete}
+              tagging={tagging} setTagging={setTagging} doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
               filter={pierceTxFilter} setFilter={setPierceTxFilter}
             />
           </div>
@@ -1289,57 +1340,12 @@ function App() {
 
             {hasBank&&(
               <>
-                {/* Money In / Money Out filter on feed */}
-                <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
-                  <div className="seg-ctrl">
-                    {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
-                      <button key={k} className={`seg-btn${txFilter===k?" active":""}`} onClick={()=>setTxFilter(k)}>{l}</button>
-                    ))}
-                  </div>
-                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{feedDisplayed.length} transactions</span>
-                </div>
-
-                {feedDisplayed.length===0&&(
-                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:13}}>
-                    {feedFilter==="untagged"?"All transactions tagged ✓":"No transactions yet — hit Sync"}
-                  </div>
-                )}
-
-                {feedDisplayed.length>0&&(
-                  <div className="glass" style={{overflow:"hidden"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
-                      {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
-                        <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
-                      ))}
-                    </div>
-                    {[...feedDisplayed].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
-                      <div key={tx.id}>
-                        <div className="tx-row" onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}>
-                          <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                          <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
-                          <div>
-                            <div style={{fontSize:13,fontWeight:500}}>{tx.payee}</div>
-                            {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
-                          </div>
-                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
-                            {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
-                          </span>
-                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
-                          <div onClick={e=>e.stopPropagation()}>
-                            <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
-                              <PropBadge id={tx.propId} small/>
-                            </span>
-                          </div>
-                        </div>
-                        {tagging===tx.id&&(
-                          <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-                            <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <TxList
+                  txs={feedTxs}
+                  tagging={tagging} setTagging={setTagging}
+                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+                  filter={txFilter} setFilter={setTxFilter}
+                />
 
                 {/* Auto-tag rules */}
                 {Object.keys(autoTags).length>0&&(
