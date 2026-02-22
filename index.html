@@ -120,21 +120,40 @@
       backdrop-filter: blur(28px) saturate(1.6);
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
       border-top: 1px solid rgba(0,0,0,0.08);
-      display: flex; align-items: center; justify-content: space-around;
-      padding: 10px 0 max(20px,env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+      align-items: end;
+      padding: 8px 16px max(20px,env(safe-area-inset-bottom));
+      gap: 0;
     }
     .tab-item {
       display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 4px 12px;
+      padding: 4px 0;
       background: transparent; border: none;
       color: var(--text-3);
       font-size: 10px; font-weight: 500;
       transition: all 0.15s;
-      min-width: 52px;
+      width: 100%;
+      position: relative;
     }
     .tab-item.active { color: var(--text); }
     .tab-item svg { transition: all 0.15s; }
     .tab-item.active svg { transform: scale(1.05); }
+    .tab-item-center {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: var(--text); border: none;
+      color: #fff;
+      font-size: 10px; font-weight: 600;
+      border-radius: 18px;
+      padding: 10px 0 8px;
+      width: 100%;
+      transition: all 0.15s;
+      cursor: pointer;
+      position: relative;
+      margin-bottom: 2px;
+    }
+    .tab-item-center.active { background: #1a1a2e; }
+    .tab-item-center svg { transition: all 0.15s; }
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
       padding: 7px 16px; border-radius: 20px; font-size: 13px;
@@ -274,8 +293,33 @@
     .tx-row:hover { background: rgba(0,0,0,0.03); }
     .tx-row:last-child { border-bottom: none; }
 
-    /* Page content — accounts for fixed bottom tab bar */
-    .page { padding: 0 16px 100px; max-width: 640px; margin: 0 auto; }
+    /* Swipe container */
+    .page-outer {
+      position: fixed;
+      top: 56px; /* header height approx */
+      left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+    }
+    .swipe-track {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      will-change: transform;
+      transition: none;
+    }
+    .swipe-track.settling {
+      transition: transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    .swipe-pane {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 16px 120px;
+      box-sizing: border-box;
+    }
+    .page { padding: 0; }
     .page-header { padding: 20px 0 16px; }
     .section-title {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
@@ -309,11 +353,7 @@
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease forwards; }
-    .page { touch-action: pan-y; }
-    @keyframes slideLeft  { from { opacity:0; transform:translateX(32px);  } to { opacity:1; transform:translateX(0); } }
-    @keyframes slideRight { from { opacity:0; transform:translateX(-32px); } to { opacity:1; transform:translateX(0); } }
-    .slide-left  { animation: slideLeft  0.26s cubic-bezier(0.25,0.46,0.45,0.94) both; }
-    .slide-right { animation: slideRight 0.26s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+
   </style>
 </head>
 <body>
@@ -902,27 +942,71 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
-  const [tabDir, setTabDir]     = useState("left");
-  const swipeStartX             = useRef(null);
+  const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
+  // Set initial track position + page-outer top after mount
+  useEffect(()=>{
+    const idx = TABS.indexOf("Portfolio");
+    const vw  = window.innerWidth;
+    if(trackRef.current) trackRef.current.style.transform = `translateX(${-idx*vw}px)`;
+    // Set page-outer top to match actual header height
+    const h = headerRef.current?.offsetHeight || 56;
+    const outer = document.querySelector(".page-outer");
+    if(outer) outer.style.top = h + "px";
+  },[]);
+  const trackRef                = useRef(null);
+  const headerRef               = useRef(null);
+  const drag                    = useRef({active:false,startX:0,startY:0,lastX:0,axis:null});
 
-  const navigateTab = (t) => {
-    if(t === tab) return;
-    const curIdx  = TABS.indexOf(tab);
-    const nextIdx = TABS.indexOf(t);
-    setTabDir(nextIdx > curIdx ? "left" : "right");
-    setTab(t);
+  const setTrackPos = (px, animated) => {
+    const el = trackRef.current; if(!el) return;
+    el.style.transition = animated ? "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)" : "none";
+    el.style.transform  = `translateX(${px}px)`;
   };
 
-  const onTouchStart = (e) => { swipeStartX.current = e.touches[0].clientX; };
-  const onTouchMove  = (e) => {}; // no-op — we only act on end
-  const onTouchEnd   = (e) => {
-    if(swipeStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - swipeStartX.current;
-    swipeStartX.current = null;
-    if(Math.abs(dx) < 50) return;
-    const curIdx = TABS.indexOf(tab);
-    if(dx < 0 && curIdx < TABS.length-1) navigateTab(TABS[curIdx+1]);
-    if(dx > 0 && curIdx > 0)             navigateTab(TABS[curIdx-1]);
+  const navigateTab = (t) => {
+    const idx = TABS.indexOf(t);
+    if(idx < 0) return;
+    setTab(t); setTabIdx(idx);
+    setTrackPos(-idx * window.innerWidth, true);
+  };
+
+  const onTouchStart = (e) => {
+    const d = drag.current;
+    d.active = true; d.axis = null;
+    d.startX = d.lastX = e.touches[0].clientX;
+    d.startY = e.touches[0].clientY;
+    const el = trackRef.current; if(el) el.style.transition = "none";
+  };
+
+  const onTouchMove = (e) => {
+    const d = drag.current;
+    if(!d.active) return;
+    const dx = e.touches[0].clientX - d.startX;
+    const dy = e.touches[0].clientY - d.startY;
+    if(!d.axis){
+      if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if(d.axis !== "x") return;
+    e.preventDefault();
+    d.lastX = e.touches[0].clientX;
+    const base = -tabIdx * window.innerWidth;
+    const resist = (tabIdx===0 && dx>0)||(tabIdx===TABS.length-1 && dx<0);
+    setTrackPos(base + (resist ? dx*0.15 : dx), false);
+  };
+
+  const onTouchEnd = () => {
+    const d = drag.current;
+    if(!d.active) return;
+    d.active = false;
+    if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); return; }
+    const dx = d.lastX - d.startX;
+    const vw = window.innerWidth;
+    let next = tabIdx;
+    if(dx < -vw*0.25 && tabIdx < TABS.length-1) next = tabIdx+1;
+    if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
+    setTab(TABS[next]); setTabIdx(next);
+    setTrackPos(-next*vw, true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
@@ -1324,7 +1408,7 @@ function App() {
     <div style={{minHeight:"100vh",background:"#f5f5f7"}}>
 
       {/* TOP HEADER */}
-      <div className="top-header">
+      <div className="top-header" ref={headerRef}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
           <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
@@ -1345,11 +1429,12 @@ function App() {
       </div>
 
       {/* CONTENT */}
-      <div className="page" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
         {/* ── PORTFOLIO ─────────────────────────────────────────── */}
-        {tab==="Portfolio"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
               <div style={{display:"flex",alignItems:"baseline",gap:10}}>
@@ -1444,8 +1529,8 @@ function App() {
         )}
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
-        {tab==="Airbnb"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
               <div className="big-num">{fmt$(M.airbnbRev)}</div>
@@ -1554,8 +1639,8 @@ function App() {
         )}
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
-        {tab==="Pierce"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
               <div className="big-num">{fmt$(M.pierceRev)}</div>
@@ -1628,8 +1713,8 @@ function App() {
         )}
 
         {/* ── FEED ───────────────────────────────────────────────── */}
-        {tab==="Feed"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
@@ -1663,9 +1748,10 @@ function App() {
         )}
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
-        {tab==="Quarterly"&&(()=>{
+        <div className="swipe-pane">
+        {(()=>{
           const qs = M.quarters;
-          if(qs.length===0) return <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
+          if(qs.length===0) return <div style={{minHeight:"100%"}}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
 
           // Helper — delta badge: up=green, down=red. Always. User knows context.
           const Delta = ({cur, prev}) => {
@@ -1693,7 +1779,7 @@ function App() {
           const yoyQ  = qs.find(q=>q.q===curQ?.q && q.year===curQ?.year-1) || null;
 
           return (
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>All Properties · Combined</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div>
@@ -1814,8 +1900,10 @@ function App() {
           </div>
           );
         })()}
+        </div>
 
-        {tab==="Projections"&&(()=>{
+        <div className="swipe-pane">
+        {(()=>{
           const now = new Date();
           const thisYear = now.getFullYear();
           const thisMo = now.getMonth(); // 0-indexed
@@ -1824,7 +1912,7 @@ function App() {
           const moElapsed = thisMo;
 
           return (
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>5-Year Outlook · as of {now.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Projections</div>
@@ -1932,9 +2020,10 @@ function App() {
           </div>
           );
         })()}
+        </div>
 
-        {tab==="Archive"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        <div className="swipe-pane">
+          <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
               <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
@@ -2039,20 +2128,26 @@ function App() {
               </>
             )}
           </div>
-        )}
+        </div>
 
-      </div>{/* end .page */}
+        </div>{/* end .swipe-track */}
+      </div>{/* end .page-outer */}
 
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
         {TABS.filter(t=>t!=="Archive").map(t=>(
-          <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
-            {TAB_ICONS[t]}
-            <span>{t==="Pierce"?"Pierce":t}</span>
-            {t==="Feed"&&untagged.length>0&&(
-              <div style={{position:"absolute",top:2,right:8,background:"#ff453a",borderRadius:"50%",width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#fff"}}>{untagged.length>99?"99+":untagged.length}</div>
-            )}
-          </button>
+          t==="Portfolio"
+          ? <button key={t} className={`tab-item-center${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
+              {TAB_ICONS[t]}
+              <span>Portfolio</span>
+            </button>
+          : <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>navigateTab(t)} style={{position:"relative"}}>
+              {TAB_ICONS[t]}
+              <span>{t}</span>
+              {t==="Feed"&&untagged.length>0&&(
+                <div style={{position:"absolute",top:2,right:"calc(50% - 16px)",background:"#ff453a",borderRadius:"50%",width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#fff"}}>{untagged.length>99?"99+":untagged.length}</div>
+              )}
+            </button>
         ))}
       </div>
 
