@@ -939,6 +939,8 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
+const TABS=["Portfolio","Airbnb","Pierce","Feed","Quarterly","Projections","Archive"];
+
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
@@ -1389,7 +1391,6 @@ function App() {
     setStatus("All local data cleared");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
-  const TABS=["Portfolio","Airbnb","Pierce","Feed","Quarterly","Projections","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
   // Tab icons
