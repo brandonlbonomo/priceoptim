@@ -420,7 +420,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
 }
 
 // ── MiniBar — compact sparkline bar chart (clickable) ─────────
-function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null }) {
+function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, marginMode=false }) {
   const [hov, setHov] = useState(null);
   const H = 72;
   const vals = months.map(([,v])=> {
@@ -436,7 +436,9 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null }) 
         {months.map(([mo,v],i)=>{
           const val = vals[i];
           const px  = Math.max(3, Math.round((Math.abs(val)/max)*H));
-          const c   = color || (val>=0?"#30d158":"#ff453a");
+          const c   = marginMode
+            ? (val >= 30 ? "#30d158" : val >= 0 ? "#aaaaaa" : "#ff453a")
+            : color || (val>=0?"#30d158":"#ff453a");
           const clickable = !!onBarClick;
           return (
             <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:clickable?"pointer":"default"}}
@@ -469,21 +471,17 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null }) 
 // ── MonthDrillDown — modal showing transactions for a clicked bar ──
 function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, doBulkDelete, getSuggestion }) {
   const [tagging, setTagging] = useState(null);
-  // type: "rev" = money in, "exp" = money out, "net" = both
-  const filtered = txs.filter(t => {
-    const k = t.date?.slice(0,7);
-    if(k !== mo) return false;
-    if(type==="rev") return t.type==="in";
-    if(type==="exp") return t.type==="out";
-    return true;
-  });
-  const total = filtered.reduce((s,t)=> t.type==="in" ? s+Math.abs(t.amount) : s-Math.abs(t.amount), 0);
+  const [txFilter, setTxFilter] = useState(type==="rev"?"in":type==="exp"?"out":"all");
+  // All txs for this month — let TxList filter handle in/out toggle
+  const moTxs = txs.filter(t => t.date?.slice(0,7) === mo);
+  const total = moTxs.filter(t=>txFilter==="all"||(txFilter==="in"&&t.type==="in")||(txFilter==="out"&&t.type==="out"))
+    .reduce((s,t)=> t.type==="in" ? s+Math.abs(t.amount) : s-Math.abs(t.amount), 0);
   const typeLabel = type==="rev"?"Revenue":type==="exp"?"Expenses":"Net";
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"#f5f5f7",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:680,maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{background:"#f5f5f7",borderRadius:20,width:"100%",maxWidth:680,maxHeight:"85vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 24px 80px rgba(0,0,0,0.35)"}}>
         {/* Header */}
         <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div>
@@ -492,16 +490,16 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
           </div>
           <button onClick={onClose} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
-        {/* Transaction list */}
+        {/* Transaction list — full filter/tag/delete capability */}
         <div style={{overflowY:"auto",flex:1,padding:"8px 12px 24px"}}>
-          {filtered.length===0
+          {moTxs.length===0
             ? <div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:13}}>No transactions for this period</div>
             : <TxList
-                txs={filtered}
+                txs={moTxs}
                 tagging={tagging} setTagging={setTagging}
                 doTag={doTag} doDelete={doDelete}
                 doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-                filter="all" setFilter={()=>{}} getSuggestion={getSuggestion}
+                filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
               />
           }
         </div>
@@ -1110,11 +1108,16 @@ function App() {
         if(t.type==="in")  mo[k].rev+=Math.abs(t.amount);
         if(t.type==="out") mo[k].exp+=Math.abs(t.amount);
       });
-      // Manual income OVERRIDES Plaid rev for that month — zero out plaid rev first, then set manual
+      // Manual income OVERRIDES Airbnb Plaid rev for that month only
+      // Pierce revenue is already in mo[k].rev — we keep it, just swap out airbnb portion
       Object.entries(manualIncome).forEach(([k,v])=>{
         if(!v) return;
-        if(!mo[k])mo[k]={rev:0,exp:0,manual:true};
-        mo[k].rev = v; // override, not additive
+        if(!mo[k])mo[k]={rev:0,exp:0,airbnbRev:0,manual:true};
+        // Subtract airbnb plaid rev for this month (already counted above), add manual
+        const airbnbPlaidForMonth = AIRBNB_IDS.reduce((s,id)=>{
+          return s + (propM[id]?.txs||[]).filter(t=>t.type==="in"&&t.date?.slice(0,7)===k).reduce((a,t)=>a+Math.abs(t.amount),0);
+        },0);
+        mo[k].rev = (mo[k].rev - airbnbPlaidForMonth) + v;
         mo[k].manual=true;
       });
       return Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -1273,9 +1276,9 @@ function App() {
                 <MiniBar months={M.months} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
               </div>
 
-              <div className="section-title">Net Margin % · Month by Month</div>
+              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=ok · red=negative</span></div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/>
+                <MiniBar months={M.months} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
               </div>
             </>)}
 
@@ -1381,8 +1384,8 @@ function App() {
                   <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched.filter(t=>AIRBNB_IDS.includes(t.propId))})}/></div>
                   <div className="section-title">Net Income · Month by Month</div>
                   <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched.filter(t=>AIRBNB_IDS.includes(t.propId)||(!t.propId&&t.type==="in"))})}/></div>
-                  <div className="section-title">Net Margin % · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
+                  <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=ok · red=negative</span></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/></div>
                 </>
               );
             })()}
@@ -1471,7 +1474,7 @@ function App() {
                   <div className="section-title">Net Income · Month by Month</div>
                   <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:M.propM.pierce.txs})}/></div>
                   <div className="section-title">Net Margin % · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/></div>
                 </>
               );
             })()}
