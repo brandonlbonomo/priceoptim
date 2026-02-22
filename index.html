@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Property Pigeon</title>
   <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Pigeon"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#eef2f7"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
@@ -319,15 +326,25 @@ function PropBadge({ id, small }) {
 }
 
 // ── TagMenu ───────────────────────────────────────────────────
-function TagMenu({ tx, onTag, onClose }) {
+function TagMenu({ tx, onTag, onClose, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   return (
-    <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px"}}>
+    <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px",alignItems:"center"}}>
       {PROPERTIES.map(p=>(
         <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`,borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
           {p.label}
         </button>
       ))}
-      <button onClick={onClose} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
+      <div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>
+      {confirmDelete
+        ? <>
+            <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>Sure?</span>
+            <button onClick={()=>{onDelete(tx.id);onClose();}} style={{background:"rgba(255,69,58,0.15)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.4)",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>Yes, delete</button>
+            <button onClick={()=>setConfirmDelete(false)} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>Cancel</button>
+          </>
+        : <button onClick={()=>setConfirmDelete(true)} style={{background:"rgba(255,69,58,0.07)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.25)",borderRadius:8,padding:"5px 11px",fontSize:11,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>🗑 Delete</button>
+      }
+      <button onClick={onClose} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
     </div>
   );
 }
@@ -376,81 +393,152 @@ function BarChart({ months, colorKey="green", label="Revenue" }) {
   );
 }
 
-// ── LineChart for projections ─────────────────────────────────
-function LineChart({ data }) {
-  const [hov, setHov] = useState(null);
-  const W=560, H=180, PAD=40;
-  const allVals = data.flatMap(d=>[d.rev,d.exp,d.net]);
-  const minV=Math.min(...allVals), maxV=Math.max(...allVals);
-  const scaleY=v=>PAD+(H-PAD*2)*(1-(v-minV)/(maxV-minV||1));
-  const scaleX=i=>PAD+(W-PAD*2)*(i/(data.length-1));
-  const makePath=key=>data.map((d,i)=>`${i===0?"M":"L"}${scaleX(i)},${scaleY(d[key])}`).join(" ");
-  const lines=[{key:"rev",color:"#30d158",label:"Revenue"},{key:"exp",color:"#ff453a",label:"Expenses"},{key:"net",color:"#0a84ff",label:"Net Income"}];
+// ── Smooth Projection Chart with draggable scrubber ──────────
+function ProjectionChart({ data }) {
+  const svgRef = useRef(null);
+  const [scrubX, setScrubX] = useState(null);  // pixel x within SVG
+  const [isDragging, setIsDragging] = useState(false);
+  const W=600, H=220, PL=50, PR=20, PT=20, PB=30;
+  const CW=W-PL-PR, CH=H-PT-PB;
+
+  const lines=[
+    {key:"rev",color:"#30d158",label:"Revenue"},
+    {key:"exp",color:"#ff453a",label:"Expenses"},
+    {key:"net",color:"#0a84ff",label:"Net Income"},
+  ];
+
+  const allVals=data.flatMap(d=>[d.rev,d.exp,d.net]);
+  const minV=Math.min(0,...allVals), maxV=Math.max(...allVals,1);
+  const scaleY=v=>PT+CH*(1-(v-minV)/(maxV-minV));
+  const scaleX=i=>PL+CW*(i/(data.length-1));
+
+  // Smooth cubic bezier path
+  const smoothPath=key=>{
+    const pts=data.map((d,i)=>([scaleX(i),scaleY(d[key])]));
+    if(pts.length<2) return "";
+    let d=`M${pts[0][0]},${pts[0][1]}`;
+    for(let i=0;i<pts.length-1;i++){
+      const cp1x=pts[i][0]+(pts[i+1][0]-pts[i][0])*0.4;
+      const cp1y=pts[i][1];
+      const cp2x=pts[i][0]+(pts[i+1][0]-pts[i][0])*0.6;
+      const cp2y=pts[i+1][1];
+      d+=` C${cp1x},${cp1y} ${cp2x},${cp2y} ${pts[i+1][0]},${pts[i+1][1]}`;
+    }
+    return d;
+  };
+
+  // Find which data point scrubX is closest to
+  const activeIdx = scrubX===null ? null : Math.min(data.length-1, Math.max(0,
+    Math.round((scrubX - PL) / CW * (data.length-1))
+  ));
+
+  const getSVGX = e => {
+    if(!svgRef.current) return null;
+    const rect=svgRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const ratio = (clientX-rect.left)/rect.width;
+    return ratio*W;
+  };
+
+  const onMove = e => {
+    if(e.type==="mousemove"&&!isDragging&&e.buttons===0) {
+      setScrubX(getSVGX(e));
+    } else if(isDragging || e.type==="mousemove") {
+      setScrubX(getSVGX(e));
+    } else if(e.touches) {
+      setScrubX(getSVGX(e));
+    }
+  };
+
+  const activeData = activeIdx!==null ? data[activeIdx] : null;
+  const scrubLineX = activeIdx!==null ? scaleX(activeIdx) : null;
 
   return (
-    <div style={{position:"relative"}}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
+    <div>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible",cursor:"crosshair",userSelect:"none"}}
+        onMouseMove={onMove} onMouseLeave={()=>{setScrubX(null);setIsDragging(false);}}
+        onMouseDown={()=>setIsDragging(true)} onMouseUp={()=>setIsDragging(false)}
+        onTouchMove={onMove} onTouchStart={onMove} onTouchEnd={()=>setScrubX(null)}>
         <defs>
           {lines.map(l=>(
-            <linearGradient key={l.key} id={`grad_${l.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={l.color} stopOpacity="0.15"/>
-              <stop offset="100%" stopColor={l.color} stopOpacity="0"/>
+            <linearGradient key={l.key} id={`pg_${l.key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={l.color} stopOpacity="0.18"/>
+              <stop offset="100%" stopColor={l.color} stopOpacity="0.02"/>
             </linearGradient>
           ))}
         </defs>
-        {/* Grid lines */}
-        {[0,0.25,0.5,0.75,1].map(f=>(
-          <line key={f} x1={PAD} y1={PAD+(H-PAD*2)*f} x2={W-PAD} y2={PAD+(H-PAD*2)*f}
-            stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="4,4"/>
-        ))}
+
+        {/* Grid */}
+        {[0,0.25,0.5,0.75,1].map(f=>{
+          const y=PT+CH*f;
+          const val=maxV-(maxV-minV)*f;
+          return (
+            <g key={f}>
+              <line x1={PL} y1={y} x2={W-PR} y2={y} stroke="rgba(0,0,0,0.07)" strokeWidth="1" strokeDasharray="3,4"/>
+              <text x={PL-6} y={y+4} textAnchor="end" style={{fontSize:8,fill:"rgba(26,26,46,0.35)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(val).replace("$","")}</text>
+            </g>
+          );
+        })}
+
+        {/* Area fills */}
+        {lines.map(l=>{
+          const path=smoothPath(l.key);
+          const lastX=scaleX(data.length-1);
+          return <path key={l.key} d={path+` L${lastX},${H-PB} L${PL},${H-PB} Z`} fill={`url(#pg_${l.key})`}/>;
+        })}
+
         {/* Lines */}
         {lines.map(l=>(
-          <g key={l.key}>
-            <path d={makePath(l.key)+" L"+scaleX(data.length-1)+","+H+" L"+PAD+","+H+" Z"}
-              fill={`url(#grad_${l.key})`}/>
-            <path d={makePath(l.key)} fill="none" stroke={l.color} strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round"/>
-          </g>
+          <path key={l.key} d={smoothPath(l.key)} fill="none" stroke={l.color} strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"/>
         ))}
-        {/* Hover dots */}
-        {hov!==null&&lines.map(l=>(
-          <circle key={l.key} cx={scaleX(hov)} cy={scaleY(data[hov][l.key])} r="4"
-            fill={l.color} stroke="#0a0a0f" strokeWidth="2"/>
+
+        {/* Scrub line */}
+        {scrubLineX!==null&&(
+          <line x1={scrubLineX} y1={PT} x2={scrubLineX} y2={H-PB}
+            stroke="rgba(26,26,46,0.25)" strokeWidth="1.5" strokeDasharray="3,3"/>
+        )}
+
+        {/* Dots at scrub position */}
+        {activeIdx!==null&&lines.map(l=>(
+          <circle key={l.key} cx={scaleX(activeIdx)} cy={scaleY(activeData[l.key])} r="5"
+            fill={l.color} stroke="white" strokeWidth="2"/>
         ))}
-        {/* X labels */}
+
+        {/* X axis labels */}
         {data.map((d,i)=>(
-          <text key={i} x={scaleX(i)} y={H} textAnchor="middle"
-            style={{fontSize:9,fill:"rgba(245,245,247,0.35)",fontFamily:"'JetBrains Mono',monospace"}}>
+          <text key={i} x={scaleX(i)} y={H-4} textAnchor="middle"
+            style={{fontSize:9,fill:activeIdx===i?"rgba(26,26,46,0.8)":"rgba(26,26,46,0.35)",fontFamily:"'JetBrains Mono',monospace",fontWeight:activeIdx===i?"700":"400"}}>
             {d.year}
           </text>
         ))}
-        {/* Hover zone */}
-        {data.map((d,i)=>(
-          <rect key={i} x={scaleX(i)-18} y={0} width={36} height={H}
-            fill="transparent" style={{cursor:"crosshair"}}
-            onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}/>
-        ))}
       </svg>
 
-      {hov!==null&&(
-        <div className="chart-tooltip" style={{top:10,left:`${(scaleX(hov)/W)*100}%`}}>
-          <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{data[hov].year} Projection</div>
-          {lines.map(l=>(
-            <div key={l.key} style={{display:"flex",justifyContent:"space-between",gap:16,marginBottom:2}}>
-              <span style={{fontSize:11,color:l.color}}>{l.label}</span>
-              <span style={{fontSize:11,fontWeight:700,color:l.color}}>{fmt$(data[hov][l.key])}</span>
-            </div>
-          ))}
-          <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",marginTop:4,paddingTop:4,fontSize:10,color:"var(--text-3)"}}>
-            Margin: {fmtPct(data[hov].rev>0?(data[hov].net/data[hov].rev)*100:0)}
+      {/* Live ticker — shows active data or last year by default */}
+      {(()=>{
+        const d=activeData||data[data.length-1];
+        const yr=activeData?d.year:`${d.year} (proj.)`;
+        return (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginTop:12}}>
+            {[
+              {l:"Year",     v:yr,           c:"var(--text)"},
+              {l:"Revenue",  v:fmt$(d.rev),  c:"#30d158"},
+              {l:"Expenses", v:fmt$(d.exp),  c:"#ff453a"},
+              {l:"Net Income",v:fmt$(d.net), c:"#0a84ff"},
+            ].map(item=>(
+              <div key={item.l} style={{background:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.7)",borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all 0.1s"}}>
+                <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{item.l}</div>
+                <div style={{fontSize:16,fontWeight:800,color:item.c,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"-0.02em",transition:"all 0.08s"}}>{item.v}</div>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      <div style={{display:"flex",gap:16,marginTop:10,justifyContent:"center"}}>
+      <div style={{display:"flex",gap:16,marginTop:12,justifyContent:"center"}}>
         {lines.map(l=>(
           <div key={l.key} style={{display:"flex",alignItems:"center",gap:5}}>
-            <div style={{width:20,height:2,background:l.color,borderRadius:2}}/>
+            <div style={{width:20,height:2.5,background:l.color,borderRadius:2}}/>
             <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{l.label}</span>
           </div>
         ))}
@@ -489,7 +577,7 @@ function InvestModal({ invest, onSave, onClose }) {
 }
 
 // ── TxList ────────────────────────────────────────────────────
-function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
+function TxList({ txs, tagging, setTagging, doTag, doDelete, filter, setFilter }) {
   const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
   const sorted   = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
 
@@ -534,7 +622,7 @@ function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
               </div>
               {tagging===tx.id&&(
                 <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                 </div>
               )}
             </div>
@@ -585,7 +673,7 @@ function App() {
         const map=Object.fromEntries(prev.map(t=>[t.id,t]));
         data.removed.forEach(id=>delete map[id]);
         data.modified.forEach(tx=>{map[tx.id]=tx;});
-        data.added.forEach(tx=>{if(!map[tx.id])map[tx.id]=tx;});
+        data.added.forEach(tx=>{map[tx.id]=tx;}); // overwrite = deduplicate
         const arr=Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
         LS.set(TX_KEY,arr); return arr;
       });
@@ -632,9 +720,32 @@ function App() {
     setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
   }
 
+  function doDelete(txId){
+    setTxs(prev=>{
+      const arr=prev.filter(t=>t.id!==txId);
+      LS.set(TX_KEY,arr);
+      return arr;
+    });
+    setTags(prev=>{
+      const next={...prev};
+      delete next[txId];
+      LS.set(TAGS_KEY,next);
+      return next;
+    });
+    setTagging(null);
+  }
+
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
 
-  const enriched=useMemo(()=>txs.filter(t=>!t.pending).map(tx=>({...tx,propId:tags[tx.id]||null})),[txs,tags]);
+  // Deduplicate by id — Plaid can return the same transaction more than once
+  const enriched=useMemo(()=>{
+    const seen=new Set();
+    return txs.filter(t=>!t.pending).filter(t=>{
+      if(seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    }).map(tx=>({...tx,propId:tags[tx.id]||null}));
+  },[txs,tags]);
   const untagged=enriched.filter(t=>!t.propId);
   const tagged  =enriched.filter(t=>t.propId);
 
@@ -656,10 +767,14 @@ function App() {
     const totalExp =airbnbExp+pierceExp+llcExp;
     const totalCF  =totalRev-totalExp;
 
-    // Annualize (scale from months with data)
+    // Monthly data — use ALL non-transfer enriched txs (tagged or not)
+    // De-duplicate by id first to prevent Plaid double-posting
     const months = (() => {
+      const seen = new Set();
       const mo={};
-      tagged.filter(t=>t.propId!=="transfer").forEach(t=>{
+      enriched.filter(t=>t.propId!=="transfer").forEach(t=>{
+        if(seen.has(t.id)) return;
+        seen.add(t.id);
         const k=t.date?.slice(0,7)||"?";
         if(!mo[k])mo[k]={rev:0,exp:0};
         if(t.type==="in")  mo[k].rev+=Math.abs(t.amount);
@@ -698,7 +813,7 @@ function App() {
   },[tagged,invest]);
 
   const hasBank=linked.length>0;
-  const TABS=["Portfolio","Airbnb","Pierce Ave","Feed"];
+  const TABS=["Portfolio","Airbnb","Pierce Ave","Projections","Feed"];
 
   // Feed display
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
@@ -876,24 +991,7 @@ function App() {
               )}
 
               {/* 5-year projections */}
-              <div className="glass" style={{padding:"22px",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                  <div>
-                    <div className="stat-label" style={{marginBottom:4}}>5-Year Projection</div>
-                    <div style={{fontSize:12,color:"var(--text-3)"}}>3% annual revenue growth · 2% expense growth · based on current run rate</div>
-                  </div>
-                </div>
-                <LineChart data={M.projections}/>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginTop:16}}>
-                  {M.projections.map(d=>(
-                    <div key={d.year} style={{background:"rgba(255,255,255,0.55)",borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
-                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{d.year}</div>
-                      <div style={{fontSize:12,fontWeight:700,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(d.net)}</div>
-                      <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)} margin</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              
 
               <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>
                 {tagged.length} tagged · {untagged.length} untagged
@@ -1019,7 +1117,7 @@ function App() {
                           </div>
                           {tagging===tx.id&&(
                             <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
-                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                             </div>
                           )}
                         </div>
@@ -1068,9 +1166,68 @@ function App() {
             <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>Pierce Ave Transactions</div>
             <TxList
               txs={M.propM.pierce.txs}
-              tagging={tagging} setTagging={setTagging} doTag={doTag}
+              tagging={tagging} setTagging={setTagging} doTag={doTag} doDelete={doDelete}
               filter={pierceTxFilter} setFilter={setPierceTxFilter}
             />
+          </div>
+        )}
+
+        {/* ── PROJECTIONS ── */}
+        {tab==="Projections"&&(
+          <div className="fade-in">
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
+              <div>
+                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Based on current run rate</div>
+                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>5-Year Projections</div>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>Drag or hover to explore years</div>
+              </div>
+            </div>
+
+            <div className="glass" style={{padding:"24px",marginBottom:10}}>
+              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>
+                Revenue · Expenses · Net Income
+                <span style={{fontWeight:400,marginLeft:8,textTransform:"none",letterSpacing:0}}>3% revenue growth · 2% expense growth annually</span>
+              </div>
+              <ProjectionChart data={M.projections}/>
+            </div>
+
+            {/* Assumption controls */}
+            <div className="glass" style={{padding:"20px",marginBottom:10}}>
+              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Assumptions</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+                {[
+                  {l:"Annual Revenue Growth",v:"3.0%",note:"Conservative STR/Section 8 estimate"},
+                  {l:"Annual Expense Growth",v:"2.0%",note:"Inflation-adjusted maintenance"},
+                  {l:"Base Period",v:`${M.moCount} months`,note:"Months of data used for run rate"},
+                ].map(a=>(
+                  <div key={a.l} style={{background:"rgba(255,255,255,0.4)",borderRadius:10,padding:"14px"}}>
+                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>{a.l}</div>
+                    <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>{a.v}</div>
+                    <div style={{fontSize:10,color:"var(--text-3)"}}>{a.note}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Year-by-year table */}
+            <div className="glass" style={{overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 80px",padding:"9px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+                {["YEAR","REVENUE","EXPENSES","NET INCOME","MARGIN"].map(h=>(
+                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+                ))}
+              </div>
+              {M.projections.map((d,i)=>(
+                <div key={d.year} style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 80px",padding:"13px 18px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13}}>{d.year}{i===0?" (now)":""}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#30d158"}}>{fmt$(d.rev)}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#ff453a"}}>{fmt$(d.exp)}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:d.net>=0?"#0a84ff":"#ff453a"}}>{fmt$(d.net)}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text-2)"}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1143,7 +1300,7 @@ function App() {
                         </div>
                         {tagging===tx.id&&(
                           <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-                            <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                            <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                           </div>
                         )}
                       </div>
