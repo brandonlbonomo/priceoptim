@@ -878,11 +878,40 @@ function App() {
       return {year:yr,rev,exp,net:rev-exp};
     });
 
-    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp};
-  },[tagged,invest]);
+    // ── Quarterly aggregation ────────────────────────────────────
+    const quarters = (() => {
+      const qmap = {};
+      enriched.filter(t=>t.propId!=="transfer"&&t.date).forEach(t=>{
+        const [yr,mo] = t.date.split("-");
+        const q = Math.ceil(+mo/3);
+        const key = `${yr}-Q${q}`;
+        if(!qmap[key]) qmap[key]={label:`Q${q} '${yr.slice(2)}`,year:+yr,q,key,rev:0,exp:0,txCount:0};
+        if(t.type==="in")  qmap[key].rev += Math.abs(t.amount);
+        if(t.type==="out") qmap[key].exp += Math.abs(t.amount);
+        qmap[key].txCount++;
+      });
+      return Object.values(qmap)
+        .sort((a,b)=>a.year!==b.year?a.year-b.year:a.q-b.q)
+        .map(q=>({...q, net:q.rev-q.exp, margin:q.rev>0?((q.rev-q.exp)/q.rev)*100:0, expRatio:q.rev>0?(q.exp/q.rev)*100:0}));
+    })();
+
+    // Live projections — recalculated from actual run rate each time
+    const lastFullQuarters = quarters.slice(-4); // use last 4 quarters as base
+    const baseRev = lastFullQuarters.length>0 ? lastFullQuarters.reduce((s,q)=>s+q.rev,0)/lastFullQuarters.length : annualRev/4;
+    const baseExp = lastFullQuarters.length>0 ? lastFullQuarters.reduce((s,q)=>s+q.exp,0)/lastFullQuarters.length : annualExp/4;
+    const currentYear=new Date().getFullYear();
+    const projections=Array.from({length:6},(_,i)=>{
+      const yr=currentYear+i;
+      const rev=(baseRev*4)*Math.pow(1.03,i);
+      const exp=(baseExp*4)*Math.pow(1.02,i);
+      return {year:yr,rev,exp,net:rev-exp,margin:rev>0?((rev-exp)/rev)*100:0};
+    });
+
+    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp,quarters};
+  },[tagged,enriched,invest]);
 
   const hasBank=linked.length>0;
-  const TABS=["Portfolio","Airbnb","Pierce Ave","Projections","Feed"];
+  const TABS=["Portfolio","Airbnb","Pierce Ave","Projections","Quarterly","Feed"];
 
   // Feed display
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
@@ -1133,83 +1162,25 @@ function App() {
               })}
             </div>
 
-            {/* Side-by-side: Money In (lump sum) | Money Out (per property) */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"start"}}>
-
-              {/* LEFT — Money In: all income tagged to any airbnb property */}
-              {(()=>{
-                const airbnbInTxs = [...enriched.filter(t=>t.type==="in"&&AIRBNB_IDS.includes(t.propId))].sort((a,b)=>b.date.localeCompare(a.date));
-                return (
-                  <div>
-                    <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-                      ↓ Money In <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· click any row to delete</span>
-                    </div>
-                    {airbnbInTxs.length===0
-                      ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits tagged yet — tag income in Feed first</div>
-                      : <div className="glass" style={{overflow:"hidden"}}>
-                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
-                            {["DATE","PAYEE","AMOUNT"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
-                          </div>
-                          {airbnbInTxs.map(tx=>(
-                            <div key={tx.id}>
-                              <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s",background:tagging===tx.id?"rgba(0,0,0,0.04)":"transparent"}}
-                                onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
-                                onMouseEnter={e=>{if(tagging!==tx.id)e.currentTarget.style.background="rgba(0,0,0,0.02)"}}
-                                onMouseLeave={e=>{if(tagging!==tx.id)e.currentTarget.style.background="transparent"}}>
-                                <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                                <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
-                                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
-                              </div>
-                              {tagging===tx.id&&(
-                                <div style={{padding:"6px 14px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"rgba(255,255,255,0.4)"}}>
-                                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                    }
-                  </div>
-                );
-              })()}
-
-              {/* RIGHT — Money Out (taggable per property) */}
-              <div>
-                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-                  ↑ Money Out <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· tag to property</span>
-                </div>
-                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out").length===0
-                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No expenses yet</div>
-                  : <div className="glass" style={{overflow:"hidden"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
-                        {["DATE","PAYEE","AMOUNT","PROPERTY"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
-                      </div>
-                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
-                        <div key={tx.id}>
-                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
-                            onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
-                            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
-                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                            <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
-                            <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#ff453a"}}>-{fmtD(tx.amount)}</span>
-                            <div onClick={e=>e.stopPropagation()}>
-                              <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
-                                <PropBadge id={tx.propId} small/>
-                              </span>
-                            </div>
-                          </div>
-                          {tagging===tx.id&&(
-                            <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
-                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                }
-              </div>
+            {/* Side-by-side: Money In | Money Out — both with bulk select */}
+            <div style={{marginBottom:8,fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>
+              ↓ Money In <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,marginLeft:6,fontSize:10}}>· Airbnb deposits portfolio lump sum</span>
             </div>
+            <TxList
+              txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.some(id=>t.propId===id)||!t.propId))}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter="in" setFilter={()=>{}}
+            />
+            <div style={{marginTop:20,marginBottom:8,fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>
+              ↑ Money Out <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,marginLeft:6,fontSize:10}}>· tag each expense to a property</span>
+            </div>
+            <TxList
+              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter="out" setFilter={()=>{}}
+            />
 
 
 
@@ -1312,6 +1283,210 @@ function App() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── QUARTERLY ── */}
+        {tab==="Quarterly"&&(
+          <div className="fade-in">
+            <div style={{marginBottom:24}}>
+              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Live from Plaid · all tagged transactions</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly Reports</div>
+            </div>
+
+            {M.quarters.length===0&&(
+              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
+                <div style={{fontSize:32,marginBottom:12}}>📊</div>
+                <div style={{fontSize:15,fontWeight:600,marginBottom:6}}>No quarterly data yet</div>
+                <div style={{fontSize:12,color:"var(--text-3)"}}>Sync transactions and tag them to properties to see quarterly reports</div>
+              </div>
+            )}
+
+            {M.quarters.length>0&&(()=>{
+              // Group quarters by year for YoY comparison
+              const byYear = {};
+              M.quarters.forEach(q=>{ if(!byYear[q.year])byYear[q.year]={}; byYear[q.year][q.q]=q; });
+              const years = Object.keys(byYear).map(Number).sort();
+              const allQ  = [1,2,3,4];
+              const metrics = [
+                {key:"rev",    label:"Gross Revenue",  fmt:fmt$,    color:"#30d158"},
+                {key:"exp",    label:"Total Expenses",  fmt:fmt$,    color:"#ff453a"},
+                {key:"net",    label:"Net Income",      fmt:fmt$,    color:"#0a84ff"},
+                {key:"margin", label:"Net Margin",      fmt:v=>`${v.toFixed(1)}%`, color:"#bf5af2"},
+                {key:"expRatio",label:"Expense Ratio",  fmt:v=>`${v.toFixed(1)}%`, color:"#ffd60a"},
+              ];
+
+              return (
+                <>
+                  {/* Quarter-over-quarter bar charts */}
+                  <div className="glass" style={{padding:"22px",marginBottom:10}}>
+                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:18}}>Quarter-over-Quarter · Revenue vs Expenses</div>
+                    <div style={{display:"flex",gap:4,alignItems:"flex-end",height:120,marginBottom:8}}>
+                      {M.quarters.map((q,i)=>{
+                        const maxV = Math.max(...M.quarters.flatMap(x=>[x.rev,x.exp]),1);
+                        return (
+                          <div key={q.key} style={{flex:1,display:"flex",gap:2,alignItems:"flex-end",position:"relative"}}>
+                            {/* Revenue bar */}
+                            <div style={{flex:1,background:"#30d15899",borderRadius:"3px 3px 0 0",height:`${(q.rev/maxV)*100}%`,minHeight:2,position:"relative",cursor:"default"}}
+                              title={`${q.label} Revenue: ${fmt$(q.rev)}`}/>
+                            {/* Expense bar */}
+                            <div style={{flex:1,background:"#ff453a99",borderRadius:"3px 3px 0 0",height:`${(q.exp/maxV)*100}%`,minHeight:2,cursor:"default"}}
+                              title={`${q.label} Expenses: ${fmt$(q.exp)}`}/>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{display:"flex",gap:4}}>
+                      {M.quarters.map(q=>(
+                        <div key={q.key} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden"}}>{q.label}</div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",gap:14,marginTop:10,justifyContent:"center"}}>
+                      {[{c:"#30d158",l:"Revenue"},{c:"#ff453a",l:"Expenses"}].map(x=>(
+                        <div key={x.l} style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{width:14,height:3,background:x.c,borderRadius:2}}/>
+                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{x.l}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Net margin trend */}
+                  <div className="glass" style={{padding:"22px",marginBottom:10}}>
+                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:18}}>Net Margin Trend</div>
+                    <div style={{display:"flex",gap:4,alignItems:"flex-end",height:70,marginBottom:8}}>
+                      {M.quarters.map(q=>{
+                        const pct = Math.max(0, q.margin);
+                        const color = q.margin>=0?"#bf5af2":"#ff453a";
+                        return (
+                          <div key={q.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                            <span style={{fontSize:8,color:color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{q.margin.toFixed(0)}%</span>
+                            <div style={{width:"100%",background:`${color}99`,borderRadius:"3px 3px 0 0",height:`${Math.max(4,(pct/100)*60)}px`,minHeight:2}}/>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{display:"flex",gap:4}}>
+                      {M.quarters.map(q=>(
+                        <div key={q.key} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{q.label}</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Full metrics table — QoQ */}
+                  <div className="glass" style={{overflow:"hidden",marginBottom:10}}>
+                    <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+                      <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>All Metrics · Quarter by Quarter</div>
+                    </div>
+                    {/* Header */}
+                    <div style={{display:"grid",gridTemplateColumns:`160px repeat(${M.quarters.length},1fr)`,padding:"8px 18px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8,overflowX:"auto"}}>
+                      <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>METRIC</span>
+                      {M.quarters.map(q=>(
+                        <span key={q.key} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",textAlign:"right"}}>{q.label}</span>
+                      ))}
+                    </div>
+                    {metrics.map((m,mi)=>(
+                      <div key={m.key} style={{display:"grid",gridTemplateColumns:`160px repeat(${M.quarters.length},1fr)`,padding:"11px 18px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,background:mi%2===0?"rgba(255,255,255,0.2)":"transparent"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7}}>
+                          <div style={{width:3,height:14,background:m.color,borderRadius:2,flexShrink:0}}/>
+                          <span style={{fontSize:11,fontWeight:600,color:m.color}}>{m.label}</span>
+                        </div>
+                        {M.quarters.map((q,qi)=>{
+                          const val = q[m.key];
+                          const prev = qi>0?M.quarters[qi-1][m.key]:null;
+                          const delta = prev!==null&&prev!==0?((val-prev)/Math.abs(prev))*100:null;
+                          return (
+                            <div key={q.key} style={{textAlign:"right"}}>
+                              <div style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#0a84ff":"#ff453a"):m.color}}>{m.fmt(val||0)}</div>
+                              {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}%</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Year-over-Year comparison */}
+                  {years.length>1&&(
+                    <div className="glass" style={{overflow:"hidden",marginBottom:10}}>
+                      <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+                        <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>Year-over-Year · Same Quarter Comparison</div>
+                      </div>
+                      {allQ.map(qNum=>{
+                        const hasData = years.some(y=>byYear[y]?.[qNum]);
+                        if(!hasData) return null;
+                        return (
+                          <div key={qNum} style={{borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                            <div style={{padding:"10px 18px 6px",fontSize:10,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)",letterSpacing:"0.05em"}}>Q{qNum}</div>
+                            {metrics.map((m,mi)=>(
+                              <div key={m.key} style={{display:"grid",gridTemplateColumns:`160px repeat(${years.length},1fr)`,padding:"8px 18px 8px 26px",borderBottom:"1px solid rgba(0,0,0,0.03)",gap:8,background:mi%2===0?"rgba(255,255,255,0.15)":"transparent"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                  <div style={{width:2,height:12,background:m.color,borderRadius:1,flexShrink:0}}/>
+                                  <span style={{fontSize:10,color:"var(--text-3)"}}>{m.label}</span>
+                                </div>
+                                {years.map((yr,yi)=>{
+                                  const q = byYear[yr]?.[qNum];
+                                  const val = q?q[m.key]:null;
+                                  const prevYrQ = yi>0?byYear[years[yi-1]]?.[qNum]:null;
+                                  const prevVal = prevYrQ?prevYrQ[m.key]:null;
+                                  const delta = val!==null&&prevVal!==null&&prevVal!==0?((val-prevVal)/Math.abs(prevVal))*100:null;
+                                  return (
+                                    <div key={yr} style={{textAlign:"right"}}>
+                                      {val!==null
+                                        ? <>
+                                            <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#0a84ff":"#ff453a"):m.color}}>{m.fmt(val)}</div>
+                                            {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}% YoY</div>}
+                                            <div style={{fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{yr}</div>
+                                          </>
+                                        : <span style={{fontSize:10,color:"var(--text-3)"}}>—</span>
+                                      }
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Current quarter snapshot */}
+                  {(()=>{
+                    const now = new Date();
+                    const curQ = Math.ceil((now.getMonth()+1)/3);
+                    const curQData = M.quarters.find(q=>q.year===now.getFullYear()&&q.q===curQ);
+                    if(!curQData) return null;
+                    const daysInQ = [0,90,91,92,92][curQ];
+                    const dayOfQ  = Math.min(now.getDate()+(([0,0,31,59,90,120,151,181,212,243,273,304,334][now.getMonth()])-(([0,0,0,90,90,181,181,181,273,273,273,365,365])[now.getMonth()])),daysInQ);
+                    const progress= Math.min(100,Math.round((dayOfQ/daysInQ)*100));
+                    return (
+                      <div className="glass" style={{padding:"20px",marginBottom:10}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                          <div>
+                            <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Current Quarter · Q{curQ} {now.getFullYear()}</div>
+                            <div style={{fontSize:13,fontWeight:600}}>In Progress · {progress}% through the quarter</div>
+                          </div>
+                          <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{progress}%</div>
+                        </div>
+                        <div style={{height:4,background:"rgba(0,0,0,0.06)",borderRadius:4,marginBottom:16,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,#0a84ff,#30d158)",borderRadius:4,transition:"width 0.5s"}}/>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                          {metrics.map(m=>(
+                            <div key={m.key} style={{background:"rgba(255,255,255,0.45)",borderRadius:10,padding:"12px",textAlign:"center"}}>
+                              <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{m.label}</div>
+                              <div style={{fontSize:14,fontWeight:800,color:m.color,fontFamily:"'JetBrains Mono',monospace"}}>{m.fmt(curQData[m.key]||0)}</div>
+                              <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>on pace: {m.fmt((curQData[m.key]||0)/(progress/100))}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
           </div>
         )}
 
