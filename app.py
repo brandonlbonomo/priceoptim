@@ -334,12 +334,16 @@ def delete_transactions():
     store = load_store()
     ids = request.json.get("ids", [])
     tx_store = store.get("transactions", {})
-    deleted = 0
-    for tid in ids:
-        if tid in tx_store:
-            del tx_store[tid]
-            deleted += 1
-    store["transactions"] = tx_store
+    if ids == "__ALL__":
+        deleted = len(tx_store)
+        store["transactions"] = {}
+    else:
+        deleted = 0
+        for tid in ids:
+            if tid in tx_store:
+                del tx_store[tid]
+                deleted += 1
+        store["transactions"] = tx_store
     save_store(store)
     return jsonify({"ok": True, "deleted": deleted})
 
