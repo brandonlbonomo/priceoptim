@@ -945,10 +945,9 @@ function App() {
   const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
-    const idx = TABS.indexOf("Portfolio");
-    const vw  = window.innerWidth;
-    if(trackRef.current) trackRef.current.style.transform = `translateX(${-idx*vw}px)`;
-    // Set page-outer top to match actual header height
+    // Portfolio is index 0 — starts at translateX(0)
+    if(trackRef.current) trackRef.current.style.transform = "translateX(0px)";
+    // Measure actual header height for page-outer
     const h = headerRef.current?.offsetHeight || 56;
     const outer = document.querySelector(".page-outer");
     if(outer) outer.style.top = h + "px";
@@ -1390,7 +1389,7 @@ function App() {
     setStatus("All local data cleared");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
-  const TABS=["Airbnb","Pierce","Portfolio","Quarterly","Projections","Feed","Archive"];
+  const TABS=["Portfolio","Airbnb","Pierce","Feed","Quarterly","Projections","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
   // Tab icons
@@ -1526,7 +1525,7 @@ function App() {
               </button>
             )}
           </div>
-        )}
+        </div>
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
@@ -1636,7 +1635,7 @@ function App() {
               filter={airbnbTxFilter} setFilter={setAirbnbTxFilter} getSuggestion={getSuggestion}
             />
           </div>
-        )}
+        </div>
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
@@ -1710,7 +1709,7 @@ function App() {
               filter={pierceTxFilter} setFilter={setPierceTxFilter} getSuggestion={getSuggestion}
             />
           </div>
-        )}
+        </div>
 
         {/* ── FEED ───────────────────────────────────────────────── */}
         <div className="swipe-pane">
@@ -1745,7 +1744,7 @@ function App() {
               filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
             />}
           </div>
-        )}
+        </div>
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
@@ -2135,7 +2134,7 @@ function App() {
 
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
-        {TABS.filter(t=>t!=="Archive").map(t=>(
+        {["Airbnb","Pierce","Portfolio","Quarterly","Feed"].map(t=>(
           t==="Portfolio"
           ? <button key={t} className={`tab-item-center${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
               {TAB_ICONS[t]}
