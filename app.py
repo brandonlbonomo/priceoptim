@@ -41,9 +41,11 @@ plaid_client = plaid_api.PlaidApi(api_client)
 # store = {
 #   "accounts": [ { "access_token": "...", "item_id": "...", "cursor": "...", "name": "..." } ]
 # }
-STORE_FILE = "plaid_store.json"
+STORE_FILE = "/data/plaid_store.json"  # Persistent disk — survives redeploys
+STORE_ENV   = "PLAID_STORE_JSON"  # Render env var — survives deploys and filesystem wipes
 
 def load_store():
+    # Priority: 1) disk file  2) env var backup  3) empty
     try:
         with open(STORE_FILE, "r") as f:
             data = json.load(f)
@@ -51,14 +53,64 @@ def load_store():
                 data["accounts"] = []
             return data
     except Exception:
-        return {"accounts": []}
+        pass
+    # Disk file missing (e.g. after redeploy) — try env var backup
+    try:
+        raw = os.environ.get(STORE_ENV, "")
+        if raw:
+            data = json.loads(raw)
+            if "accounts" not in data:
+                data["accounts"] = []
+            print("✅ Loaded store from env var backup")
+            # Restore to disk immediately
+            with open(STORE_FILE, "w") as f:
+                json.dump(data, f)
+            return data
+    except Exception as e:
+        print(f"Env var restore failed: {e}")
+    return {"accounts": []}
 
 def save_store(data):
+    # Save to disk
     try:
         with open(STORE_FILE, "w") as f:
             json.dump(data, f)
     except Exception as e:
-        print("Failed to save store:", e)
+        print("Failed to save store to disk:", e)
+    # Also update env var via Render API if RENDER_API_KEY and RENDER_SERVICE_ID are set
+    # This keeps the env var in sync so it survives the next redeploy
+    try:
+        api_key    = os.environ.get("RENDER_API_KEY", "")
+        service_id = os.environ.get("RENDER_SERVICE_ID", "")
+        if api_key and service_id:
+            import urllib.request
+            # Get current env vars
+            req = urllib.request.Request(
+                f"https://api.render.com/v1/services/{service_id}/env-vars",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                existing = json.loads(r.read())
+            # Find and update PLAID_STORE_JSON
+            env_list = existing if isinstance(existing, list) else existing.get("envVars", [])
+            updated = False
+            for ev in env_list:
+                if ev.get("key") == STORE_ENV:
+                    ev["value"] = json.dumps(data)
+                    updated = True
+            if not updated:
+                env_list.append({"key": STORE_ENV, "value": json.dumps(data)})
+            patch = urllib.request.Request(
+                f"https://api.render.com/v1/services/{service_id}/env-vars",
+                data=json.dumps(env_list).encode(),
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                method="PUT"
+            )
+            with urllib.request.urlopen(patch, timeout=5):
+                pass
+            print("✅ Env var backup updated")
+    except Exception as e:
+        print(f"Env var backup skipped: {e}")
 
 # Don't cache store in memory — always read/write disk so nothing is lost on restart
 # store global only used as fallback; all routes call load_store() directly
