@@ -1075,14 +1075,25 @@ function App() {
                 {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in").length===0
                   ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits yet</div>
                   : <div className="glass" style={{overflow:"hidden"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
-                        {["DATE","PAYEE","AMOUNT"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 36px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                        {["DATE","PAYEE","AMOUNT",""].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
                       </div>
                       {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
-                        <div key={tx.id} style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center"}}>
-                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                          <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
-                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
+                        <div key={tx.id}>
+                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 36px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
+                            onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+                            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
+                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                            <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                            <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
+                            <button onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}} style={{background:"none",border:"none",color:"var(--text-3)",fontSize:13,cursor:"pointer",padding:0}}>⋯</button>
+                          </div>
+                          {tagging===tx.id&&(
+                            <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
