@@ -409,6 +409,32 @@ def get_all_transactions():
     tx_store = store.get("transactions", {})
     return jsonify({"transactions": list(tx_store.values())})
 
+# ── Tags ──────────────────────────────────────────────────────
+@app.route("/api/tags", methods=["GET"])
+def get_tags():
+    store = load_store()
+    return jsonify({"tags": store.get("tags", {})})
+
+@app.route("/api/tags", methods=["POST"])
+def save_tags():
+    store = load_store()
+    store["tags"] = request.json.get("tags", {})
+    save_store(store)
+    return jsonify({"ok": True})
+
+# ── Manual Income ──────────────────────────────────────────────
+@app.route("/api/manual-income", methods=["GET"])
+def get_manual_income():
+    store = load_store()
+    return jsonify({"manual": store.get("manual_income", {})})
+
+@app.route("/api/manual-income", methods=["POST"])
+def save_manual_income():
+    store = load_store()
+    store["manual_income"] = request.json.get("manual", {})
+    save_store(store)
+    return jsonify({"ok": True})
+
 # ── Balances ──────────────────────────────────────────────────
 @app.route("/api/balances")
 def balances():
