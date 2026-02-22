@@ -58,7 +58,8 @@ def save_store(data):
     except Exception as e:
         print("Failed to save store:", e)
 
-store = load_store()
+# Don't cache store in memory — always read/write disk so nothing is lost on restart
+# store global only used as fallback; all routes call load_store() directly
 
 # ── Frontend ──────────────────────────────────────────────────
 @app.route("/")
@@ -68,17 +69,25 @@ def frontend():
 # ── Health ────────────────────────────────────────────────────
 @app.route("/api/health")
 def health():
-    return jsonify({"ok": True, "account_count": len(store["accounts"])})
+    store = load_store()
+    return jsonify({
+        "ok": True,
+        "account_count": len(store["accounts"]),
+        "transaction_count": len(store.get("transactions", {})),
+        "accounts": [a.get("name") for a in store["accounts"]]
+    })
 
 # ── Link status ───────────────────────────────────────────────
 @app.route("/api/link-status")
 def link_status():
+    store = load_store()
     accounts = [{"item_id": a["item_id"], "name": a.get("name", "Bank Account")} for a in store["accounts"]]
     return jsonify({"linked": len(store["accounts"]) > 0, "accounts": accounts})
 
 # ── Create link token ─────────────────────────────────────────
 @app.route("/api/create-link-token", methods=["POST"])
 def create_link_token():
+    store = load_store()
     try:
         req = LinkTokenCreateRequest(
             user=LinkTokenCreateRequestUser(client_user_id="pigeon-user"),
@@ -96,6 +105,7 @@ def create_link_token():
 # ── Exchange token ────────────────────────────────────────────
 @app.route("/api/exchange-token", methods=["POST"])
 def exchange_token():
+    store = load_store()
     public_token  = request.json.get("public_token")
     account_name  = request.json.get("account_name", "Bank Account")
     if not public_token:
@@ -131,6 +141,7 @@ def exchange_token():
 # ── Remove account ────────────────────────────────────────────
 @app.route("/api/remove-account", methods=["POST"])
 def remove_account():
+    store = load_store()
     item_id = request.json.get("item_id")
     store["accounts"] = [a for a in store["accounts"] if a["item_id"] != item_id]
     save_store(store)
@@ -139,6 +150,7 @@ def remove_account():
 # ── Sync all accounts ─────────────────────────────────────────
 @app.route("/api/transactions/sync")
 def sync_transactions():
+    store = load_store()
     if not store["accounts"]:
         return jsonify({"error": "No bank account linked yet"}), 400
 
@@ -211,15 +223,32 @@ def sync_transactions():
         "total_stored": len(tx_store),
     })
 
+# ── Delete transactions (bulk) ───────────────────────────────
+@app.route("/api/transactions/delete", methods=["POST"])
+def delete_transactions():
+    store = load_store()
+    ids = request.json.get("ids", [])
+    tx_store = store.get("transactions", {})
+    deleted = 0
+    for tid in ids:
+        if tid in tx_store:
+            del tx_store[tid]
+            deleted += 1
+    store["transactions"] = tx_store
+    save_store(store)
+    return jsonify({"ok": True, "deleted": deleted})
+
 # ── Get all stored transactions (called on page load) ─────────
 @app.route("/api/transactions/all")
 def get_all_transactions():
+    store = load_store()
     tx_store = store.get("transactions", {})
     return jsonify({"transactions": list(tx_store.values())})
 
 # ── Balances ──────────────────────────────────────────────────
 @app.route("/api/balances")
 def balances():
+    store = load_store()
     if not store["accounts"]:
         return jsonify({"error": "No bank account linked yet"}), 400
     all_accounts = []
