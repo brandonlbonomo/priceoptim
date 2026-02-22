@@ -928,6 +928,34 @@ function App() {
         LS.set(TX_KEY,arr);
       }
     }).catch(()=>{});
+
+    // Auto-sync daily at 7am — checks every minute if it's time
+    const LAST_SYNC_KEY = "pg_last_auto_sync";
+    const scheduleAutoSync = () => {
+      const now = new Date();
+      const lastSync = parseInt(localStorage.getItem(LAST_SYNC_KEY)||"0");
+      const lastSyncDate = new Date(lastSync);
+      // Check if we haven't synced today at 7am yet
+      const todayAt7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
+      const shouldSync = now >= todayAt7 && lastSyncDate < todayAt7;
+      if(shouldSync){
+        console.log("Auto-sync: running daily 7am sync");
+        localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+        fetch(`${BACKEND}/api/transactions/sync`).then(r=>r.json()).then(data=>{
+          if(!data.error){
+            fetch(`${BACKEND}/api/transactions/all`).then(r=>r.json()).then(d=>{
+              if(d.transactions?.length>0){
+                const arr=[...d.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+                setTxs(arr); LS.set(TX_KEY,arr);
+              }
+            }).catch(()=>{});
+          }
+        }).catch(()=>{});
+      }
+    };
+    scheduleAutoSync(); // check immediately on load
+    const ticker = setInterval(scheduleAutoSync, 60*1000); // check every minute
+    return () => clearInterval(ticker);
   },[]);
 
   // Auto-tag: record suggestions only — user must confirm via Feed
