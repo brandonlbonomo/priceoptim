@@ -309,6 +309,11 @@
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease forwards; }
+    @keyframes slideLeft  { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0); } }
+    @keyframes slideRight { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
+    .slide-left  { animation: slideLeft  0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
+    .slide-right { animation: slideRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
+    .page { touch-action: pan-y; }
   </style>
 </head>
 <body>
@@ -897,6 +902,28 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
+  const [tabDir, setTabDir]     = useState("left"); // slide direction
+  const swipeRef                = useRef(null);      // tracks touch start
+
+  const navigateTab = (t) => {
+    if(t === tab) return;
+    const curIdx = TABS.indexOf(tab);
+    const nextIdx = TABS.indexOf(t);
+    setTabDir(nextIdx > curIdx ? "left" : "right");
+    setTab(t);
+  };
+
+  // Swipe gesture handler — attach to .page div
+  const onTouchStart = (e) => { swipeRef.current = e.touches[0].clientX; };
+  const onTouchEnd   = (e) => {
+    if(swipeRef.current === null) return;
+    const dx = e.changedTouches[0].clientX - swipeRef.current;
+    swipeRef.current = null;
+    if(Math.abs(dx) < 50) return; // ignore small drags
+    const curIdx = TABS.indexOf(tab);
+    if(dx < 0 && curIdx < TABS.length-1) navigateTab(TABS[curIdx+1]); // swipe left → next
+    if(dx > 0 && curIdx > 0)             navigateTab(TABS[curIdx-1]); // swipe right → prev
+  };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
   const [autoTags, setAutoTags] = useState(()=>LS.get(AUTO_KEY)||DEFAULT_AUTO);
@@ -1315,11 +1342,11 @@ function App() {
       </div>
 
       {/* CONTENT */}
-      <div className="page">
+      <div className="page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
         {/* ── PORTFOLIO ─────────────────────────────────────────── */}
         {tab==="Portfolio"&&(
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
               <div style={{display:"flex",alignItems:"baseline",gap:10}}>
@@ -1415,7 +1442,7 @@ function App() {
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         {tab==="Airbnb"&&(
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
               <div className="big-num">{fmt$(M.airbnbRev)}</div>
@@ -1525,7 +1552,7 @@ function App() {
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
         {tab==="Pierce"&&(
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
               <div className="big-num">{fmt$(M.pierceRev)}</div>
@@ -1599,7 +1626,7 @@ function App() {
 
         {/* ── FEED ───────────────────────────────────────────────── */}
         {tab==="Feed"&&(
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
@@ -1635,7 +1662,7 @@ function App() {
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
         {tab==="Quarterly"&&(()=>{
           const qs = M.quarters;
-          if(qs.length===0) return <div className="fade-in"><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
+          if(qs.length===0) return <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
 
           // Helper — delta badge
           const Delta = ({cur, prev, invert=false}) => {
@@ -1663,7 +1690,7 @@ function App() {
           const yoyQ  = qs.find(q=>q.q===curQ?.q && q.year===curQ?.year-1) || null;
 
           return (
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>All Properties · Combined</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div>
@@ -1795,7 +1822,7 @@ function App() {
           const moElapsed = thisMo;
 
           return (
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>5-Year Outlook · as of {now.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Projections</div>
@@ -1905,7 +1932,7 @@ function App() {
         })()}
 
         {tab==="Archive"&&(
-          <div className="fade-in">
+          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
               <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
@@ -2017,7 +2044,7 @@ function App() {
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
         {TABS.map(t=>(
-          <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>setTab(t)}>
+          <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
             {TAB_ICONS[t]}
             <span>{t==="Pierce"?"Pierce":t}</span>
             {t==="Feed"&&untagged.length>0&&(
