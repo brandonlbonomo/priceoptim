@@ -8,6 +8,8 @@ from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
+from plaid.model.transactions_get_request import TransactionsGetRequest
+from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
@@ -221,6 +223,85 @@ def sync_transactions():
         "removed":      all_removed_ids,
         "total":        len(all_added),
         "total_stored": len(tx_store),
+    })
+
+# ── Historical pull — fetches up to 2 years back via transactions/get ────
+# Call this once after linking a new account to backfill history.
+# transactions/sync alone only returns ~90 days on first call.
+@app.route("/api/transactions/historical", methods=["POST"])
+def historical_pull():
+    store = load_store()
+    item_id = request.json.get("item_id")  # optional: pull for specific account only
+    if not store["accounts"]:
+        return jsonify({"error": "No accounts linked"}), 400
+
+    from datetime import date, timedelta
+    start_date = date.today() - timedelta(days=730)  # 2 years
+    end_date   = date.today()
+
+    tx_store = store.get("transactions", {})
+    total_added = 0
+    errors = []
+
+    accounts_to_pull = [a for a in store["accounts"] if not item_id or a["item_id"] == item_id]
+
+    for account in accounts_to_pull:
+        try:
+            offset = 0
+            batch_size = 500
+            while True:
+                options = TransactionsGetRequestOptions(
+                    count=batch_size,
+                    offset=offset,
+                    include_personal_finance_category=True
+                )
+                req = TransactionsGetRequest(
+                    access_token=account["access_token"],
+                    start_date=start_date,
+                    end_date=end_date,
+                    options=options
+                )
+                response = plaid_client.transactions_get(req)
+                data = response.to_dict()
+                txs  = data.get("transactions", [])
+                total_txs = data.get("total_transactions", 0)
+
+                for tx in txs:
+                    if tx.get("pending"):
+                        continue
+                    tid    = tx.get("transaction_id")
+                    amount = tx.get("amount", 0)
+                    if not tid:
+                        continue
+                    tx_store[tid] = {
+                        "id":      tid,
+                        "date":    str(tx.get("date", "")),
+                        "payee":   tx.get("merchant_name") or tx.get("name", ""),
+                        "amount":  amount,
+                        "type":    "out" if amount > 0 else "in",
+                        "pending": False,
+                        "account": account.get("name", "Bank Account"),
+                    }
+                    total_added += 1
+
+                offset += len(txs)
+                if offset >= total_txs or not txs:
+                    break
+
+            print(f"✅ Historical pull: {account.get('name')} — {offset} transactions fetched")
+
+        except Exception as e:
+            err = f"{account.get('name')}: {str(e)}"
+            print(f"❌ Historical pull error: {err}")
+            errors.append(err)
+
+    store["transactions"] = tx_store
+    save_store(store)
+    return jsonify({
+        "ok": True,
+        "total_stored": len(tx_store),
+        "pulled": total_added,
+        "errors": errors,
     })
 
 # ── Delete transactions (bulk) ───────────────────────────────
