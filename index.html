@@ -928,6 +928,26 @@ function App() {
         LS.set(TX_KEY,arr);
       }
     }).catch(()=>{});
+    // Load tags from server — server wins; migrate localStorage to server if server is empty
+    fetch(`${BACKEND}/api/tags`).then(r=>r.json()).then(data=>{
+      if(data.tags&&Object.keys(data.tags).length>0){
+        setTags(data.tags); LS.set(TAGS_KEY,data.tags);
+      } else {
+        const local=LS.get(TAGS_KEY)||{};
+        if(Object.keys(local).length>0)
+          fetch(`${BACKEND}/api/tags`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tags:local})}).catch(()=>{});
+      }
+    }).catch(()=>{});
+    // Load manual income from server — same pattern
+    fetch(`${BACKEND}/api/manual-income`).then(r=>r.json()).then(data=>{
+      if(data.manual&&Object.keys(data.manual).length>0){
+        setManualIncome(data.manual); LS.set(MANUAL_KEY,data.manual);
+      } else {
+        const local=LS.get(MANUAL_KEY)||{};
+        if(Object.keys(local).length>0)
+          fetch(`${BACKEND}/api/manual-income`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({manual:local})}).catch(()=>{});
+      }
+    }).catch(()=>{});
 
     // Auto-sync daily at 7am — checks every minute if it's time
     const LAST_SYNC_KEY = "pg_last_auto_sync";
@@ -981,7 +1001,7 @@ function App() {
       const arr=[...data.transactions].sort((a,b)=>b.date.localeCompare(a.date));
       setTxs(arr);
       LS.set(TX_KEY,arr);
-      setTags(prev=>{ const u=applyAuto(arr,autoTags,prev); LS.set(TAGS_KEY,u); return u; });
+      setTags(prev=>{ const u=applyAuto(arr,autoTags,prev); serverSaveTags(u); return u; });
       if(!silent) setStatus(`Loaded ${arr.length} transactions`);
     } catch(e){ if(!silent) setStatus("Load failed: "+e.message); }
   },[autoTags,applyAuto]);
@@ -1058,34 +1078,45 @@ function App() {
       txs.forEach(t=>{if(!nextTags[t.id]&&t.payee?.toUpperCase()===key)nextTags[t.id]=propId;});
       setAutoTags(nextAuto); LS.set(AUTO_KEY,nextAuto);
     }
-    setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
+    setTags(nextTags); serverSaveTags(nextTags); setTagging(null);
   }
 
   function doDelete(txId){
     // Soft-delete: tag as "deleted" so it stays visible in the archive
     const nextTags={...tags,[txId]:"deleted"};
-    setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
+    setTags(nextTags); serverSaveTags(nextTags); setTagging(null);
   }
 
   function doRestore(txId){
     const nextTags={...tags}; delete nextTags[txId];
-    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
+    setTags(nextTags); serverSaveTags(nextTags);
   }
 
   function doBulkTag(ids, propId){
     const nextTags={...tags};
     ids.forEach(id=>{ nextTags[id]=propId; });
-    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
+    setTags(nextTags); serverSaveTags(nextTags);
   }
 
   function doBulkDelete(ids){
     const nextTags={...tags};
     ids.forEach(id=>{ nextTags[id]="deleted"; });
-    setTags(nextTags); LS.set(TAGS_KEY,nextTags);
+    setTags(nextTags); serverSaveTags(nextTags);
   }
 
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
-  const saveManual=vals=>{ setManualIncome(vals); LS.set(MANUAL_KEY,vals); };
+
+  // Server sync — write to localStorage AND server. localStorage = instant fallback if server fails.
+  const serverSaveTags = useCallback((nextTags) => {
+    LS.set(TAGS_KEY, nextTags);
+    fetch(`${BACKEND}/api/tags`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tags:nextTags})}).catch(()=>{});
+  },[]);
+
+  const saveManual = vals => {
+    setManualIncome(vals);
+    LS.set(MANUAL_KEY, vals);
+    fetch(`${BACKEND}/api/manual-income`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({manual:vals})}).catch(()=>{});
+  };
 
   // Deduplicate by id — Plaid can return the same transaction more than once
   const allEnriched=useMemo(()=>{
