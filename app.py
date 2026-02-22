@@ -1,225 +1,1190 @@
-import os
-import json
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import plaid
-from plaid.api import plaid_api
-from plaid.model.link_token_create_request import LinkTokenCreateRequest
-from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
-from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
-from plaid.model.transactions_sync_request import TransactionsSyncRequest
-from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
-from plaid.model.products import Products
-from plaid.model.country_code import CountryCode
-from dotenv import load_dotenv
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Property Pigeon</title>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Pigeon"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#eef2f7"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --glass: rgba(255,255,255,0.55);
+      --glass-border: rgba(255,255,255,0.75);
+      --glass-hover: rgba(255,255,255,0.70);
+      --green: #30d158;
+      --green-dim: rgba(48,209,88,0.15);
+      --red: #ff453a;
+      --red-dim: rgba(255,69,58,0.15);
+      --blue: #0a84ff;
+      --blue-dim: rgba(10,132,255,0.15);
+      --purple: #bf5af2;
+      --yellow: #ffd60a;
+      --text: #1a1a2e;
+      --text-2: rgba(26,26,46,0.60);
+      --text-3: rgba(26,26,46,0.38);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-load_dotenv()
+    body {
+      background: #eef2f7;
+      color: var(--text);
+      font-family: 'Figtree', -apple-system, sans-serif;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
 
-app = Flask(__name__, static_folder=".", static_url_path="")
-CORS(app, origins="*")
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 10% 15%,  rgba(255,255,255,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 45% at 90% 10%,  rgba(200,240,255,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 50% at 80% 85%,  rgba(180,255,200,0.05) 0%, transparent 55%),
+        radial-gradient(ellipse 45% 40% at 15% 85%,  rgba(220,200,255,0.05) 0%, transparent 50%),
+        linear-gradient(145deg, #f0f4f8 0%, #e8edf5 35%, #eef2f7 65%, #f2f0f8 100%);
+      pointer-events: none;
+    }
 
-PLAID_ENV       = os.getenv("PLAID_ENV", "development")
-PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
-PLAID_SECRET    = os.getenv("PLAID_SECRET")
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(circle 400px at 25% 55%, rgba(120,180,255,0.12) 0%, transparent 65%),
+        radial-gradient(circle 350px at 75% 35%, rgba(160,220,180,0.10) 0%, transparent 65%),
+        radial-gradient(circle 300px at 60% 80%, rgba(200,160,255,0.08) 0%, transparent 60%);
+      animation: driftOrbs 20s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
 
-env_map = {
-    "sandbox":     "https://sandbox.plaid.com",
-    "development": "https://development.plaid.com",
-    "production":  "https://production.plaid.com",
+    @keyframes driftOrbs {
+      0%   { transform: translate(0, 0) scale(1); }
+      33%  { transform: translate(25px, -15px) scale(1.04); }
+      66%  { transform: translate(-15px, 25px) scale(0.97); }
+      100% { transform: translate(12px, -8px) scale(1.02); }
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    button { cursor: pointer; font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+    /* Glass card */
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .glass-sm {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      backdrop-filter: blur(16px);
+    }
+
+    /* Nav */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      padding: 14px 28px;
+      background: rgba(248,250,252,0.55);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-tab {
+      background: transparent;
+      color: var(--text-3);
+      border: none;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .nav-tab.active {
+      background: rgba(0,0,0,0.07);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .nav-tab:hover:not(.active) { color: var(--text-2); }
+
+    /* Pills */
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    /* Big stat */
+    .stat-num {
+      font-family: 'Figtree', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Chart tooltip */
+    .chart-tooltip {
+      position: absolute;
+      background: rgba(20,20,28,0.95);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      pointer-events: none;
+      backdrop-filter: blur(20px);
+      white-space: nowrap;
+      z-index: 50;
+      transform: translateX(-50%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    /* Direction badge */
+    .dir-in  { color: var(--green); font-size: 15px; }
+    .dir-out { color: var(--red);   font-size: 15px; }
+
+    /* Property badge */
+    .prop-badge {
+      display: inline-block;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* Segment control */
+    .seg-ctrl {
+      display: inline-flex;
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      border-radius: 7px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.18s;
+    }
+    .seg-btn.active {
+      background: rgba(0,0,0,0.08);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Action button */
+    .btn-ghost {
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(0,0,0,0.12);
+      color: var(--text-2);
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.18s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.85); color: var(--text); }
+    .btn-primary {
+      background: var(--green);
+      border: none;
+      color: #000;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.18s;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Tx row */
+    .tx-row {
+      display: grid;
+      grid-template-columns: 76px 28px 1fr 100px 96px 120px;
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tx-row:hover { background: rgba(0,0,0,0.03); }
+    .tx-row:last-child { border-bottom: none; }
+
+    /* Metric card */
+    .metric-card {
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      backdrop-filter: blur(16px);
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo, useEffect, useCallback, useRef } = React;
+const BACKEND = "";
+
+// ── Formatters ────────────────────────────────────────────────
+const fmt$ = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n||0);
+const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.abs(n||0));
+const fmtPct = n => (n==null||isNaN(n)||!isFinite(n))?"—":`${n.toFixed(1)}%`;
+const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d||""; } };
+const moLabel = s => { try { const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
+
+// ── Properties ────────────────────────────────────────────────
+const PROPERTIES = [
+  { id:"lockwood", label:"Lockwood",          color:"#30d158", group:"airbnb" },
+  { id:"everton",  label:"Everton",            color:"#0a84ff", group:"airbnb" },
+  { id:"bstreet",  label:"B Street",           color:"#5e5ce6", group:"airbnb" },
+  { id:"pierce",   label:"Pierce Ave",         color:"#64d2ff", group:"pierce" },
+  { id:"llc",      label:"General LLC",        color:"#bf5af2", group:"llc"    },
+  { id:"transfer", label:"Internal Transfer",  color:"#636366", group:"transfer"},
+];
+const AIRBNB_IDS = ["lockwood","everton","bstreet"];
+
+// ── Storage ───────────────────────────────────────────────────
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} },
+};
+const TAGS_KEY    = "pg_tags_v2";
+const AUTO_KEY    = "pg_auto_v2";
+const TX_KEY      = "pg_txs_v2";
+const INVEST_KEY  = "pg_invest";
+const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
+const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
+
+// ── Helpers ───────────────────────────────────────────────────
+function sumIn(txs)  { return txs.filter(t=>t.type==="in" ).reduce((s,t)=>s+Math.abs(t.amount),0); }
+function sumOut(txs) { return txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0); }
+
+// ── PropBadge ─────────────────────────────────────────────────
+function PropBadge({ id, small }) {
+  const p = PROPERTIES.find(x=>x.id===id);
+  const fs = small ? 9 : 10;
+  const pad = small ? "2px 7px" : "3px 9px";
+  if (!p) return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:"rgba(255,214,10,0.15)",color:"#ffd60a",border:"1px solid rgba(255,214,10,0.25)"}}>UNTAGGED</span>;
+  return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:`${p.color}18`,color:p.color,border:`1px solid ${p.color}30`}}>{p.label.toUpperCase()}</span>;
 }
 
-configuration = plaid.Configuration(
-    host=env_map.get(PLAID_ENV, "https://development.plaid.com"),
-    api_key={"clientId": PLAID_CLIENT_ID, "secret": PLAID_SECRET}
-)
-api_client   = plaid.ApiClient(configuration)
-plaid_client = plaid_api.PlaidApi(api_client)
+// ── TagMenu ───────────────────────────────────────────────────
+function TagMenu({ tx, onTag, onClose }) {
+  return (
+    <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px"}}>
+      {PROPERTIES.map(p=>(
+        <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`,borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
+          {p.label}
+        </button>
+      ))}
+      <button onClick={onClose} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
+    </div>
+  );
+}
 
-# ── Persistent store ─────────────────────────────────────────
-# store = {
-#   "accounts": [ { "access_token": "...", "item_id": "...", "cursor": "...", "name": "..." } ]
-# }
-STORE_FILE = "plaid_store.json"
+// ── BarChart with hover tooltip ───────────────────────────────
+function BarChart({ months, colorKey="green", label="Revenue" }) {
+  const [hov, setHov] = useState(null);
+  const vals = months.map(([,v])=> colorKey==="green" ? v.rev : colorKey==="red" ? v.exp : v.rev-v.exp);
+  const max  = Math.max(...vals, 1);
 
-def load_store():
-    try:
-        with open(STORE_FILE, "r") as f:
-            data = json.load(f)
-            if "accounts" not in data:
-                data["accounts"] = []
-            return data
-    except Exception:
-        return {"accounts": []}
+  return (
+    <div style={{position:"relative"}}>
+      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:90,padding:"0 4px"}}>
+        {months.map(([mo,v],i)=>{
+          const val = colorKey==="green"?v.rev:colorKey==="red"?v.exp:v.rev-v.exp;
+          const pct = Math.max(4,(val/max)*100);
+          const color = colorKey==="green"?"#30d158":colorKey==="red"?"#ff453a":val>=0?"#30d158":"#ff453a";
+          return (
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative"}}
+              onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
+              <div style={{
+                width:"100%",borderRadius:"4px 4px 0 0",
+                background: hov===i ? color : `${color}bb`,
+                height:`${pct}%`,
+                transition:"all 0.15s",
+                cursor:"pointer",
+                boxShadow: hov===i ? `0 0 12px ${color}60` : "none",
+              }}/>
+              {hov===i&&(
+                <div className="chart-tooltip" style={{bottom:"calc(100% + 8px)",left:"50%"}}>
+                  <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>{moLabel(mo)}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:color}}>{fmt$(val)}</div>
+                  <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>{label}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",marginTop:6,padding:"0 4px"}}>
+        {months.map(([mo])=>(
+          <div key={mo} style={{flex:1,textAlign:"center",fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{moLabel(mo).slice(0,3)}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-def save_store(data):
-    try:
-        with open(STORE_FILE, "w") as f:
-            json.dump(data, f)
-    except Exception as e:
-        print("Failed to save store:", e)
+// ── LineChart for projections ─────────────────────────────────
+function LineChart({ data }) {
+  const [hov, setHov] = useState(null);
+  const W=560, H=180, PAD=40;
+  const allVals = data.flatMap(d=>[d.rev,d.exp,d.net]);
+  const minV=Math.min(...allVals), maxV=Math.max(...allVals);
+  const scaleY=v=>PAD+(H-PAD*2)*(1-(v-minV)/(maxV-minV||1));
+  const scaleX=i=>PAD+(W-PAD*2)*(i/(data.length-1));
+  const makePath=key=>data.map((d,i)=>`${i===0?"M":"L"}${scaleX(i)},${scaleY(d[key])}`).join(" ");
+  const lines=[{key:"rev",color:"#30d158",label:"Revenue"},{key:"exp",color:"#ff453a",label:"Expenses"},{key:"net",color:"#0a84ff",label:"Net Income"}];
 
-store = load_store()
+  return (
+    <div style={{position:"relative"}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
+        <defs>
+          {lines.map(l=>(
+            <linearGradient key={l.key} id={`grad_${l.key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={l.color} stopOpacity="0.15"/>
+              <stop offset="100%" stopColor={l.color} stopOpacity="0"/>
+            </linearGradient>
+          ))}
+        </defs>
+        {/* Grid lines */}
+        {[0,0.25,0.5,0.75,1].map(f=>(
+          <line key={f} x1={PAD} y1={PAD+(H-PAD*2)*f} x2={W-PAD} y2={PAD+(H-PAD*2)*f}
+            stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="4,4"/>
+        ))}
+        {/* Lines */}
+        {lines.map(l=>(
+          <g key={l.key}>
+            <path d={makePath(l.key)+" L"+scaleX(data.length-1)+","+H+" L"+PAD+","+H+" Z"}
+              fill={`url(#grad_${l.key})`}/>
+            <path d={makePath(l.key)} fill="none" stroke={l.color} strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </g>
+        ))}
+        {/* Hover dots */}
+        {hov!==null&&lines.map(l=>(
+          <circle key={l.key} cx={scaleX(hov)} cy={scaleY(data[hov][l.key])} r="4"
+            fill={l.color} stroke="#0a0a0f" strokeWidth="2"/>
+        ))}
+        {/* X labels */}
+        {data.map((d,i)=>(
+          <text key={i} x={scaleX(i)} y={H} textAnchor="middle"
+            style={{fontSize:9,fill:"rgba(245,245,247,0.35)",fontFamily:"'JetBrains Mono',monospace"}}>
+            {d.year}
+          </text>
+        ))}
+        {/* Hover zone */}
+        {data.map((d,i)=>(
+          <rect key={i} x={scaleX(i)-18} y={0} width={36} height={H}
+            fill="transparent" style={{cursor:"crosshair"}}
+            onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}/>
+        ))}
+      </svg>
 
-# ── Frontend ──────────────────────────────────────────────────
-@app.route("/")
-def frontend():
-    return app.send_static_file("index.html")
+      {hov!==null&&(
+        <div className="chart-tooltip" style={{top:10,left:`${(scaleX(hov)/W)*100}%`}}>
+          <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{data[hov].year} Projection</div>
+          {lines.map(l=>(
+            <div key={l.key} style={{display:"flex",justifyContent:"space-between",gap:16,marginBottom:2}}>
+              <span style={{fontSize:11,color:l.color}}>{l.label}</span>
+              <span style={{fontSize:11,fontWeight:700,color:l.color}}>{fmt$(data[hov][l.key])}</span>
+            </div>
+          ))}
+          <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",marginTop:4,paddingTop:4,fontSize:10,color:"var(--text-3)"}}>
+            Margin: {fmtPct(data[hov].rev>0?(data[hov].net/data[hov].rev)*100:0)}
+          </div>
+        </div>
+      )}
 
-# ── Health ────────────────────────────────────────────────────
-@app.route("/api/health")
-def health():
-    return jsonify({"ok": True, "account_count": len(store["accounts"])})
+      <div style={{display:"flex",gap:16,marginTop:10,justifyContent:"center"}}>
+        {lines.map(l=>(
+          <div key={l.key} style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:20,height:2,background:l.color,borderRadius:2}}/>
+            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{l.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-# ── Link status ───────────────────────────────────────────────
-@app.route("/api/link-status")
-def link_status():
-    accounts = [{"item_id": a["item_id"], "name": a.get("name", "Bank Account")} for a in store["accounts"]]
-    return jsonify({"linked": len(store["accounts"]) > 0, "accounts": accounts})
+// ── InvestModal ───────────────────────────────────────────────
+function InvestModal({ invest, onSave, onClose }) {
+  const [vals, setVals] = useState({...invest});
+  const props = PROPERTIES.filter(p=>["lockwood","everton","bstreet","pierce"].includes(p.id));
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="glass fade-in" style={{width:400,padding:28}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:6}}>Down Payments</div>
+        <div style={{fontSize:12,color:"var(--text-3)",marginBottom:22}}>Enter the initial down payment for each property. Cash-on-cash return is calculated automatically from your Plaid expense data.</div>
+        {props.map(p=>(
+          <div key={p.id} style={{marginBottom:16}}>
+            <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>{p.label}</div>
+            <div style={{position:"relative"}}>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
+              <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
+                placeholder="0"
+                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}/>
+            </div>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:10,marginTop:24,justifyContent:"flex-end"}}>
+          <button onClick={onClose} className="btn-ghost">Cancel</button>
+          <button onClick={()=>{onSave(vals);onClose();}} className="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-# ── Create link token ─────────────────────────────────────────
-@app.route("/api/create-link-token", methods=["POST"])
-def create_link_token():
-    try:
-        req = LinkTokenCreateRequest(
-            user=LinkTokenCreateRequestUser(client_user_id="pigeon-user"),
-            client_name="Property Pigeon",
-            products=[Products("transactions")],
-            country_codes=[CountryCode("US")],
-            language="en",
-        )
-        response = plaid_client.link_token_create(req)
-        return jsonify({"link_token": response["link_token"]})
-    except Exception as e:
-        print("create-link-token error:", str(e))
-        return jsonify({"error": str(e)}), 500
+// ── TxList ────────────────────────────────────────────────────
+function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
+  const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
+  const sorted   = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
 
-# ── Exchange token ────────────────────────────────────────────
-@app.route("/api/exchange-token", methods=["POST"])
-def exchange_token():
-    public_token  = request.json.get("public_token")
-    account_name  = request.json.get("account_name", "Bank Account")
-    if not public_token:
-        return jsonify({"error": "public_token required"}), 400
-    try:
-        response = plaid_client.item_public_token_exchange(
-            ItemPublicTokenExchangeRequest(public_token=public_token)
-        )
-        access_token = response["access_token"]
-        item_id      = response["item_id"]
+  return (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+        <div className="seg-ctrl">
+          {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
+            <button key={k} className={`seg-btn${filter===k?" active":""}`} onClick={()=>setFilter(k)}>{l}</button>
+          ))}
+        </div>
+        <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{sorted.length} transactions</span>
+      </div>
 
-        # Check if already linked (re-link updates cursor only)
-        existing = next((a for a in store["accounts"] if a["item_id"] == item_id), None)
-        if existing:
-            existing["access_token"] = access_token
-            existing["cursor"]       = None
-            existing["name"]         = account_name
-        else:
-            store["accounts"].append({
-                "access_token": access_token,
-                "item_id":      item_id,
-                "cursor":       None,
-                "name":         account_name,
-            })
+      {sorted.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:13}}>No transactions</div>}
 
-        save_store(store)
-        print(f"✅ Linked: {account_name} ({item_id})")
-        return jsonify({"ok": True, "item_id": item_id})
-    except Exception as e:
-        print("exchange-token error:", str(e))
-        return jsonify({"error": str(e)}), 500
+      {sorted.length>0&&(
+        <div className="glass" style={{overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+            {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
+              <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+            ))}
+          </div>
+          {sorted.map(tx=>(
+            <div key={tx.id}>
+              <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+                <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:500,lineHeight:1.3}}>{tx.payee}</div>
+                  {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
+                </div>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                  {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
+                </span>
+                <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
+                <div onClick={e=>e.stopPropagation()}>
+                  <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                    <PropBadge id={tx.propId} small/>
+                  </span>
+                </div>
+              </div>
+              {tagging===tx.id&&(
+                <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-# ── Remove account ────────────────────────────────────────────
-@app.route("/api/remove-account", methods=["POST"])
-def remove_account():
-    item_id = request.json.get("item_id")
-    store["accounts"] = [a for a in store["accounts"] if a["item_id"] != item_id]
-    save_store(store)
-    return jsonify({"ok": True})
+// ── Main App ──────────────────────────────────────────────────
+function App() {
+  const [tab, setTab]           = useState("Portfolio");
+  const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
+  const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
+  const [autoTags, setAutoTags] = useState(()=>LS.get(AUTO_KEY)||DEFAULT_AUTO);
+  const [tagging, setTagging]   = useState(null);
+  const [linked, setLinked]     = useState([]);
+  const [syncing, setSyncing]   = useState(false);
+  const [status, setStatus]     = useState(null);
+  const [linking, setLinking]   = useState(false);
+  const [invest, setInvest]     = useState(()=>LS.get(INVEST_KEY)||DEFAULT_INVEST);
+  const [showInvest, setShowInvest] = useState(false);
+  const [feedFilter, setFeedFilter] = useState("untagged");
+  const [txFilter, setTxFilter] = useState("all");
+  const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
+  const [pierceTxFilter, setPierceTxFilter] = useState("all");
 
-# ── Sync all accounts ─────────────────────────────────────────
-@app.route("/api/transactions/sync")
-def sync_transactions():
-    if not store["accounts"]:
-        return jsonify({"error": "No bank account linked yet"}), 400
+  useEffect(()=>{ fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{}); },[]);
 
-    all_added, all_modified, all_removed = [], [], []
+  const applyAuto = useCallback((newTxs,at,cur)=>{
+    const next={...cur};
+    newTxs.forEach(tx=>{
+      if(next[tx.id]) return;
+      const key=Object.keys(at).find(k=>tx.payee?.toUpperCase().includes(k.toUpperCase()));
+      if(key) next[tx.id]=at[key];
+    });
+    return next;
+  },[]);
 
-    for account in store["accounts"]:
-        try:
-            added, modified, removed = [], [], []
-            cursor   = account.get("cursor")
-            has_more = True
+  const sync = useCallback(async()=>{
+    setSyncing(true); setStatus(null);
+    try {
+      const res=await fetch(`${BACKEND}/api/transactions/sync`);
+      const data=await res.json();
+      if(data.error) throw new Error(data.error);
+      setTxs(prev=>{
+        const map=Object.fromEntries(prev.map(t=>[t.id,t]));
+        data.removed.forEach(id=>delete map[id]);
+        data.modified.forEach(tx=>{map[tx.id]=tx;});
+        data.added.forEach(tx=>{if(!map[tx.id])map[tx.id]=tx;});
+        const arr=Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
+        LS.set(TX_KEY,arr); return arr;
+      });
+      setTags(prev=>{ const u=applyAuto(data.added,autoTags,prev); LS.set(TAGS_KEY,u); return u; });
+      setStatus(data.added.filter(t=>!t.pending).length+" new transactions");
+    } catch(e){setStatus("Sync failed: "+e.message);}
+    finally{setSyncing(false);}
+  },[autoTags,applyAuto]);
 
-            while has_more:
-                kwargs = {"access_token": account["access_token"], "count": 100}
-                if cursor:
-                    kwargs["cursor"] = cursor
-                response = plaid_client.transactions_sync(TransactionsSyncRequest(**kwargs))
-                data     = response.to_dict()
-                added    += data.get("added",    [])
-                modified += data.get("modified", [])
-                removed  += data.get("removed",  [])
-                has_more  = data.get("has_more", False)
-                cursor    = data.get("next_cursor")
+  const connectBank=useCallback(async()=>{
+    setLinking(true); setStatus(null);
+    try {
+      const {link_token,error}=await fetch(`${BACKEND}/api/create-link-token`,{method:"POST"}).then(r=>r.json());
+      if(error) throw new Error(error);
+      window.Plaid.create({
+        token:link_token,
+        onSuccess:async(public_token,meta)=>{
+          const name=meta?.institution?.name||"Bank Account";
+          await fetch(`${BACKEND}/api/exchange-token`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({public_token,account_name:name})});
+          const ls=await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
+          setLinked(ls.accounts||[]); setStatus(`${name} connected`);
+          setTimeout(sync,600);
+        },
+        onExit:err=>{if(err)setStatus("Exited: "+err.display_message);}
+      }).open();
+    } catch(e){setStatus("Could not open Plaid: "+e.message);}
+    finally{setLinking(false);}
+  },[sync]);
 
-            account["cursor"] = cursor
+  const removeAccount=async(item_id)=>{
+    await fetch(`${BACKEND}/api/remove-account`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id})});
+    setLinked(prev=>prev.filter(a=>a.item_id!==item_id));
+  };
 
-            def normalize(tx):
-                amount = tx.get("amount", 0)
-                return {
-                    "id":        tx.get("transaction_id"),
-                    "date":      str(tx.get("date", "")),
-                    "payee":     tx.get("merchant_name") or tx.get("name", ""),
-                    "amount":    amount,
-                    # Plaid: positive = money OUT, negative = money IN
-                    "type":      "out" if amount > 0 else "in",
-                    "category":  (tx.get("personal_finance_category") or {}).get("primary"),
-                    "pending":   tx.get("pending", False),
-                    "account":   account.get("name", "Bank Account"),
-                    "bucket":    None,  # tagged bucket: airbnb / pierce / llc / transfer
+  function doTag(txId,propId){
+    const tx=txs.find(t=>t.id===txId);
+    const nextTags={...tags,[txId]:propId};
+    if(tx?.payee&&propId!=="transfer"&&propId!=="llc"){
+      const key=tx.payee.toUpperCase();
+      const nextAuto={...autoTags,[key]:propId};
+      txs.forEach(t=>{if(!nextTags[t.id]&&t.payee?.toUpperCase()===key)nextTags[t.id]=propId;});
+      setAutoTags(nextAuto); LS.set(AUTO_KEY,nextAuto);
+    }
+    setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
+  }
+
+  const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
+
+  const enriched=useMemo(()=>txs.filter(t=>!t.pending).map(tx=>({...tx,propId:tags[tx.id]||null})),[txs,tags]);
+  const untagged=enriched.filter(t=>!t.propId);
+  const tagged  =enriched.filter(t=>t.propId);
+
+  // ── Metrics ──────────────────────────────────────────────
+  const M=useMemo(()=>{
+    const forProp=id=>tagged.filter(t=>t.propId===id);
+    const propM={};
+    PROPERTIES.forEach(p=>{
+      const ptxs=forProp(p.id);
+      const rev=sumIn(ptxs), exp=sumOut(ptxs);
+      propM[p.id]={rev,exp,cf:rev-exp,txs:ptxs};
+    });
+
+    const airbnbRev=AIRBNB_IDS.reduce((s,id)=>s+propM[id].rev,0);
+    const airbnbExp=AIRBNB_IDS.reduce((s,id)=>s+propM[id].exp,0);
+    const pierceRev=propM.pierce.rev, pierceExp=propM.pierce.exp;
+    const llcExp   =propM.llc.exp;
+    const totalRev =airbnbRev+pierceRev;
+    const totalExp =airbnbExp+pierceExp+llcExp;
+    const totalCF  =totalRev-totalExp;
+
+    // Annualize (scale from months with data)
+    const months = (() => {
+      const mo={};
+      tagged.filter(t=>t.propId!=="transfer").forEach(t=>{
+        const k=t.date?.slice(0,7)||"?";
+        if(!mo[k])mo[k]={rev:0,exp:0};
+        if(t.type==="in")  mo[k].rev+=Math.abs(t.amount);
+        if(t.type==="out") mo[k].exp+=Math.abs(t.amount);
+      });
+      return Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0]));
+    })();
+
+    const moCount = Math.max(months.length, 1);
+    const annualRev = (totalRev/moCount)*12;
+    const annualExp = (totalExp/moCount)*12;
+
+    // Real estate metrics
+    const totalInvest = Object.values(invest).reduce((s,v)=>s+v,0);
+    const netMargin   = totalRev>0?(totalCF/totalRev)*100:null;
+    const cocReturn   = totalInvest>0?(totalCF/totalInvest)*100:null;
+    const annualCoc   = totalInvest>0?((totalCF/moCount*12)/totalInvest)*100:null;
+
+    // Per-property CoC
+    const propCoc={};
+    ["lockwood","everton","bstreet","pierce"].forEach(id=>{
+      const inv=invest[id]||0;
+      propCoc[id]=inv>0?(propM[id].cf/inv)*100:null;
+    });
+
+    // 5-year projections (3% annual revenue growth, 2% expense growth)
+    const currentYear=new Date().getFullYear();
+    const projections=Array.from({length:6},(_,i)=>{
+      const yr=currentYear+i;
+      const rev=annualRev*Math.pow(1.03,i);
+      const exp=annualExp*Math.pow(1.02,i);
+      return {year:yr,rev,exp,net:rev-exp};
+    });
+
+    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp};
+  },[tagged,invest]);
+
+  const hasBank=linked.length>0;
+  const TABS=["Portfolio","Airbnb","Pierce Ave","Feed"];
+
+  // Feed display
+  const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
+  const feedDisplayed = txFilter==="in"?feedTxs.filter(t=>t.type==="in"):txFilter==="out"?feedTxs.filter(t=>t.type==="out"):feedTxs;
+
+  return (
+    <div style={{minHeight:"100vh"}}>
+
+      {/* NAV */}
+      <nav className="nav">
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="xrayGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="rgba(180,220,255,0.95)"/>
+                    <stop offset="100%" stopColor="rgba(120,180,255,0.70)"/>
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="1.2" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                {/* Body */}
+                <ellipse cx="17" cy="21" rx="8" ry="6.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
+                {/* Head */}
+                <circle cx="23" cy="13" r="4.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
+                {/* Neck connecting head to body */}
+                <path d="M20 16.5 C19 17.5 18 18.5 17.5 19.2" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
+                {/* Beak */}
+                <path d="M26.5 12.5 L30 11.5 L27 13.5" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Eye */}
+                <circle cx="24.5" cy="12" r="1" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none"/>
+                <circle cx="24.5" cy="12" r="0.3" fill="url(#xrayGrad)" opacity="0.8"/>
+                {/* Wing */}
+                <path d="M13 20 C10 17 8 15 9 13 C11 11 14 14 17 16" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
+                <path d="M10 18 C9 16 9.5 14.5 11 14" stroke="url(#xrayGrad)" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.6"/>
+                {/* Tail */}
+                <path d="M10 23 C8 24 6 25 5 24" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round"/>
+                <path d="M10.5 24.5 C8.5 26 7 27 5.5 26.5" stroke="url(#xrayGrad)" strokeWidth="0.8" fill="none" strokeLinecap="round" opacity="0.7"/>
+                {/* Legs */}
+                <path d="M16 27 L15 30 M15 30 L13.5 31.5 M15 30 L16 31.5" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
+                <path d="M19 27.5 L18.5 30.5 M18.5 30.5 L17 32 M18.5 30.5 L19.5 32" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
+                {/* Internal structure lines - x-ray feel */}
+                <path d="M17 19 L19 22 M18 19.5 L17 23" stroke="url(#xrayGrad)" strokeWidth="0.5" fill="none" opacity="0.35" strokeLinecap="round"/>
+                <path d="M22 12 L24 15 M23 11 L25 14" stroke="url(#xrayGrad)" strokeWidth="0.45" fill="none" opacity="0.3" strokeLinecap="round"/>
+              </svg>
+            </div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,letterSpacing:"-0.01em"}}>Property Pigeon</div>
+            <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>LOCKWOOD · EVERTON · B ST · PIERCE · 8 STR · 7 SEC8</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:2,alignItems:"center"}}>
+          {TABS.map(t=>(
+            <button key={t} className={`nav-tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
+              {t}
+              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-4,right:-2,background:"#ffd60a",color:"#000",borderRadius:"50%",width:14,height:14,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
+            </button>
+          ))}
+          <div style={{width:1,height:18,background:"rgba(255,255,255,0.1)",margin:"0 6px"}}/>
+          <button onClick={connectBank} disabled={linking} className="btn-ghost" style={{fontSize:12}}>
+            {linking?"Linking...":"+ Add Bank"}
+          </button>
+          <button onClick={sync} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--green)"}}>
+            {syncing?"Syncing…":"↻ Sync"}
+          </button>
+        </div>
+      </nav>
+
+      {/* STATUS */}
+      {(hasBank||status)&&(
+        <div style={{padding:"8px 28px",background:"rgba(255,255,255,0.45)",borderBottom:"1px solid rgba(0,0,0,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {linked.map(a=>(
+              <div key={a.item_id} className="pill">
+                <div className="pill-dot"/>
+                <span style={{color:"var(--text-2)"}}>{a.name}</span>
+                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"var(--text-3)",fontSize:13,cursor:"pointer",lineHeight:1,marginLeft:2}}>×</button>
+              </div>
+            ))}
+          </div>
+          {status&&<div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{status}</div>}
+        </div>
+      )}
+
+      <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 28px 100px"}}>
+
+        {/* ── PORTFOLIO ── */}
+        {tab==="Portfolio"&&(
+          <div className="fade-in">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>All Properties · Live from Plaid</div>
+                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Portfolio Overview</div>
+              </div>
+              <button onClick={()=>setShowInvest(true)} className="btn-ghost" style={{fontSize:12}}>⚙ Down Payments</button>
+            </div>
+
+            {!hasBank&&(
+              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
+                <div style={{fontSize:40,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>No bank connected</div>
+                <div style={{fontSize:13,color:"var(--text-3)",marginBottom:20}}>Click "+ Add Bank" to connect via Plaid</div>
+              </div>
+            )}
+
+            {hasBank&&<>
+              {/* Top 3 stats */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+                {[
+                  {l:"Gross Revenue",v:fmt$(M.totalRev),a:"var(--green)"},
+                  {l:"Total Expenses",v:fmt$(M.totalExp),a:"var(--red)"},
+                  {l:"Net Cash Flow", v:fmt$(M.totalCF), a:M.totalCF>=0?"var(--green)":"var(--red)"},
+                ].map(c=>(
+                  <div key={c.l} className="glass" style={{padding:"22px 24px"}}>
+                    <div className="stat-label" style={{marginBottom:10}}>{c.l}</div>
+                    <div className="stat-num" style={{color:c.a}}>{c.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Real estate metrics */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                {[
+                  {l:"Net Margin",     v:fmtPct(M.netMargin),   sub:"Revenue → profit"},
+                  {l:"Cash-on-Cash",   v:fmtPct(M.cocReturn),   sub:"Total return on invested"},
+                  {l:"Annualized CoC", v:fmtPct(M.annualCoc),   sub:"Projected annual"},
+                  {l:"Expense Ratio",  v:fmtPct(M.totalRev>0?(M.totalExp/M.totalRev)*100:null), sub:"Expenses ÷ revenue"},
+                ].map(m=>(
+                  <div key={m.l} className="metric-card">
+                    <div className="stat-label" style={{marginBottom:8}}>{m.l}</div>
+                    <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.v==="—"?"var(--text-3)":"var(--text)",letterSpacing:"-0.02em"}}>{m.v}</div>
+                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:4}}>{m.sub}{m.l.includes("Cash")&&!invest.lockwood&&!invest.pierce?' · add down payment ↑':''}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Property split */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                {[
+                  {l:"Airbnb Portfolio (8 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
+                  {l:"Pierce Ave · Section 8 · 7 Units",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"#64d2ff"},
+                ].map(r=>(
+                  <div key={r.l} className="glass" style={{padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
+                    <div style={{fontSize:10,color:r.color,fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14,fontWeight:700}}>{r.l}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                      {[{l:"Revenue",v:r.rev,c:"var(--green)"},{l:"Expenses",v:r.exp,c:"var(--red)"},{l:"Cash Flow",v:r.cf,c:r.cf>=0?"var(--green)":"var(--red)"}].map(s=>(
+                        <div key={s.l}><div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>{s.l}</div><div style={{fontSize:18,fontWeight:700,color:s.c,fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(s.v)}</div></div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {M.llcExp>0&&(
+                <div className="glass" style={{padding:"14px 20px",marginBottom:10,borderLeft:"3px solid #bf5af2",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:10,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>General LLC Expenses</div>
+                  <div style={{fontSize:20,fontWeight:700,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(M.llcExp)}</div>
+                </div>
+              )}
+
+              {/* Charts */}
+              {M.months.length>0&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div className="glass" style={{padding:"20px"}}>
+                    <div className="stat-label" style={{marginBottom:14}}>Monthly Revenue</div>
+                    <BarChart months={M.months} colorKey="green" label="Revenue"/>
+                  </div>
+                  <div className="glass" style={{padding:"20px"}}>
+                    <div className="stat-label" style={{marginBottom:14}}>Monthly Expenses</div>
+                    <BarChart months={M.months} colorKey="red" label="Expenses"/>
+                  </div>
+                </div>
+              )}
+
+              {/* 5-year projections */}
+              <div className="glass" style={{padding:"22px",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <div>
+                    <div className="stat-label" style={{marginBottom:4}}>5-Year Projection</div>
+                    <div style={{fontSize:12,color:"var(--text-3)"}}>3% annual revenue growth · 2% expense growth · based on current run rate</div>
+                  </div>
+                </div>
+                <LineChart data={M.projections}/>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginTop:16}}>
+                  {M.projections.map(d=>(
+                    <div key={d.year} style={{background:"rgba(255,255,255,0.55)",borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
+                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{d.year}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(d.net)}</div>
+                      <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)} margin</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>
+                {tagged.length} tagged · {untagged.length} untagged
+                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"var(--yellow)",fontFamily:"'JetBrains Mono',monospace",background:"none",border:"none",textDecoration:"underline",marginLeft:8,cursor:"pointer"}}>tag now →</button>}
+              </div>
+            </>}
+          </div>
+        )}
+
+        {/* ── AIRBNB ── */}
+        {tab==="Airbnb"&&(
+          <div className="fade-in">
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:10,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Airbnb Portfolio</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 8 Units</div>
+            </div>
+
+            {/* Top stats — portfolio-level only, no per-property income */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Total Airbnb Revenue",v:fmt$(M.airbnbRev),a:"var(--green)",sub:"Deposited as portfolio lump sum"},
+                {l:"Total Airbnb Expenses",v:fmt$(M.airbnbExp),a:"var(--red)",sub:"Tracked per property below"},
+              ].map(c=>(
+                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
+                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
+                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:6}}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Portfolio-level metrics */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+              {[
+                {l:"Net Cash Flow",    v:fmt$(M.airbnbCF),  accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
+                {l:"Expense Ratio",   v:fmtPct(M.airbnbRev>0?(M.airbnbExp/M.airbnbRev)*100:null), accent:"var(--text)"},
+                {l:"Avg Monthly CF",  v:fmt$(M.airbnbCF/M.moCount), accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
+              ].map(m=>(
+                <div key={m.l} className="metric-card">
+                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
+                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.accent||"var(--text)"}}>{m.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Per-property EXPENSES only */}
+            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+              Expenses by Property
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+              {AIRBNB_IDS.map(id=>{
+                const p=PROPERTIES.find(x=>x.id===id);
+                const pm=M.propM[id];
+                const expTxs=pm.txs.filter(t=>t.type==="out");
+                const pct=M.airbnbExp>0?(pm.exp/M.airbnbExp)*100:0;
+                return (
+                  <div key={id} className="glass" style={{padding:"16px 18px",borderTop:`2px solid ${p.color}`}}>
+                    <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>{p.label}</div>
+                    <div style={{marginBottom:10}}>
+                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>Total Expenses</div>
+                      <div style={{fontSize:22,fontWeight:700,color:"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</div>
+                    </div>
+                    {/* Expense share bar */}
+                    <div style={{background:"rgba(0,0,0,0.04)",borderRadius:4,height:4,marginBottom:6,overflow:"hidden"}}>
+                      <div style={{width:`${pct}%`,height:"100%",background:p.color,borderRadius:4,transition:"width 0.5s ease"}}/>
+                    </div>
+                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{pct.toFixed(0)}% of total expenses · {expTxs.length} transactions</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Side-by-side: Money In (lump sum) | Money Out (per property) */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"start"}}>
+
+              {/* LEFT — Money In */}
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↓ Money In <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· portfolio deposits</span>
+                </div>
+                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in").length===0
+                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits yet</div>
+                  : <div className="glass" style={{overflow:"hidden"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                        {["DATE","PAYEE","AMOUNT"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                      </div>
+                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                        <div key={tx.id} style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center"}}>
+                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                          <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
                 }
+              </div>
 
-            all_added    += [normalize(t) for t in added]
-            all_modified += [normalize(t) for t in modified]
-            all_removed  += [r.get("transaction_id") for r in removed]
+              {/* RIGHT — Money Out (taggable per property) */}
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↑ Money Out <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· tag to property</span>
+                </div>
+                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out").length===0
+                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No expenses yet</div>
+                  : <div className="glass" style={{overflow:"hidden"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                        {["DATE","PAYEE","AMOUNT","PROPERTY"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                      </div>
+                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                        <div key={tx.id}>
+                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
+                            onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+                            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
+                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                            <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                            <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#ff453a"}}>-{fmtD(tx.amount)}</span>
+                            <div onClick={e=>e.stopPropagation()}>
+                              <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                                <PropBadge id={tx.propId} small/>
+                              </span>
+                            </div>
+                          </div>
+                          {tagging===tx.id&&(
+                            <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+            </div>
 
-        except Exception as e:
-            print(f"Sync error for {account.get('name')}: {e}")
-            continue
 
-    save_store(store)
 
-    return jsonify({
-        "added":    all_added,
-        "modified": all_modified,
-        "removed":  all_removed,
-        "total":    len(all_added),
-    })
 
-# ── Balances ──────────────────────────────────────────────────
-@app.route("/api/balances")
-def balances():
-    if not store["accounts"]:
-        return jsonify({"error": "No bank account linked yet"}), 400
-    all_accounts = []
-    for account in store["accounts"]:
-        try:
-            response = plaid_client.accounts_balance_get(
-                AccountsBalanceGetRequest(access_token=account["access_token"])
-            )
-            for a in response["accounts"]:
-                all_accounts.append({
-                    "bank":      account.get("name", "Bank Account"),
-                    "name":      a["name"],
-                    "type":      str(a["type"]),
-                    "current":   a["balances"]["current"],
-                    "available": a["balances"].get("available"),
-                    "currency":  a["balances"].get("iso_currency_code", "USD"),
-                })
-        except Exception as e:
-            print(f"Balance error for {account.get('name')}: {e}")
-    return jsonify({"accounts": all_accounts})
+          </div>
+        )}
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+        {/* ── PIERCE AVE ── */}
+        {tab==="Pierce Ave"&&(
+          <div className="fade-in">
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:10,color:"#64d2ff",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · 7 Units · Niagara Falls</div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+              {[{l:"Gross Rent",v:fmt$(M.pierceRev),a:"#64d2ff"},{l:"Total Expenses",v:fmt$(M.pierceExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.pierceCF),a:M.pierceCF>=0?"var(--green)":"var(--red)"}].map(c=>(
+                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
+                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
+                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+              {[
+                {l:"Net Margin",     v:fmtPct(M.pierceRev>0?(M.pierceCF/M.pierceRev)*100:null)},
+                {l:"CoC Return",     v:fmtPct(M.propCoc.pierce)},
+                {l:"Avg Monthly CF", v:fmt$(M.pierceCF/M.moCount)},
+              ].map(m=>(
+                <div key={m.l} className="metric-card">
+                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
+                  <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>Pierce Ave Transactions</div>
+            <TxList
+              txs={M.propM.pierce.txs}
+              tagging={tagging} setTagging={setTagging} doTag={doTag}
+              filter={pierceTxFilter} setFilter={setPierceTxFilter}
+            />
+          </div>
+        )}
+
+        {/* ── FEED ── */}
+        {tab==="Feed"&&(
+          <div className="fade-in">
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:18}}>
+              <div>
+                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Transaction Feed</div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginTop:3}}>Tag each transaction · drives all numbers everywhere</div>
+              </div>
+              <div className="seg-ctrl">
+                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
+                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            {!hasBank&&(
+              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
+                <div style={{fontSize:40,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:16,fontWeight:600,marginBottom:14}}>No bank connected</div>
+                <button onClick={connectBank} className="btn-primary">Connect Bank →</button>
+              </div>
+            )}
+
+            {hasBank&&(
+              <>
+                {/* Money In / Money Out filter on feed */}
+                <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+                  <div className="seg-ctrl">
+                    {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
+                      <button key={k} className={`seg-btn${txFilter===k?" active":""}`} onClick={()=>setTxFilter(k)}>{l}</button>
+                    ))}
+                  </div>
+                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{feedDisplayed.length} transactions</span>
+                </div>
+
+                {feedDisplayed.length===0&&(
+                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:13}}>
+                    {feedFilter==="untagged"?"All transactions tagged ✓":"No transactions yet — hit Sync"}
+                  </div>
+                )}
+
+                {feedDisplayed.length>0&&(
+                  <div className="glass" style={{overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+                      {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
+                        <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+                      ))}
+                    </div>
+                    {[...feedDisplayed].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                      <div key={tx.id}>
+                        <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+                          <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                          <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:500}}>{tx.payee}</div>
+                            {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
+                          </div>
+                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                            {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
+                          </span>
+                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
+                          <div onClick={e=>e.stopPropagation()}>
+                            <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                              <PropBadge id={tx.propId} small/>
+                            </span>
+                          </div>
+                        </div>
+                        {tagging===tx.id&&(
+                          <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                            <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Auto-tag rules */}
+                {Object.keys(autoTags).length>0&&(
+                  <div style={{marginTop:20,padding:"16px 18px",background:"rgba(255,255,255,0.45)",border:"1px solid rgba(255,255,255,0.6)",borderRadius:12}}>
+                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {Object.entries(autoTags).map(([payee,pid])=>(
+                        <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:6,padding:"3px 10px"}}>
+                          <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
+                          <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
+                          <PropBadge id={pid} small/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
