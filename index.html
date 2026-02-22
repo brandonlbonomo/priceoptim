@@ -436,21 +436,26 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
         {months.map(([mo,v],i)=>{
           const val = vals[i];
           const px  = Math.max(3, Math.round((Math.abs(val)/max)*H));
-          const c   = marginMode
+          const isProj = !!(v && v.projected);
+          const c = isProj ? "#bbbbbb"
+            : marginMode
             ? (val >= 30 ? "#30d158" : val >= 0 ? "#aaaaaa" : "#ff453a")
             : color || (val>=0?"#30d158":"#ff453a");
-          const clickable = !!onBarClick;
+          const canClick = !!onBarClick && !isProj;
           return (
-            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:clickable?"pointer":"default"}}
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:canClick?"pointer":"default"}}
               onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
-              onClick={()=>clickable&&onBarClick(mo,valueKey)}>
-              <div style={{width:"100%",borderRadius:"2px 2px 0 0",background:hov===i?c:`${c}bb`,height:px,transition:"height 0.3s ease",
-                outline:clickable&&hov===i?"2px solid "+c:"none",outlineOffset:1}}/>
+              onClick={()=>canClick&&onBarClick(mo,valueKey)}>
+              <div style={{width:"100%",borderRadius:"2px 2px 0 0",height:px,transition:"height 0.3s ease",
+                background:isProj?(hov===i?"#aaaaaa":"#cccccc"):(hov===i?c:`${c}bb`),
+                opacity:isProj?0.5:1,
+                backgroundImage:isProj?"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,0.4) 3px,rgba(255,255,255,0.4) 6px)":"none",
+                outline:canClick&&hov===i?"2px solid "+c:"none",outlineOffset:1}}/>
               {hov===i&&(
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",left:"50%",fontSize:11}}>
-                  <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}</div>
+                  <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}{isProj?" · projected":""}</div>
                   <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
-                  {clickable&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>tap to drill in</div>}
+                  {canClick&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>tap to drill in</div>}
                 </div>
               )}
             </div>
@@ -715,10 +720,10 @@ function ProjectionChart({ data }) {
 // ── ManualIncomeModal ─────────────────────────────────────────
 function ManualIncomeModal({ manual, onSave, onClose }) {
   const MONTHS = [
-    "2024-08","2024-09","2024-10","2024-11","2024-12",
     "2025-01","2025-02","2025-03","2025-04","2025-05","2025-06",
     "2025-07","2025-08","2025-09","2025-10","2025-11","2025-12",
-    "2026-01","2026-02","2026-03",
+    "2026-01","2026-02","2026-03","2026-04","2026-05","2026-06",
+    "2026-07","2026-08","2026-09","2026-10","2026-11","2026-12",
   ];
   const [vals, setVals] = useState({...manual});
 
@@ -727,7 +732,7 @@ function ManualIncomeModal({ manual, onSave, onClose }) {
       <div className="glass" style={{width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto",padding:24,borderRadius:20}}>
         <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>Manual Airbnb Income</div>
         <div style={{fontSize:12,color:"var(--text-3)",marginBottom:20}}>
-          Enter Airbnb payout totals per month. These supplement Plaid data — don't double-count months Plaid already has.
+          Enter your exact Airbnb payout totals per month from the Airbnb app. Manual entries override Plaid data for that month — no double counting.
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {MONTHS.map(mo=>(
@@ -1157,19 +1162,51 @@ function App() {
         .map(q=>({...q, net:q.rev-q.exp, margin:q.rev>0?((q.rev-q.exp)/q.rev)*100:0, expRatio:q.rev>0?(q.exp/q.rev)*100:0}));
     })();
 
-    // Live projections — recalculated from actual run rate each time
-    const lastFullQuarters = quarters.slice(-4); // use last 4 quarters as base
-    const baseRev = lastFullQuarters.length>0 ? lastFullQuarters.reduce((s,q)=>s+q.rev,0)/lastFullQuarters.length : annualRev/4;
-    const baseExp = lastFullQuarters.length>0 ? lastFullQuarters.reduce((s,q)=>s+q.exp,0)/lastFullQuarters.length : annualExp/4;
+    // Monthly seasonal projections for rest of FY26
+    // STR seasonality index by month (1.0 = average) — peaks summer/holidays, dips Jan-Feb
+    const STR_SEASONAL = {
+      "01":0.72,"02":0.75,"03":0.90,"04":1.00,"05":1.10,
+      "06":1.18,"07":1.22,"08":1.20,"09":1.05,"10":1.02,
+      "11":0.95,"12":1.08
+    };
+    const today = new Date();
+    const currentMoKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+    // Compute monthly avg from actual data (airbnb only, last 6 months with data)
+    const actualAirbnbMonths = months.filter(([k])=>k<=currentMoKey&&k>="2025-01");
+    const avgAirbnbRev = actualAirbnbMonths.length>0
+      ? actualAirbnbMonths.reduce((s,[,v])=>s+(v.rev||0),0)/actualAirbnbMonths.length
+      : airbnbRev/Math.max(moCount,1);
+    const avgAirbnbExp = actualAirbnbMonths.length>0
+      ? actualAirbnbMonths.reduce((s,[,v])=>s+(v.exp||0),0)/actualAirbnbMonths.length
+      : airbnbExp/Math.max(moCount,1);
+    // Pierce is flat — use actual monthly avg
+    const avgPierceRev = pierceRev/Math.max(moCount,1);
+    const avgPierceExp = pierceExp/Math.max(moCount,1);
+    // Build projected months for rest of 2026
+    const projMonths = [];
+    for(let m=1;m<=12;m++){
+      const key=`2026-${String(m).padStart(2,'0')}`;
+      if(key<=currentMoKey) continue; // skip months that already have actual data
+      const si = STR_SEASONAL[String(m).padStart(2,'0')]||1.0;
+      const projAirbnbRev = avgAirbnbRev * si;
+      const projPierceRev = avgPierceRev;
+      const projExp = (avgAirbnbExp * si) + avgPierceExp;
+      projMonths.push([key,{rev:projAirbnbRev+projPierceRev, exp:projExp, projected:true}]);
+    }
+    // Combine actual + projected for full-year chart view
+    const monthsWithProjections = [...months, ...projMonths];
+    // 5-year annual projections (for table)
     const currentYear=new Date().getFullYear();
+    const annualBase = (avgAirbnbRev+avgPierceRev)*12;
+    const annualExpBase = (avgAirbnbExp+avgPierceExp)*12;
     const projections=Array.from({length:6},(_,i)=>{
       const yr=currentYear+i;
-      const rev=(baseRev*4)*Math.pow(1.03,i);
-      const exp=(baseExp*4)*Math.pow(1.02,i);
+      const rev=annualBase*Math.pow(1.03,i);
+      const exp=annualExpBase*Math.pow(1.02,i);
       return {year:yr,rev,exp,net:rev-exp,margin:rev>0?((rev-exp)/rev)*100:0};
     });
 
-    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp,quarters};
+    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,monthsWithProjections,moCount,projections,annualRev,annualExp,quarters};
   },[tagged,enriched,invest,manualIncome]);
 
   const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
@@ -1183,7 +1220,7 @@ function App() {
     setStatus("All local data cleared");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
-  const TABS=["Portfolio","Airbnb","Pierce","Feed","Archive"];
+  const TABS=["Portfolio","Airbnb","Pierce","Projections","Feed","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
   // Tab icons
@@ -1192,6 +1229,7 @@ function App() {
     "Airbnb":    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
     "Pierce":    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="2"/></svg>,
     "Feed":      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+    "Projections":<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
     "Archive":   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>,
   };
 
@@ -1261,42 +1299,28 @@ function App() {
 
             {/* Month-by-month charts */}
             {M.months.length>0&&(<>
-              <div className="section-title">Revenue · Month by Month</div>
+              <div className="section-title">Revenue · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
+                <MiniBar months={M.monthsWithProjections} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
               </div>
 
               <div className="section-title">Expenses · Month by Month</div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
+                <MiniBar months={M.monthsWithProjections} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
               </div>
 
               <div className="section-title">Net Income · Month by Month</div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
+                <MiniBar months={M.monthsWithProjections} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
               </div>
 
-              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=ok · red=negative</span></div>
+              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=marginal · red=negative</span></div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
+                <MiniBar months={M.monthsWithProjections} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
               </div>
             </>)}
 
-            {/* 5-year projection */}
-            <div className="section-title">5-Year Projection</div>
-            <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-              <div style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr 1fr",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 14px",gap:8}}>
-                {["Year","Revenue","Expenses","Net"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>)}
-              </div>
-              {M.projections.map((d,i)=>(
-                <div key={d.year} style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr 1fr",padding:"11px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
-                  <span style={{fontSize:12,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>{d.year}</span>
-                  <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
-                  <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
-                  <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
-                </div>
-              ))}
-            </div>
+
 
             {/* CoC return */}
             {M.annualCoc&&(
@@ -1374,6 +1398,19 @@ function App() {
                 if(!aMo[k])aMo[k]={rev:0,exp:0};
                 aMo[k].rev=v; // override, not additive
               });
+              // Add seasonal projections for rest of 2026
+              const today2=new Date();
+              const curMo2=`${today2.getFullYear()}-${String(today2.getMonth()+1).padStart(2,'0')}`;
+              const STR_SI={"01":0.72,"02":0.75,"03":0.90,"04":1.00,"05":1.10,"06":1.18,"07":1.22,"08":1.20,"09":1.05,"10":1.02,"11":0.95,"12":1.08};
+              const aActual=Object.entries(aMo).filter(([k])=>k<=curMo2);
+              const aAvgRev=aActual.length>0?aActual.reduce((s,[,v])=>s+v.rev,0)/aActual.length:0;
+              const aAvgExp=aActual.length>0?aActual.reduce((s,[,v])=>s+v.exp,0)/aActual.length:0;
+              for(let m=1;m<=12;m++){
+                const k=`2026-${String(m).padStart(2,'0')}`;
+                if(k<=curMo2||aMo[k]) continue;
+                const si=STR_SI[String(m).padStart(2,'0')]||1;
+                aMo[k]={rev:aAvgRev*si,exp:aAvgExp*si,projected:true};
+              }
               const aMths=Object.entries(aMo).sort((a,b)=>a[0].localeCompare(b[0]));
               if(aMths.length===0) return null;
               return (
@@ -1463,6 +1500,16 @@ function App() {
                 if(t.type==="in") pMo[k].rev+=Math.abs(t.amount);
                 if(t.type==="out") pMo[k].exp+=Math.abs(t.amount);
               });
+              // Pierce is flat — project remaining 2026 months at same run rate
+              const _now=new Date(); const curMo2=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+              const pActual=Object.entries(pMo).filter(([k])=>k<=curMo2);
+              const pAvgRev=pActual.length>0?pActual.reduce((s,[,v])=>s+v.rev,0)/pActual.length:0;
+              const pAvgExp=pActual.length>0?pActual.reduce((s,[,v])=>s+v.exp,0)/pActual.length:0;
+              for(let m=1;m<=12;m++){
+                const k=`2026-${String(m).padStart(2,'0')}`;
+                if(k<=curMo2||pMo[k]) continue;
+                pMo[k]={rev:pAvgRev,exp:pAvgExp,projected:true};
+              }
               const pMths=Object.entries(pMo).sort((a,b)=>a[0].localeCompare(b[0]));
               if(pMths.length===0) return null;
               return (
@@ -1526,6 +1573,124 @@ function App() {
         )}
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
+        {tab==="Projections"&&(()=>{
+          const now = new Date();
+          const thisYear = now.getFullYear();
+          const thisMo = now.getMonth(); // 0-indexed
+          // Current year progress
+          const moRemaining = 12 - thisMo;
+          const moElapsed = thisMo;
+
+          return (
+          <div className="fade-in">
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>5-Year Outlook · as of {now.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Projections</div>
+              <div style={{fontSize:12,color:"var(--text-3)",marginTop:4}}>Based on actual run rate · STR seasonality applied · Pierce flat</div>
+            </div>
+
+            {/* This year callout */}
+            <div className="section-title">{thisYear} · Current Year</div>
+            <div className="card card-padded" style={{marginBottom:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                {[
+                  {l:"YTD Revenue",   v:fmt$(M.totalRev),              sub:`${moElapsed} months actual`},
+                  {l:"YTD Expenses",  v:fmt$(M.totalExp),              sub:"all properties", red:true},
+                  {l:"YTD Net",       v:fmt$(M.totalCF),               sub:"cash flow", green:M.totalCF>=0},
+                  {l:"YTD Margin",    v:M.netMargin!=null?fmtPct(M.netMargin):"—", sub:"net margin", green:M.netMargin>=30},
+                ].map(c=>(
+                  <div key={c.l}>
+                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                    <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                    <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Full-year {thisYear} projection */}
+              {(()=>{
+                const proj = M.projections[0];
+                const ytdRev = M.totalRev;
+                const ytdExp = M.totalExp;
+                const remainRev = proj.rev - (ytdRev/Math.max(moElapsed,1))*12 + (ytdRev/Math.max(moElapsed,1))*12 - ytdRev;
+                const fullYearRev = ytdRev + (M.annualRev - ytdRev) * (moRemaining/12);
+                const fullYearExp = ytdExp + (M.annualExp - ytdExp) * (moRemaining/12);
+                const fullYearNet = fullYearRev - fullYearExp;
+                return (
+                  <div style={{borderTop:"1px solid rgba(0,0,0,0.07)",paddingTop:12,marginTop:4}}>
+                    <div style={{fontSize:10,color:"var(--text-3)",marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Full Year {thisYear} Forecast</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                      {[
+                        {l:"Revenue",  v:fmt$(M.projections[0].rev), green:true},
+                        {l:"Expenses", v:fmt$(M.projections[0].exp), red:true},
+                        {l:"Net",      v:fmt$(M.projections[0].net), green:M.projections[0].net>=0},
+                      ].map(c=>(
+                        <div key={c.l} style={{background:"rgba(0,0,0,0.03)",borderRadius:10,padding:"8px 10px"}}>
+                          <div style={{fontSize:9,color:"var(--text-3)",marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{c.l}</div>
+                          <div style={{fontSize:15,fontWeight:700,color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* 5-year table */}
+            <div className="section-title">5-Year Forecast · {thisYear}–{thisYear+4}</div>
+            <div className="card" style={{overflow:"hidden",marginBottom:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 14px",gap:8}}>
+                {["Year","Revenue","Expenses","Net","Margin"].map(h=>(
+                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>
+                ))}
+              </div>
+              {M.projections.map((d,i)=>(
+                <div key={d.year} style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",padding:"13px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
+                  <span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:i===0?"#30d158":"var(--text)"}}>{d.year}{i===0?" ←":""}</span>
+                  <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
+                  <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
+                  <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
+                  <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.margin>=30?"#30d158":d.margin>=0?"var(--text-3)":"#ff453a"}}>{fmtPct(d.margin)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Assumptions */}
+            <div className="section-title">Assumptions</div>
+            <div className="card card-padded" style={{marginBottom:8}}>
+              {[
+                {l:"Revenue growth", v:"3% / year", sub:"conservative STR market appreciation"},
+                {l:"Expense growth",  v:"2% / year", sub:"maintenance + cost inflation"},
+                {l:"Airbnb seasonality", v:"Applied", sub:"Jul–Aug peak 1.22x · Jan–Feb trough 0.72x"},
+                {l:"Pierce Ave",    v:"Flat",    sub:"Section 8 — fixed rent, predictable"},
+                {l:"Base data",     v:`${M.moCount} months`, sub:"actual transactions to date"},
+              ].map(a=>(
+                <div key={a.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:10,marginBottom:10,borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500}}>{a.l}</div>
+                    <div style={{fontSize:11,color:"var(--text-3)",marginTop:1}}>{a.sub}</div>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)"}}>{a.v}</span>
+                </div>
+              ))}
+              {M.annualCoc&&(
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500}}>Cash-on-Cash Return</div>
+                    <div style={{fontSize:11,color:"var(--text-3)",marginTop:1}}>annualized · based on down payments</div>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#30d158"}}>{fmtPct(M.annualCoc)}</span>
+                </div>
+              )}
+              {!M.annualCoc&&(
+                <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",display:"block",width:"100%",textAlign:"left"}}>
+                  + Add down payments to unlock CoC return
+                </button>
+              )}
+            </div>
+          </div>
+          );
+        })()}
+
         {tab==="Archive"&&(
           <div className="fade-in">
             <div className="page-header">
