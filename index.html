@@ -869,15 +869,6 @@ function App() {
       propCoc[id]=inv>0?(propM[id].cf/inv)*100:null;
     });
 
-    // 5-year projections (3% annual revenue growth, 2% expense growth)
-    const currentYear=new Date().getFullYear();
-    const projections=Array.from({length:6},(_,i)=>{
-      const yr=currentYear+i;
-      const rev=annualRev*Math.pow(1.03,i);
-      const exp=annualExp*Math.pow(1.02,i);
-      return {year:yr,rev,exp,net:rev-exp};
-    });
-
     // ── Quarterly aggregation ────────────────────────────────────
     const quarters = (() => {
       const qmap = {};
