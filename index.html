@@ -744,10 +744,21 @@ function App() {
       const res=await fetch(`${BACKEND}/api/transactions/sync`);
       const data=await res.json();
       if(data.error) throw new Error(data.error);
-      // After sync, reload everything from server — guaranteed deduplicated
       await loadAll(true);
       setStatus(`Synced · ${data.total_stored} transactions total`);
     } catch(e){setStatus("Sync failed: "+e.message);}
+    finally{setSyncing(false);}
+  },[loadAll]);
+
+  const pullHistory = useCallback(async()=>{
+    setSyncing(true); setStatus("Pulling 2 years of history — this may take 30s...");
+    try {
+      const res=await fetch(`${BACKEND}/api/transactions/historical`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+      const data=await res.json();
+      if(data.errors&&data.errors.length) setStatus(`Done with errors: ${data.errors[0]}`);
+      await loadAll(true);
+      setStatus(`✓ ${data.total_stored} transactions loaded (${data.pulled} pulled from history)`);
+    } catch(e){setStatus("History pull failed: "+e.message);}
     finally{setSyncing(false);}
   },[loadAll]);
 
@@ -760,10 +771,24 @@ function App() {
         token:link_token,
         onSuccess:async(public_token,meta)=>{
           const name=meta?.institution?.name||"Bank Account";
-          await fetch(`${BACKEND}/api/exchange-token`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({public_token,account_name:name})});
+          const ex=await fetch(`${BACKEND}/api/exchange-token`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({public_token,account_name:name})}).then(r=>r.json());
           const ls=await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
-          setLinked(ls.accounts||[]); setStatus(`${name} connected`);
-          setTimeout(sync,600);
+          setLinked(ls.accounts||[]);
+          // Pull 2 years of history immediately — this is what gets years of data like Copilot
+          setStatus(`${name} connected — pulling 2 years of history...`);
+          try {
+            const hr=await fetch(`${BACKEND}/api/transactions/historical`,{
+              method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({item_id:ex.item_id})
+            }).then(r=>r.json());
+            await loadAll(true);
+            // Also run sync to catch anything from last 90 days not in historical
+            await fetch(`${BACKEND}/api/transactions/sync`).then(r=>r.json());
+            await loadAll(true);
+            setStatus(`✓ ${name} — ${hr.total_stored||0} transactions loaded`);
+          } catch(e) {
+            setStatus(`${name} connected. Hit Sync to load transactions.`);
+          }
         },
         onExit:err=>{if(err)setStatus("Exited: "+err.display_message);}
       }).open();
@@ -975,6 +1000,9 @@ function App() {
           </button>
           <button onClick={sync} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--green)"}}>
             {syncing?"Syncing…":"↻ Sync"}
+          </button>
+          <button onClick={pullHistory} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--text-2)"}}>
+            ⬇ Pull History
           </button>
         </div>
       </nav>
