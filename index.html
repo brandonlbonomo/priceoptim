@@ -9,9 +9,9 @@
   <style>
     :root {
       --bg: #0a0a0f;
-      --glass: rgba(255,255,255,0.08);
-      --glass-border: rgba(255,255,255,0.14);
-      --glass-hover: rgba(255,255,255,0.12);
+      --glass: rgba(255,255,255,0.55);
+      --glass-border: rgba(255,255,255,0.75);
+      --glass-hover: rgba(255,255,255,0.70);
       --green: #30d158;
       --green-dim: rgba(48,209,88,0.15);
       --red: #ff453a;
@@ -20,16 +20,16 @@
       --blue-dim: rgba(10,132,255,0.15);
       --purple: #bf5af2;
       --yellow: #ffd60a;
-      --text: #f5f5f7;
-      --text-2: rgba(245,245,247,0.6);
-      --text-3: rgba(245,245,247,0.35);
+      --text: #1a1a2e;
+      --text-2: rgba(26,26,46,0.60);
+      --text-3: rgba(26,26,46,0.38);
       --radius: 16px;
       --radius-sm: 10px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0d1117;
+      background: #eef2f7;
       color: var(--text);
       font-family: 'Figtree', -apple-system, sans-serif;
       min-height: 100vh;
@@ -43,12 +43,11 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(ellipse 70% 55% at 15% 10%,  rgba(10,132,255,0.45)  0%, transparent 65%),
-        radial-gradient(ellipse 55% 50% at 85% 15%,  rgba(191,90,242,0.35)  0%, transparent 60%),
-        radial-gradient(ellipse 60% 45% at 75% 75%,  rgba(48,209,88,0.30)   0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 10% 80%,  rgba(255,69,58,0.20)   0%, transparent 55%),
-        radial-gradient(ellipse 80% 60% at 50% 50%,  rgba(100,210,255,0.08) 0%, transparent 70%),
-        linear-gradient(160deg, #0d1117 0%, #111827 50%, #0a0f1a 100%);
+        radial-gradient(ellipse 60% 50% at 10% 15%,  rgba(255,255,255,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 45% at 90% 10%,  rgba(200,240,255,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 50% at 80% 85%,  rgba(180,255,200,0.05) 0%, transparent 55%),
+        radial-gradient(ellipse 45% 40% at 15% 85%,  rgba(220,200,255,0.05) 0%, transparent 50%),
+        linear-gradient(145deg, #f0f4f8 0%, #e8edf5 35%, #eef2f7 65%, #f2f0f8 100%);
       pointer-events: none;
     }
 
@@ -58,17 +57,18 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(circle 300px at 20% 60%, rgba(48,209,88,0.10) 0%, transparent 70%),
-        radial-gradient(circle 250px at 80% 40%, rgba(10,132,255,0.08) 0%, transparent 70%);
-      animation: driftOrbs 18s ease-in-out infinite alternate;
+        radial-gradient(circle 400px at 25% 55%, rgba(120,180,255,0.12) 0%, transparent 65%),
+        radial-gradient(circle 350px at 75% 35%, rgba(160,220,180,0.10) 0%, transparent 65%),
+        radial-gradient(circle 300px at 60% 80%, rgba(200,160,255,0.08) 0%, transparent 60%);
+      animation: driftOrbs 20s ease-in-out infinite alternate;
       pointer-events: none;
     }
 
     @keyframes driftOrbs {
       0%   { transform: translate(0, 0) scale(1); }
-      33%  { transform: translate(30px, -20px) scale(1.05); }
-      66%  { transform: translate(-20px, 30px) scale(0.97); }
-      100% { transform: translate(15px, -10px) scale(1.02); }
+      33%  { transform: translate(25px, -15px) scale(1.04); }
+      66%  { transform: translate(-15px, 25px) scale(0.97); }
+      100% { transform: translate(12px, -8px) scale(1.02); }
     }
 
     #root { position: relative; z-index: 1; }
@@ -76,7 +76,7 @@
     button { cursor: pointer; font-family: inherit; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
 
     /* Glass card */
     .glass {
@@ -97,7 +97,7 @@
     .nav {
       position: sticky; top: 0; z-index: 100;
       padding: 14px 28px;
-      background: rgba(13,17,23,0.60);
+      background: rgba(248,250,252,0.55);
       backdrop-filter: blur(32px) saturate(1.8);
       -webkit-backdrop-filter: blur(32px) saturate(1.8);
       border-bottom: 1px solid rgba(255,255,255,0.07);
@@ -115,7 +115,7 @@
       position: relative;
     }
     .nav-tab.active {
-      background: rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.07);
       color: var(--text);
       font-weight: 600;
     }
@@ -124,8 +124,8 @@
     /* Pills */
     .pill {
       display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(0,0,0,0.1);
       border-radius: 20px;
       padding: 4px 12px;
       font-size: 11px;
@@ -185,8 +185,8 @@
     /* Segment control */
     .seg-ctrl {
       display: inline-flex;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.08);
       border-radius: 10px;
       padding: 3px;
       gap: 2px;
@@ -202,15 +202,15 @@
       transition: all 0.18s;
     }
     .seg-btn.active {
-      background: rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.08);
       color: var(--text);
       font-weight: 600;
     }
 
     /* Action button */
     .btn-ghost {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(0,0,0,0.12);
       color: var(--text-2);
       border-radius: 10px;
       padding: 7px 14px;
@@ -218,7 +218,7 @@
       font-weight: 500;
       transition: all 0.18s;
     }
-    .btn-ghost:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.85); color: var(--text); }
     .btn-primary {
       background: var(--green);
       border: none;
@@ -244,21 +244,22 @@
       display: grid;
       grid-template-columns: 76px 28px 1fr 100px 96px 120px;
       padding: 11px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
       align-items: center;
       gap: 8px;
       cursor: pointer;
       transition: background 0.15s;
     }
-    .tx-row:hover { background: rgba(255,255,255,0.03); }
+    .tx-row:hover { background: rgba(0,0,0,0.03); }
     .tx-row:last-child { border-bottom: none; }
 
     /* Metric card */
     .metric-card {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.75);
       border-radius: var(--radius-sm);
       padding: 16px 18px;
+      backdrop-filter: blur(16px);
     }
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -326,7 +327,7 @@ function TagMenu({ tx, onTag, onClose }) {
           {p.label}
         </button>
       ))}
-      <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
+      <button onClick={onClose} style={{background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
     </div>
   );
 }
@@ -465,8 +466,8 @@ function InvestModal({ invest, onSave, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="glass fade-in" style={{width:400,padding:28}} onClick={e=>e.stopPropagation()}>
-        <div style={{fontSize:17,fontWeight:700,marginBottom:6}}>Investment Inputs</div>
-        <div style={{fontSize:12,color:"var(--text-3)",marginBottom:22}}>Enter total capital invested per property for accurate return calculations.</div>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:6}}>Down Payments</div>
+        <div style={{fontSize:12,color:"var(--text-3)",marginBottom:22}}>Enter the initial down payment for each property. Cash-on-cash return is calculated automatically from your Plaid expense data.</div>
         {props.map(p=>(
           <div key={p.id} style={{marginBottom:16}}>
             <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>{p.label}</div>
@@ -474,7 +475,7 @@ function InvestModal({ invest, onSave, onClose }) {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
               <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
                 placeholder="0"
-                style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}/>
+                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}/>
             </div>
           </div>
         ))}
@@ -507,7 +508,7 @@ function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
 
       {sorted.length>0&&(
         <div className="glass" style={{overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
             {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
               <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
             ))}
@@ -532,7 +533,7 @@ function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
                 </div>
               </div>
               {tagging===tx.id&&(
-                <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
                   <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
                 </div>
               )}
@@ -709,10 +710,46 @@ function App() {
       {/* NAV */}
       <nav className="nav">
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#30d158,#0a84ff)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 2px 12px rgba(48,209,88,0.3)"}}>🐦</div>
+          <div style={{width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="xrayGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="rgba(180,220,255,0.95)"/>
+                    <stop offset="100%" stopColor="rgba(120,180,255,0.70)"/>
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="1.2" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                {/* Body */}
+                <ellipse cx="17" cy="21" rx="8" ry="6.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
+                {/* Head */}
+                <circle cx="23" cy="13" r="4.5" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" filter="url(#glow)"/>
+                {/* Neck connecting head to body */}
+                <path d="M20 16.5 C19 17.5 18 18.5 17.5 19.2" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
+                {/* Beak */}
+                <path d="M26.5 12.5 L30 11.5 L27 13.5" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Eye */}
+                <circle cx="24.5" cy="12" r="1" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none"/>
+                <circle cx="24.5" cy="12" r="0.3" fill="url(#xrayGrad)" opacity="0.8"/>
+                {/* Wing */}
+                <path d="M13 20 C10 17 8 15 9 13 C11 11 14 14 17 16" stroke="url(#xrayGrad)" strokeWidth="1.1" fill="none" strokeLinecap="round"/>
+                <path d="M10 18 C9 16 9.5 14.5 11 14" stroke="url(#xrayGrad)" strokeWidth="0.7" fill="none" strokeLinecap="round" opacity="0.6"/>
+                {/* Tail */}
+                <path d="M10 23 C8 24 6 25 5 24" stroke="url(#xrayGrad)" strokeWidth="1" fill="none" strokeLinecap="round"/>
+                <path d="M10.5 24.5 C8.5 26 7 27 5.5 26.5" stroke="url(#xrayGrad)" strokeWidth="0.8" fill="none" strokeLinecap="round" opacity="0.7"/>
+                {/* Legs */}
+                <path d="M16 27 L15 30 M15 30 L13.5 31.5 M15 30 L16 31.5" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
+                <path d="M19 27.5 L18.5 30.5 M18.5 30.5 L17 32 M18.5 30.5 L19.5 32" stroke="url(#xrayGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round"/>
+                {/* Internal structure lines - x-ray feel */}
+                <path d="M17 19 L19 22 M18 19.5 L17 23" stroke="url(#xrayGrad)" strokeWidth="0.5" fill="none" opacity="0.35" strokeLinecap="round"/>
+                <path d="M22 12 L24 15 M23 11 L25 14" stroke="url(#xrayGrad)" strokeWidth="0.45" fill="none" opacity="0.3" strokeLinecap="round"/>
+              </svg>
+            </div>
           <div>
             <div style={{fontSize:14,fontWeight:700,letterSpacing:"-0.01em"}}>Property Pigeon</div>
-            <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>LOCKWOOD · EVERTON · B STREET · PIERCE</div>
+            <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>LOCKWOOD · EVERTON · B ST · PIERCE · 8 STR · 7 SEC8</div>
           </div>
         </div>
         <div style={{display:"flex",gap:2,alignItems:"center"}}>
@@ -734,7 +771,7 @@ function App() {
 
       {/* STATUS */}
       {(hasBank||status)&&(
-        <div style={{padding:"8px 28px",background:"rgba(255,255,255,0.02)",borderBottom:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+        <div style={{padding:"8px 28px",background:"rgba(255,255,255,0.45)",borderBottom:"1px solid rgba(0,0,0,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {linked.map(a=>(
               <div key={a.item_id} className="pill">
@@ -758,7 +795,7 @@ function App() {
                 <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>All Properties · Live from Plaid</div>
                 <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Portfolio Overview</div>
               </div>
-              <button onClick={()=>setShowInvest(true)} className="btn-ghost" style={{fontSize:12}}>⚙ Investment Inputs</button>
+              <button onClick={()=>setShowInvest(true)} className="btn-ghost" style={{fontSize:12}}>⚙ Down Payments</button>
             </div>
 
             {!hasBank&&(
@@ -795,7 +832,7 @@ function App() {
                   <div key={m.l} className="metric-card">
                     <div className="stat-label" style={{marginBottom:8}}>{m.l}</div>
                     <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.v==="—"?"var(--text-3)":"var(--text)",letterSpacing:"-0.02em"}}>{m.v}</div>
-                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:4}}>{m.sub}{m.l.includes("Cash")&&!invest.lockwood&&!invest.pierce?' · add investment inputs ↑':''}</div>
+                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:4}}>{m.sub}{m.l.includes("Cash")&&!invest.lockwood&&!invest.pierce?' · add down payment ↑':''}</div>
                   </div>
                 ))}
               </div>
@@ -803,8 +840,8 @@ function App() {
               {/* Property split */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 {[
-                  {l:"Airbnb Portfolio (3 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
-                  {l:"Pierce Ave · Section 8",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"#64d2ff"},
+                  {l:"Airbnb Portfolio (8 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
+                  {l:"Pierce Ave · Section 8 · 7 Units",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"#64d2ff"},
                 ].map(r=>(
                   <div key={r.l} className="glass" style={{padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
                     <div style={{fontSize:10,color:r.color,fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14,fontWeight:700}}>{r.l}</div>
@@ -849,7 +886,7 @@ function App() {
                 <LineChart data={M.projections}/>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginTop:16}}>
                   {M.projections.map(d=>(
-                    <div key={d.year} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
+                    <div key={d.year} style={{background:"rgba(255,255,255,0.55)",borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
                       <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{d.year}</div>
                       <div style={{fontSize:12,fontWeight:700,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(d.net)}</div>
                       <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)} margin</div>
@@ -871,7 +908,7 @@ function App() {
           <div className="fade-in">
             <div style={{marginBottom:22}}>
               <div style={{fontSize:10,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Airbnb Portfolio</div>
-              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 3 Units</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 8 Units</div>
             </div>
 
             {/* Top stats — portfolio-level only, no per-property income */}
@@ -903,7 +940,7 @@ function App() {
             </div>
 
             {/* Per-property EXPENSES only */}
-            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
               Expenses by Property
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
@@ -920,7 +957,7 @@ function App() {
                       <div style={{fontSize:22,fontWeight:700,color:"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</div>
                     </div>
                     {/* Expense share bar */}
-                    <div style={{background:"rgba(255,255,255,0.06)",borderRadius:4,height:4,marginBottom:6,overflow:"hidden"}}>
+                    <div style={{background:"rgba(0,0,0,0.04)",borderRadius:4,height:4,marginBottom:6,overflow:"hidden"}}>
                       <div style={{width:`${pct}%`,height:"100%",background:p.color,borderRadius:4,transition:"width 0.5s ease"}}/>
                     </div>
                     <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{pct.toFixed(0)}% of total expenses · {expTxs.length} transactions</div>
@@ -929,24 +966,68 @@ function App() {
               })}
             </div>
 
-            {/* Revenue deposits — lump sum, tagged to portfolio not per property */}
-            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-              Revenue Deposits <span style={{color:"var(--text-3)",fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· Airbnb pays as portfolio lump sum</span>
-            </div>
-            <TxList
-              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")}
-              tagging={tagging} setTagging={setTagging} doTag={doTag}
-              filter="in" setFilter={()=>{}}
-            />
+            {/* Side-by-side: Money In (lump sum) | Money Out (per property) */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"start"}}>
 
-            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",margin:"22px 0 10px",paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-              Expenses by Property
+              {/* LEFT — Money In */}
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↓ Money In <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· portfolio deposits</span>
+                </div>
+                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in").length===0
+                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits yet</div>
+                  : <div className="glass" style={{overflow:"hidden"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                        {["DATE","PAYEE","AMOUNT"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                      </div>
+                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                        <div key={tx.id} style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center"}}>
+                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                          <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
+
+              {/* RIGHT — Money Out (taggable per property) */}
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↑ Money Out <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· tag to property</span>
+                </div>
+                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out").length===0
+                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No expenses yet</div>
+                  : <div className="glass" style={{overflow:"hidden"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                        {["DATE","PAYEE","AMOUNT","PROPERTY"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                      </div>
+                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                        <div key={tx.id}>
+                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
+                            onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+                            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
+                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                            <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                            <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#ff453a"}}>-{fmtD(tx.amount)}</span>
+                            <div onClick={e=>e.stopPropagation()}>
+                              <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                                <PropBadge id={tx.propId} small/>
+                              </span>
+                            </div>
+                          </div>
+                          {tagging===tx.id&&(
+                            <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                }
+              </div>
             </div>
-            <TxList
-              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
-              tagging={tagging} setTagging={setTagging} doTag={doTag}
-              filter="out" setFilter={()=>{}}
-            />
 
 
 
@@ -959,7 +1040,7 @@ function App() {
           <div className="fade-in">
             <div style={{marginBottom:20}}>
               <div style={{fontSize:10,color:"#64d2ff",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
-              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · Niagara Falls</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · 7 Units · Niagara Falls</div>
             </div>
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
@@ -1036,7 +1117,7 @@ function App() {
 
                 {feedDisplayed.length>0&&(
                   <div className="glass" style={{overflow:"hidden"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8}}>
+                    <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
                       {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
                         <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
                       ))}
@@ -1061,7 +1142,7 @@ function App() {
                           </div>
                         </div>
                         {tagging===tx.id&&(
-                          <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                          <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
                             <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
                           </div>
                         )}
@@ -1072,11 +1153,11 @@ function App() {
 
                 {/* Auto-tag rules */}
                 {Object.keys(autoTags).length>0&&(
-                  <div style={{marginTop:20,padding:"16px 18px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:12}}>
+                  <div style={{marginTop:20,padding:"16px 18px",background:"rgba(255,255,255,0.45)",border:"1px solid rgba(255,255,255,0.6)",borderRadius:12}}>
                     <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules</div>
                     <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                       {Object.entries(autoTags).map(([payee,pid])=>(
-                        <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"3px 10px"}}>
+                        <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:6,padding:"3px 10px"}}>
                           <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
                           <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
                           <PropBadge id={pid} small/>
