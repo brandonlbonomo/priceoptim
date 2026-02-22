@@ -311,6 +311,7 @@ const TAGS_KEY    = "pg_tags_v2";
 const AUTO_KEY    = "pg_auto_v2";
 const TX_KEY      = "pg_txs_v2";
 const INVEST_KEY  = "pg_invest";
+const MANUAL_KEY  = "pg_manual_income"; // { "2025-10": 12550.70, "2025-11": 13972.97, ... }
 const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
 const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
 
@@ -565,6 +566,46 @@ function ProjectionChart({ data }) {
   );
 }
 
+// ── ManualIncomeModal ─────────────────────────────────────────
+function ManualIncomeModal({ manual, onSave, onClose }) {
+  const MONTHS = [
+    "2024-08","2024-09","2024-10","2024-11","2024-12",
+    "2025-01","2025-02","2025-03","2025-04","2025-05","2025-06",
+    "2025-07","2025-08","2025-09","2025-10","2025-11","2025-12",
+    "2026-01","2026-02","2026-03",
+  ];
+  const [vals, setVals] = useState({...manual});
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}>
+      <div className="glass" style={{width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto",padding:24,borderRadius:20}}>
+        <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>Manual Airbnb Income</div>
+        <div style={{fontSize:12,color:"var(--text-3)",marginBottom:20}}>
+          Enter Airbnb payout totals per month. These supplement Plaid data — don't double-count months Plaid already has.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {MONTHS.map(mo=>(
+            <div key={mo}>
+              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:3}}>{moLabel(mo)}</div>
+              <input
+                type="number"
+                placeholder="0"
+                value={vals[mo]||""}
+                onChange={e=>setVals(v=>({...v,[mo]:parseFloat(e.target.value)||0}))}
+                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",fontSize:13,fontFamily:"'JetBrains Mono',monospace",background:"rgba(255,255,255,0.6)",boxSizing:"border-box"}}
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:20,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"transparent",cursor:"pointer",fontSize:13}}>Cancel</button>
+          <button onClick={()=>{onSave(vals);onClose();}} className="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── InvestModal ───────────────────────────────────────────────
 function InvestModal({ invest, onSave, onClose }) {
   const [vals, setVals] = useState({...invest});
@@ -707,6 +748,15 @@ function App() {
   const [status, setStatus]     = useState(null);
   const [linking, setLinking]   = useState(false);
   const [invest, setInvest]     = useState(()=>LS.get(INVEST_KEY)||DEFAULT_INVEST);
+  const DEFAULT_MANUAL = {
+    "2025-10": 12550.70,
+    "2025-11": 13972.97,
+    "2025-12": 11850.97,
+    "2026-01": 8472.21,
+    "2026-02": 9574.77,  // in progress — update when month closes
+  };
+  const [manualIncome, setManualIncome] = useState(()=>LS.get(MANUAL_KEY)||DEFAULT_MANUAL);
+  const [showManual, setShowManual] = useState(false);
   const [showInvest, setShowInvest] = useState(false);
   const [feedFilter, setFeedFilter] = useState("untagged");
   const [txFilter, setTxFilter] = useState("all");
@@ -848,6 +898,7 @@ function App() {
   }
 
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
+  const saveManual=vals=>{ setManualIncome(vals); LS.set(MANUAL_KEY,vals); };
 
   // Deduplicate by id — Plaid can return the same transaction more than once
   const enriched=useMemo(()=>{
@@ -871,7 +922,10 @@ function App() {
       propM[p.id]={rev,exp,cf:rev-exp,txs:ptxs};
     });
 
-    const airbnbRev=AIRBNB_IDS.reduce((s,id)=>s+propM[id].rev,0);
+    const airbnbRevPlaid=AIRBNB_IDS.reduce((s,id)=>s+propM[id].rev,0);
+    // Add manual income — use manual entry if it exists for that month, supplement otherwise
+    const manualAirbnbRev=Object.values(manualIncome).reduce((s,v)=>s+(v||0),0);
+    const airbnbRev=airbnbRevPlaid+manualAirbnbRev;
     const airbnbExp=AIRBNB_IDS.reduce((s,id)=>s+propM[id].exp,0);
     const pierceRev=propM.pierce.rev, pierceExp=propM.pierce.exp;
     const llcExp   =propM.llc.exp;
@@ -879,8 +933,7 @@ function App() {
     const totalExp =airbnbExp+pierceExp+llcExp;
     const totalCF  =totalRev-totalExp;
 
-    // Monthly data — use ALL non-transfer enriched txs (tagged or not)
-    // De-duplicate by id first to prevent Plaid double-posting
+    // Monthly data — use ALL non-transfer enriched txs + manual income entries
     const months = (() => {
       const seen = new Set();
       const mo={};
@@ -888,9 +941,16 @@ function App() {
         if(seen.has(t.id)) return;
         seen.add(t.id);
         const k=t.date?.slice(0,7)||"?";
-        if(!mo[k])mo[k]={rev:0,exp:0};
+        if(!mo[k])mo[k]={rev:0,exp:0,manual:false};
         if(t.type==="in")  mo[k].rev+=Math.abs(t.amount);
         if(t.type==="out") mo[k].exp+=Math.abs(t.amount);
+      });
+      // Overlay manual income — adds to any Plaid data for that month
+      Object.entries(manualIncome).forEach(([k,v])=>{
+        if(!v) return;
+        if(!mo[k])mo[k]={rev:0,exp:0,manual:true};
+        mo[k].rev+=v;
+        mo[k].manual=true;
       });
       return Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0]));
     })();
@@ -942,7 +1002,7 @@ function App() {
     });
 
     return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp,quarters};
-  },[tagged,enriched,invest]);
+  },[tagged,enriched,invest,manualIncome]);
 
   const hasBank=linked.length>0;
   const TABS=["Portfolio","Airbnb","Pierce Ave","Projections","Quarterly","Feed"];
@@ -1015,6 +1075,9 @@ function App() {
           </button>
           <button onClick={pullHistory} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--text-2)"}}>
             ⬇ Pull History
+          </button>
+          <button onClick={()=>setShowManual(true)} className="btn-ghost" style={{fontSize:12}}>
+            ✎ Manual Income
           </button>
         </div>
       </nav>
@@ -1587,6 +1650,7 @@ function App() {
       </div>
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
+      {showManual&&<ManualIncomeModal manual={manualIncome} onSave={saveManual} onClose={()=>setShowManual(false)}/>}
     </div>
   );
 }
