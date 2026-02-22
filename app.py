@@ -68,6 +68,30 @@ def save_store(data):
 def frontend():
     return app.send_static_file("index.html")
 
+# ── PWA manifest ──────────────────────────────────────────────
+@app.route("/manifest.json")
+def manifest():
+    return jsonify({
+        "name": "Property Pigeon",
+        "short_name": "Pigeon",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#f5f5f7",
+        "theme_color": "#1a1a2e",
+        "icons": [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ]
+    })
+
+@app.route("/icon-192.png")
+def icon192():
+    return send_file("icon-192.png", mimetype="image/png")
+
+@app.route("/icon-512.png")
+def icon512():
+    return send_file("icon-512.png", mimetype="image/png")
+
 # ── Health ────────────────────────────────────────────────────
 @app.route("/api/health")
 def health():
