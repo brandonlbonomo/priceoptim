@@ -603,7 +603,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, filter, setFilter }
           </div>
           {sorted.map(tx=>(
             <div key={tx.id}>
-              <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+              <div className="tx-row" onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}>
                 <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
                 <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
                 <div>
@@ -615,7 +615,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, filter, setFilter }
                 </span>
                 <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
                 <div onClick={e=>e.stopPropagation()}>
-                  <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                  <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
                     <PropBadge id={tx.propId} small/>
                   </span>
                 </div>
@@ -651,7 +651,18 @@ function App() {
   const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
   const [pierceTxFilter, setPierceTxFilter] = useState("all");
 
-  useEffect(()=>{ fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{}); },[]);
+  useEffect(()=>{
+    // Load bank connections
+    fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{});
+    // Load server-side transactions (authoritative, deduplicated)
+    fetch(`${BACKEND}/api/transactions/all`).then(r=>r.json()).then(data=>{
+      if(data.transactions&&data.transactions.length>0){
+        const arr=[...data.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+        setTxs(arr);
+        LS.set(TX_KEY,arr);
+      }
+    }).catch(()=>{});
+  },[]);
 
   const applyAuto = useCallback((newTxs,at,cur)=>{
     const next={...cur};
@@ -663,25 +674,32 @@ function App() {
     return next;
   },[]);
 
+  // Load all server-stored transactions (deduplicated server-side)
+  const loadAll = useCallback(async(silent=false)=>{
+    try {
+      const res=await fetch(`${BACKEND}/api/transactions/all`);
+      const data=await res.json();
+      if(data.error) return;
+      const arr=[...data.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+      setTxs(arr);
+      LS.set(TX_KEY,arr);
+      setTags(prev=>{ const u=applyAuto(arr,autoTags,prev); LS.set(TAGS_KEY,u); return u; });
+      if(!silent) setStatus(`Loaded ${arr.length} transactions`);
+    } catch(e){ if(!silent) setStatus("Load failed: "+e.message); }
+  },[autoTags,applyAuto]);
+
   const sync = useCallback(async()=>{
     setSyncing(true); setStatus(null);
     try {
       const res=await fetch(`${BACKEND}/api/transactions/sync`);
       const data=await res.json();
       if(data.error) throw new Error(data.error);
-      setTxs(prev=>{
-        const map=Object.fromEntries(prev.map(t=>[t.id,t]));
-        data.removed.forEach(id=>delete map[id]);
-        data.modified.forEach(tx=>{map[tx.id]=tx;});
-        data.added.forEach(tx=>{map[tx.id]=tx;}); // overwrite = deduplicate
-        const arr=Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
-        LS.set(TX_KEY,arr); return arr;
-      });
-      setTags(prev=>{ const u=applyAuto(data.added,autoTags,prev); LS.set(TAGS_KEY,u); return u; });
-      setStatus(data.added.filter(t=>!t.pending).length+" new transactions");
+      // After sync, reload everything from server — guaranteed deduplicated
+      await loadAll(true);
+      setStatus(`Synced · ${data.total_stored} transactions total`);
     } catch(e){setStatus("Sync failed: "+e.message);}
     finally{setSyncing(false);}
-  },[autoTags,applyAuto]);
+  },[loadAll]);
 
   const connectBank=useCallback(async()=>{
     setLinking(true); setStatus(null);
@@ -1067,38 +1085,42 @@ function App() {
             {/* Side-by-side: Money In (lump sum) | Money Out (per property) */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,alignItems:"start"}}>
 
-              {/* LEFT — Money In */}
-              <div>
-                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
-                  ↓ Money In <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· portfolio deposits</span>
-                </div>
-                {AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in").length===0
-                  ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits yet</div>
-                  : <div className="glass" style={{overflow:"hidden"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 36px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
-                        {["DATE","PAYEE","AMOUNT",""].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
-                      </div>
-                      {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
-                        <div key={tx.id}>
-                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 36px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
-                            onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
-                            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
-                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
-                            <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
-                            <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
-                            <button onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}} style={{background:"none",border:"none",color:"var(--text-3)",fontSize:13,cursor:"pointer",padding:0}}>⋯</button>
-                          </div>
-                          {tagging===tx.id&&(
-                            <div style={{padding:"0 14px 10px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
-                              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+              {/* LEFT — Money In: all income tagged to any airbnb property */}
+              {(()=>{
+                const airbnbInTxs = [...enriched.filter(t=>t.type==="in"&&AIRBNB_IDS.includes(t.propId))].sort((a,b)=>b.date.localeCompare(a.date));
+                return (
+                  <div>
+                    <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                      ↓ Money In <span style={{fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· click any row to delete</span>
                     </div>
-                }
-              </div>
+                    {airbnbInTxs.length===0
+                      ? <div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:12}}>No deposits tagged yet — tag income in Feed first</div>
+                      : <div className="glass" style={{overflow:"hidden"}}>
+                          <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"7px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8}}>
+                            {["DATE","PAYEE","AMOUNT"].map(h=><span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>)}
+                          </div>
+                          {airbnbInTxs.map(tx=>(
+                            <div key={tx.id}>
+                              <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s",background:tagging===tx.id?"rgba(0,0,0,0.04)":"transparent"}}
+                                onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
+                                onMouseEnter={e=>{if(tagging!==tx.id)e.currentTarget.style.background="rgba(0,0,0,0.02)"}}
+                                onMouseLeave={e=>{if(tagging!==tx.id)e.currentTarget.style.background="transparent"}}>
+                                <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                                <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
+                                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#30d158"}}>+{fmtD(tx.amount)}</span>
+                              </div>
+                              {tagging===tx.id&&(
+                                <div style={{padding:"6px 14px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"rgba(255,255,255,0.4)"}}>
+                                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                    }
+                  </div>
+                );
+              })()}
 
               {/* RIGHT — Money Out (taggable per property) */}
               <div>
@@ -1114,14 +1136,14 @@ function App() {
                       {[...AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
                         <div key={tx.id}>
                           <div style={{display:"grid",gridTemplateColumns:"72px 1fr 90px 110px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.12s"}}
-                            onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
+                            onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
                             onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.02)"}
                             onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                             <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
                             <div style={{fontSize:12,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
                             <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,color:"#ff453a"}}>-{fmtD(tx.amount)}</span>
                             <div onClick={e=>e.stopPropagation()}>
-                              <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                              <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
                                 <PropBadge id={tx.propId} small/>
                               </span>
                             </div>
@@ -1292,7 +1314,7 @@ function App() {
                     </div>
                     {[...feedDisplayed].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
                       <div key={tx.id}>
-                        <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+                        <div className="tx-row" onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}>
                           <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
                           <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
                           <div>
@@ -1304,7 +1326,7 @@ function App() {
                           </span>
                           <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
                           <div onClick={e=>e.stopPropagation()}>
-                            <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                            <span onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}>
                               <PropBadge id={tx.propId} small/>
                             </span>
                           </div>
