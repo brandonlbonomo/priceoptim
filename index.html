@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="Pigeon"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#eef2f7"/>
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <meta name="theme-color" content="#1a1a2e"/>
+  <link rel="apple-touch-icon" href="/icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
@@ -1115,6 +1115,15 @@ function App() {
   },[tagged,enriched,invest,manualIncome]);
 
   const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
+
+  const clearAllData = () => {
+    if(!window.confirm("Clear all cached transactions and tags? This cannot be undone.")) return;
+    LS.set(TX_KEY, []); LS.set(TAGS_KEY, {}); LS.set(AUTO_KEY, {}); LS.set(MANUAL_KEY, {});
+    setTxs([]); setTags({}); setAutoTags({}); setManualIncome({});
+    // Also clear from server
+    fetch(`${BACKEND}/api/transactions/delete`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:"__ALL__"})}).catch(()=>{});
+    setStatus("All local data cleared");
+  };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
   const TABS=["Portfolio","Airbnb","Pierce","Feed","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
@@ -1416,7 +1425,7 @@ function App() {
               txs={M.propM.pierce.txs}
               tagging={tagging} setTagging={setTagging}
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter="all" setFilter={()=>{}} getSuggestion={getSuggestion}
+              filter={pierceTxFilter} setFilter={setPierceTxFilter} getSuggestion={getSuggestion}
             />
           </div>
         )}
@@ -1460,7 +1469,7 @@ function App() {
         {tab==="Archive"&&(
           <div className="fade-in">
             <div className="page-header">
-              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive</div>
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
               <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
               <div style={{fontSize:12,color:"var(--text-3)",marginTop:4}}>Review and re-tag any transaction below.</div>
             </div>
@@ -1528,6 +1537,21 @@ function App() {
                 </div>
               </>
             )}
+
+            {/* Data management */}
+            <div className="section-title">Data</div>
+            <div className="card card-padded" style={{marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Local Cache</div>
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:12}}>{txs.length} transactions stored locally. If you see expenses with no bank connected, this is leftover data from a previous session — clear it here.</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={clearAllData} style={{background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.2)",borderRadius:10,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                  Clear All Cached Data
+                </button>
+                <button onClick={()=>setShowManual(true)} style={{background:"rgba(0,0,0,0.04)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                  ✎ Manual Income
+                </button>
+              </div>
+            </div>
 
             {/* Auto-tag rules */}
             {Object.keys(autoTags).length>0&&(
