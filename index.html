@@ -1,15 +1,231 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Property Pigeon</title>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
+    :root {
+      --bg: #0a0a0f;
+      --glass: rgba(255,255,255,0.055);
+      --glass-border: rgba(255,255,255,0.10);
+      --glass-hover: rgba(255,255,255,0.09);
+      --green: #30d158;
+      --green-dim: rgba(48,209,88,0.15);
+      --red: #ff453a;
+      --red-dim: rgba(255,69,58,0.15);
+      --blue: #0a84ff;
+      --blue-dim: rgba(10,132,255,0.15);
+      --purple: #bf5af2;
+      --yellow: #ffd60a;
+      --text: #f5f5f7;
+      --text-2: rgba(245,245,247,0.6);
+      --text-3: rgba(245,245,247,0.35);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #080808; color: #e0e0e0; font-family: -apple-system, 'DM Sans', sans-serif; min-height: 100vh; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Figtree', -apple-system, sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(10,132,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(48,209,88,0.08) 0%, transparent 60%);
+    }
     button { cursor: pointer; font-family: inherit; }
-    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #333; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+    /* Glass card */
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .glass-sm {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      backdrop-filter: blur(16px);
+    }
+
+    /* Nav */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      padding: 14px 28px;
+      background: rgba(10,10,15,0.75);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-tab {
+      background: transparent;
+      color: var(--text-3);
+      border: none;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .nav-tab.active {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .nav-tab:hover:not(.active) { color: var(--text-2); }
+
+    /* Pills */
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    /* Big stat */
+    .stat-num {
+      font-family: 'Figtree', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Chart tooltip */
+    .chart-tooltip {
+      position: absolute;
+      background: rgba(20,20,28,0.95);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      pointer-events: none;
+      backdrop-filter: blur(20px);
+      white-space: nowrap;
+      z-index: 50;
+      transform: translateX(-50%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    /* Direction badge */
+    .dir-in  { color: var(--green); font-size: 15px; }
+    .dir-out { color: var(--red);   font-size: 15px; }
+
+    /* Property badge */
+    .prop-badge {
+      display: inline-block;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* Segment control */
+    .seg-ctrl {
+      display: inline-flex;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      border-radius: 7px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.18s;
+    }
+    .seg-btn.active {
+      background: rgba(255,255,255,0.12);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Action button */
+    .btn-ghost {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-2);
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.18s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+    .btn-primary {
+      background: var(--green);
+      border: none;
+      color: #000;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.18s;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Tx row */
+    .tx-row {
+      display: grid;
+      grid-template-columns: 76px 28px 1fr 100px 96px 120px;
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tx-row:hover { background: rgba(255,255,255,0.03); }
+    .tx-row:last-child { border-bottom: none; }
+
+    /* Metric card */
+    .metric-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
   </style>
 </head>
 <body>
@@ -18,90 +234,298 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
-const { useState, useMemo, useEffect, useCallback } = React;
-
+const { useState, useMemo, useEffect, useCallback, useRef } = React;
 const BACKEND = "";
 
+// ── Formatters ────────────────────────────────────────────────
 const fmt$ = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n||0);
-const fmtPct = n => (n==null||isNaN(n)) ? "—" : `${n.toFixed(1)}%`;
-const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d; } };
+const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.abs(n||0));
+const fmtPct = n => (n==null||isNaN(n)||!isFinite(n))?"—":`${n.toFixed(1)}%`;
+const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d||""; } };
+const moLabel = s => { try { const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
 
-// ── Properties & Buckets ──────────────────────────────────────
-// Individual properties — used for tagging
+// ── Properties ────────────────────────────────────────────────
 const PROPERTIES = [
-  { id:"lockwood", label:"Lockwood",         color:"#c8ff00", group:"airbnb" },
-  { id:"everton",  label:"Everton",           color:"#a8e000", group:"airbnb" },
-  { id:"bstreet",  label:"B Street",          color:"#88c000", group:"airbnb" },
-  { id:"pierce",   label:"Pierce Ave",        color:"#60cfff", group:"pierce" },
-  { id:"llc",      label:"General LLC",       color:"#c084fc", group:"llc"    },
-  { id:"transfer", label:"Internal Transfer", color:"#666666", group:"transfer"},
+  { id:"lockwood", label:"Lockwood",          color:"#30d158", group:"airbnb" },
+  { id:"everton",  label:"Everton",            color:"#0a84ff", group:"airbnb" },
+  { id:"bstreet",  label:"B Street",           color:"#5e5ce6", group:"airbnb" },
+  { id:"pierce",   label:"Pierce Ave",         color:"#64d2ff", group:"pierce" },
+  { id:"llc",      label:"General LLC",        color:"#bf5af2", group:"llc"    },
+  { id:"transfer", label:"Internal Transfer",  color:"#636366", group:"transfer"},
 ];
+const AIRBNB_IDS = ["lockwood","everton","bstreet"];
 
-const AIRBNB_PROPS = PROPERTIES.filter(p=>p.group==="airbnb");
-
-// ── Local storage ─────────────────────────────────────────────
+// ── Storage ───────────────────────────────────────────────────
 const LS = {
   get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
   set: (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} },
 };
 const TAGS_KEY    = "pg_tags_v2";
-const AUTOTAG_KEY = "pg_auto_v2";
+const AUTO_KEY    = "pg_auto_v2";
 const TX_KEY      = "pg_txs_v2";
-const DEFAULT_AUTO = {
-  "AIRBNB PAYMENTS":"lockwood",
-  "AIRBNB":"lockwood",
-  "HOUSING AUTHORITY":"pierce",
-};
+const INVEST_KEY  = "pg_invest";
+const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
+const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
 
-// ── Components ────────────────────────────────────────────────
-function Badge({ id, small }) {
+// ── Helpers ───────────────────────────────────────────────────
+function sumIn(txs)  { return txs.filter(t=>t.type==="in" ).reduce((s,t)=>s+Math.abs(t.amount),0); }
+function sumOut(txs) { return txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0); }
+
+// ── PropBadge ─────────────────────────────────────────────────
+function PropBadge({ id, small }) {
   const p = PROPERTIES.find(x=>x.id===id);
-  const pad = small?"2px 7px":"3px 10px";
-  const fs  = small?10:11;
-  if (!p) return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:"rgba(255,200,0,0.12)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.3)"}}>UNTAGGED</span>;
-  return <span style={{padding:pad,fontSize:fs,fontFamily:"monospace",fontWeight:600,borderRadius:4,background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`}}>{p.label.toUpperCase()}</span>;
+  const fs = small ? 9 : 10;
+  const pad = small ? "2px 7px" : "3px 9px";
+  if (!p) return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:"rgba(255,214,10,0.15)",color:"#ffd60a",border:"1px solid rgba(255,214,10,0.25)"}}>UNTAGGED</span>;
+  return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:`${p.color}18`,color:p.color,border:`1px solid ${p.color}30`}}>{p.label.toUpperCase()}</span>;
 }
 
-function Tile({ label, value, sub, accent="#e0e0e0" }) {
+// ── TagMenu ───────────────────────────────────────────────────
+function TagMenu({ tx, onTag, onClose }) {
   return (
-    <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",padding:"18px 20px"}}>
-      <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:7}}>{label}</div>
-      <div style={{fontSize:19,fontWeight:800,color:accent,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{value}</div>
-      {sub&&<div style={{fontSize:11,color:"#444",marginTop:4}}>{sub}</div>}
+    <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px"}}>
+      {PROPERTIES.map(p=>(
+        <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`,borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
+          {p.label}
+        </button>
+      ))}
+      <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
     </div>
   );
 }
 
-function TagMenu({ tx, onTag, onClose }) {
+// ── BarChart with hover tooltip ───────────────────────────────
+function BarChart({ months, colorKey="green", label="Revenue" }) {
+  const [hov, setHov] = useState(null);
+  const vals = months.map(([,v])=> colorKey==="green" ? v.rev : colorKey==="red" ? v.exp : v.rev-v.exp);
+  const max  = Math.max(...vals, 1);
+
   return (
-    <div style={{display:"flex",gap:6,flexWrap:"wrap",padding:"10px 0 4px"}}>
-      {PROPERTIES.map(p=>(
-        <button key={p.id} onClick={()=>onTag(tx.id,p.id)}
-          style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}40`,borderRadius:6,padding:"5px 13px",fontSize:11,fontFamily:"monospace",fontWeight:700}}>
-          {p.label}
-        </button>
-      ))}
-      <button onClick={onClose} style={{background:"transparent",color:"#555",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:"monospace"}}>✕</button>
+    <div style={{position:"relative"}}>
+      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:90,padding:"0 4px"}}>
+        {months.map(([mo,v],i)=>{
+          const val = colorKey==="green"?v.rev:colorKey==="red"?v.exp:v.rev-v.exp;
+          const pct = Math.max(4,(val/max)*100);
+          const color = colorKey==="green"?"#30d158":colorKey==="red"?"#ff453a":val>=0?"#30d158":"#ff453a";
+          return (
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative"}}
+              onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
+              <div style={{
+                width:"100%",borderRadius:"4px 4px 0 0",
+                background: hov===i ? color : `${color}bb`,
+                height:`${pct}%`,
+                transition:"all 0.15s",
+                cursor:"pointer",
+                boxShadow: hov===i ? `0 0 12px ${color}60` : "none",
+              }}/>
+              {hov===i&&(
+                <div className="chart-tooltip" style={{bottom:"calc(100% + 8px)",left:"50%"}}>
+                  <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>{moLabel(mo)}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:color}}>{fmt$(val)}</div>
+                  <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>{label}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",marginTop:6,padding:"0 4px"}}>
+        {months.map(([mo])=>(
+          <div key={mo} style={{flex:1,textAlign:"center",fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{moLabel(mo).slice(0,3)}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── LineChart for projections ─────────────────────────────────
+function LineChart({ data }) {
+  const [hov, setHov] = useState(null);
+  const W=560, H=180, PAD=40;
+  const allVals = data.flatMap(d=>[d.rev,d.exp,d.net]);
+  const minV=Math.min(...allVals), maxV=Math.max(...allVals);
+  const scaleY=v=>PAD+(H-PAD*2)*(1-(v-minV)/(maxV-minV||1));
+  const scaleX=i=>PAD+(W-PAD*2)*(i/(data.length-1));
+  const makePath=key=>data.map((d,i)=>`${i===0?"M":"L"}${scaleX(i)},${scaleY(d[key])}`).join(" ");
+  const lines=[{key:"rev",color:"#30d158",label:"Revenue"},{key:"exp",color:"#ff453a",label:"Expenses"},{key:"net",color:"#0a84ff",label:"Net Income"}];
+
+  return (
+    <div style={{position:"relative"}}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",overflow:"visible"}}>
+        <defs>
+          {lines.map(l=>(
+            <linearGradient key={l.key} id={`grad_${l.key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={l.color} stopOpacity="0.15"/>
+              <stop offset="100%" stopColor={l.color} stopOpacity="0"/>
+            </linearGradient>
+          ))}
+        </defs>
+        {/* Grid lines */}
+        {[0,0.25,0.5,0.75,1].map(f=>(
+          <line key={f} x1={PAD} y1={PAD+(H-PAD*2)*f} x2={W-PAD} y2={PAD+(H-PAD*2)*f}
+            stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="4,4"/>
+        ))}
+        {/* Lines */}
+        {lines.map(l=>(
+          <g key={l.key}>
+            <path d={makePath(l.key)+" L"+scaleX(data.length-1)+","+H+" L"+PAD+","+H+" Z"}
+              fill={`url(#grad_${l.key})`}/>
+            <path d={makePath(l.key)} fill="none" stroke={l.color} strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </g>
+        ))}
+        {/* Hover dots */}
+        {hov!==null&&lines.map(l=>(
+          <circle key={l.key} cx={scaleX(hov)} cy={scaleY(data[hov][l.key])} r="4"
+            fill={l.color} stroke="#0a0a0f" strokeWidth="2"/>
+        ))}
+        {/* X labels */}
+        {data.map((d,i)=>(
+          <text key={i} x={scaleX(i)} y={H} textAnchor="middle"
+            style={{fontSize:9,fill:"rgba(245,245,247,0.35)",fontFamily:"'JetBrains Mono',monospace"}}>
+            {d.year}
+          </text>
+        ))}
+        {/* Hover zone */}
+        {data.map((d,i)=>(
+          <rect key={i} x={scaleX(i)-18} y={0} width={36} height={H}
+            fill="transparent" style={{cursor:"crosshair"}}
+            onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}/>
+        ))}
+      </svg>
+
+      {hov!==null&&(
+        <div className="chart-tooltip" style={{top:10,left:`${(scaleX(hov)/W)*100}%`}}>
+          <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:6}}>{data[hov].year} Projection</div>
+          {lines.map(l=>(
+            <div key={l.key} style={{display:"flex",justifyContent:"space-between",gap:16,marginBottom:2}}>
+              <span style={{fontSize:11,color:l.color}}>{l.label}</span>
+              <span style={{fontSize:11,fontWeight:700,color:l.color}}>{fmt$(data[hov][l.key])}</span>
+            </div>
+          ))}
+          <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",marginTop:4,paddingTop:4,fontSize:10,color:"var(--text-3)"}}>
+            Margin: {fmtPct(data[hov].rev>0?(data[hov].net/data[hov].rev)*100:0)}
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:16,marginTop:10,justifyContent:"center"}}>
+        {lines.map(l=>(
+          <div key={l.key} style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:20,height:2,background:l.color,borderRadius:2}}/>
+            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{l.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── InvestModal ───────────────────────────────────────────────
+function InvestModal({ invest, onSave, onClose }) {
+  const [vals, setVals] = useState({...invest});
+  const props = PROPERTIES.filter(p=>["lockwood","everton","bstreet","pierce"].includes(p.id));
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="glass fade-in" style={{width:400,padding:28}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:6}}>Investment Inputs</div>
+        <div style={{fontSize:12,color:"var(--text-3)",marginBottom:22}}>Enter total capital invested per property for accurate return calculations.</div>
+        {props.map(p=>(
+          <div key={p.id} style={{marginBottom:16}}>
+            <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>{p.label}</div>
+            <div style={{position:"relative"}}>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
+              <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
+                placeholder="0"
+                style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}/>
+            </div>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:10,marginTop:24,justifyContent:"flex-end"}}>
+          <button onClick={onClose} className="btn-ghost">Cancel</button>
+          <button onClick={()=>{onSave(vals);onClose();}} className="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TxList ────────────────────────────────────────────────────
+function TxList({ txs, tagging, setTagging, doTag, filter, setFilter }) {
+  const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
+  const sorted   = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+
+  return (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+        <div className="seg-ctrl">
+          {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
+            <button key={k} className={`seg-btn${filter===k?" active":""}`} onClick={()=>setFilter(k)}>{l}</button>
+          ))}
+        </div>
+        <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{sorted.length} transactions</span>
+      </div>
+
+      {sorted.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"var(--text-3)",fontSize:13}}>No transactions</div>}
+
+      {sorted.length>0&&(
+        <div className="glass" style={{overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8}}>
+            {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
+              <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+            ))}
+          </div>
+          {sorted.map(tx=>(
+            <div key={tx.id}>
+              <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+                <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:500,lineHeight:1.3}}>{tx.payee}</div>
+                  {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
+                </div>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                  {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
+                </span>
+                <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
+                <div onClick={e=>e.stopPropagation()}>
+                  <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                    <PropBadge id={tx.propId} small/>
+                  </span>
+                </div>
+              </div>
+              {tagging===tx.id&&(
+                <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Main App ──────────────────────────────────────────────────
 function App() {
-  const [tab, setTab]           = useState("Feed");
+  const [tab, setTab]           = useState("Portfolio");
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
-  const [autoTags, setAutoTags] = useState(()=>LS.get(AUTOTAG_KEY)||DEFAULT_AUTO);
+  const [autoTags, setAutoTags] = useState(()=>LS.get(AUTO_KEY)||DEFAULT_AUTO);
   const [tagging, setTagging]   = useState(null);
-  const [linkedAccounts, setLinked] = useState([]);
+  const [linked, setLinked]     = useState([]);
   const [syncing, setSyncing]   = useState(false);
   const [status, setStatus]     = useState(null);
   const [linking, setLinking]   = useState(false);
+  const [invest, setInvest]     = useState(()=>LS.get(INVEST_KEY)||DEFAULT_INVEST);
+  const [showInvest, setShowInvest] = useState(false);
   const [feedFilter, setFeedFilter] = useState("untagged");
+  const [txFilter, setTxFilter] = useState("all");
+  const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
+  const [pierceTxFilter, setPierceTxFilter] = useState("all");
 
-  useEffect(()=>{
-    fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{});
-  },[]);
+  useEffect(()=>{ fetch(`${BACKEND}/api/link-status`).then(r=>r.json()).then(d=>setLinked(d.accounts||[])).catch(()=>{}); },[]);
 
   const applyAuto = useCallback((newTxs,at,cur)=>{
     const next={...cur};
@@ -123,37 +547,31 @@ function App() {
         const map=Object.fromEntries(prev.map(t=>[t.id,t]));
         data.removed.forEach(id=>delete map[id]);
         data.modified.forEach(tx=>{map[tx.id]=tx;});
-        data.added.forEach(tx=>{if(!map[tx.id]) map[tx.id]=tx;});
+        data.added.forEach(tx=>{if(!map[tx.id])map[tx.id]=tx;});
         const arr=Object.values(map).sort((a,b)=>b.date.localeCompare(a.date));
         LS.set(TX_KEY,arr); return arr;
       });
-      setTags(prev=>{
-        const updated=applyAuto(data.added,autoTags,prev);
-        LS.set(TAGS_KEY,updated); return updated;
-      });
-      const n=data.added.filter(t=>!t.pending).length;
-      setStatus(n>0?`${n} new transactions pulled`:"Up to date");
+      setTags(prev=>{ const u=applyAuto(data.added,autoTags,prev); LS.set(TAGS_KEY,u); return u; });
+      setStatus(data.added.filter(t=>!t.pending).length+" new transactions");
     } catch(e){setStatus("Sync failed: "+e.message);}
     finally{setSyncing(false);}
   },[autoTags,applyAuto]);
 
-  const connectBank = useCallback(async()=>{
+  const connectBank=useCallback(async()=>{
     setLinking(true); setStatus(null);
     try {
-      const res=await fetch(`${BACKEND}/api/create-link-token`,{method:"POST"});
-      const {link_token,error}=await res.json();
+      const {link_token,error}=await fetch(`${BACKEND}/api/create-link-token`,{method:"POST"}).then(r=>r.json());
       if(error) throw new Error(error);
       window.Plaid.create({
         token:link_token,
-        onSuccess:async(public_token,metadata)=>{
-          const name=metadata?.institution?.name||"Bank Account";
+        onSuccess:async(public_token,meta)=>{
+          const name=meta?.institution?.name||"Bank Account";
           await fetch(`${BACKEND}/api/exchange-token`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({public_token,account_name:name})});
-          setStatus(`${name} connected! Syncing...`);
           const ls=await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
-          setLinked(ls.accounts||[]);
-          setTimeout(sync,800);
+          setLinked(ls.accounts||[]); setStatus(`${name} connected`);
+          setTimeout(sync,600);
         },
-        onExit:err=>{if(err) setStatus("Exited: "+err.display_message);}
+        onExit:err=>{if(err)setStatus("Exited: "+err.display_message);}
       }).open();
     } catch(e){setStatus("Could not open Plaid: "+e.message);}
     finally{setLinking(false);}
@@ -167,171 +585,245 @@ function App() {
   function doTag(txId,propId){
     const tx=txs.find(t=>t.id===txId);
     const nextTags={...tags,[txId]:propId};
-    if(tx?.payee && propId!=="transfer" && propId!=="llc"){
+    if(tx?.payee&&propId!=="transfer"&&propId!=="llc"){
       const key=tx.payee.toUpperCase();
       const nextAuto={...autoTags,[key]:propId};
-      txs.forEach(t=>{if(!nextTags[t.id]&&t.payee?.toUpperCase()===key) nextTags[t.id]=propId;});
-      setAutoTags(nextAuto); LS.set(AUTOTAG_KEY,nextAuto);
+      txs.forEach(t=>{if(!nextTags[t.id]&&t.payee?.toUpperCase()===key)nextTags[t.id]=propId;});
+      setAutoTags(nextAuto); LS.set(AUTO_KEY,nextAuto);
     }
     setTags(nextTags); LS.set(TAGS_KEY,nextTags); setTagging(null);
   }
+
+  const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
 
   const enriched=useMemo(()=>txs.filter(t=>!t.pending).map(tx=>({...tx,propId:tags[tx.id]||null})),[txs,tags]);
   const untagged=enriched.filter(t=>!t.propId);
   const tagged  =enriched.filter(t=>t.propId);
 
   // ── Metrics ──────────────────────────────────────────────
-  const metrics=useMemo(()=>{
-    const forProp=(id,type)=>tagged.filter(t=>t.propId===id&&(type?t.type===type:true));
-    const sumAmt =arr=>arr.reduce((s,t)=>s+Math.abs(t.amount),0);
-    const propMetrics={};
+  const M=useMemo(()=>{
+    const forProp=id=>tagged.filter(t=>t.propId===id);
+    const propM={};
     PROPERTIES.forEach(p=>{
-      const rev=sumAmt(forProp(p.id,"in"));
-      const exp=sumAmt(forProp(p.id,"out"));
-      propMetrics[p.id]={rev,exp,cf:rev-exp,txs:tagged.filter(t=>t.propId===p.id)};
+      const ptxs=forProp(p.id);
+      const rev=sumIn(ptxs), exp=sumOut(ptxs);
+      propM[p.id]={rev,exp,cf:rev-exp,txs:ptxs};
     });
-    const airbnbRev=AIRBNB_PROPS.reduce((s,p)=>s+propMetrics[p.id].rev,0);
-    const airbnbExp=AIRBNB_PROPS.reduce((s,p)=>s+propMetrics[p.id].exp,0);
-    const pierceRev=propMetrics.pierce.rev;
-    const pierceExp=propMetrics.pierce.exp;
-    const llcExp   =propMetrics.llc.exp;
+
+    const airbnbRev=AIRBNB_IDS.reduce((s,id)=>s+propM[id].rev,0);
+    const airbnbExp=AIRBNB_IDS.reduce((s,id)=>s+propM[id].exp,0);
+    const pierceRev=propM.pierce.rev, pierceExp=propM.pierce.exp;
+    const llcExp   =propM.llc.exp;
     const totalRev =airbnbRev+pierceRev;
     const totalExp =airbnbExp+pierceExp+llcExp;
+    const totalCF  =totalRev-totalExp;
 
-    // Monthly breakdown
-    const byMonth={};
-    tagged.filter(t=>t.propId!=="transfer").forEach(t=>{
-      const mo=t.date?.slice(0,7)||"?";
-      if(!byMonth[mo]) byMonth[mo]={rev:0,exp:0};
-      if(t.type==="in")  byMonth[mo].rev+=Math.abs(t.amount);
-      if(t.type==="out") byMonth[mo].exp+=Math.abs(t.amount);
+    // Annualize (scale from months with data)
+    const months = (() => {
+      const mo={};
+      tagged.filter(t=>t.propId!=="transfer").forEach(t=>{
+        const k=t.date?.slice(0,7)||"?";
+        if(!mo[k])mo[k]={rev:0,exp:0};
+        if(t.type==="in")  mo[k].rev+=Math.abs(t.amount);
+        if(t.type==="out") mo[k].exp+=Math.abs(t.amount);
+      });
+      return Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0]));
+    })();
+
+    const moCount = Math.max(months.length, 1);
+    const annualRev = (totalRev/moCount)*12;
+    const annualExp = (totalExp/moCount)*12;
+
+    // Real estate metrics
+    const totalInvest = Object.values(invest).reduce((s,v)=>s+v,0);
+    const netMargin   = totalRev>0?(totalCF/totalRev)*100:null;
+    const cocReturn   = totalInvest>0?(totalCF/totalInvest)*100:null;
+    const annualCoc   = totalInvest>0?((totalCF/moCount*12)/totalInvest)*100:null;
+
+    // Per-property CoC
+    const propCoc={};
+    ["lockwood","everton","bstreet","pierce"].forEach(id=>{
+      const inv=invest[id]||0;
+      propCoc[id]=inv>0?(propM[id].cf/inv)*100:null;
     });
-    const months=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12);
 
-    return {propMetrics,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF:totalRev-totalExp,months};
-  },[tagged]);
+    // 5-year projections (3% annual revenue growth, 2% expense growth)
+    const currentYear=new Date().getFullYear();
+    const projections=Array.from({length:6},(_,i)=>{
+      const yr=currentYear+i;
+      const rev=annualRev*Math.pow(1.03,i);
+      const exp=annualExp*Math.pow(1.02,i);
+      return {year:yr,rev,exp,net:rev-exp};
+    });
 
-  const hasBank=linkedAccounts.length>0;
+    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp};
+  },[tagged,invest]);
+
+  const hasBank=linked.length>0;
   const TABS=["Portfolio","Airbnb","Pierce Ave","Feed"];
-  const maxMonth=Math.max(...metrics.months.map(([,v])=>v.rev+v.exp),1);
-  const displayTxs=feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
-  const hdr=active=>({background:active?"#c8ff00":"transparent",color:active?"#000":"#666",border:"1px solid",borderColor:active?"#c8ff00":"rgba(255,255,255,0.09)",borderRadius:8,padding:"7px 18px",fontSize:12,fontWeight:active?700:500,fontFamily:"monospace",transition:"all 0.15s",position:"relative"});
-  const g3={display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:2,marginBottom:2};
+  // Feed display
+  const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
+  const feedDisplayed = txFilter==="in"?feedTxs.filter(t=>t.type==="in"):txFilter==="out"?feedTxs.filter(t=>t.type==="out"):feedTxs;
 
   return (
-    <div style={{minHeight:"100vh",background:"#080808",color:"#e0e0e0"}}>
+    <div style={{minHeight:"100vh"}}>
 
-      {/* HEADER */}
-      <div style={{padding:"16px 28px",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"rgba(8,8,8,0.97)",backdropFilter:"blur(12px)",zIndex:100}}>
+      {/* NAV */}
+      <nav className="nav">
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:28,height:28,borderRadius:6,background:"#c8ff00",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>🐦</div>
+          <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#30d158,#0a84ff)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 2px 12px rgba(48,209,88,0.3)"}}>🐦</div>
           <div>
-            <div style={{fontSize:14,fontWeight:700}}>Property Pigeon</div>
-            <div style={{fontSize:9,color:"#555",fontFamily:"monospace",letterSpacing:"0.1em"}}>LOCKWOOD · EVERTON · B STREET · PIERCE</div>
+            <div style={{fontSize:14,fontWeight:700,letterSpacing:"-0.01em"}}>Property Pigeon</div>
+            <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",letterSpacing:"0.08em"}}>LOCKWOOD · EVERTON · B STREET · PIERCE</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:5,alignItems:"center"}}>
+        <div style={{display:"flex",gap:2,alignItems:"center"}}>
           {TABS.map(t=>(
-            <button key={t} onClick={()=>setTab(t)} style={hdr(tab===t)}>
+            <button key={t} className={`nav-tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
               {t}
-              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-5,right:-5,background:"#ffb800",color:"#000",borderRadius:"50%",width:15,height:15,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
+              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-4,right:-2,background:"#ffd60a",color:"#000",borderRadius:"50%",width:14,height:14,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
             </button>
           ))}
-          <div style={{width:1,height:20,background:"rgba(255,255,255,0.1)",margin:"0 4px"}}/>
-          <button onClick={connectBank} disabled={linking} style={{background:"rgba(200,255,0,0.1)",color:"#c8ff00",border:"1px solid rgba(200,255,0,0.3)",borderRadius:8,padding:"7px 14px",fontSize:11,fontFamily:"monospace",fontWeight:700}}>
+          <div style={{width:1,height:18,background:"rgba(255,255,255,0.1)",margin:"0 6px"}}/>
+          <button onClick={connectBank} disabled={linking} className="btn-ghost" style={{fontSize:12}}>
             {linking?"Linking...":"+ Add Bank"}
           </button>
-          <button onClick={sync} disabled={syncing||!hasBank} style={{background:"transparent",color:syncing||!hasBank?"#444":"#c8ff00",border:"1px solid",borderColor:syncing||!hasBank?"#333":"rgba(200,255,0,0.3)",borderRadius:8,padding:"7px 14px",fontSize:11,fontFamily:"monospace"}}>
-            {syncing?"Syncing...":"↻ Sync"}
+          <button onClick={sync} disabled={syncing||!hasBank} className="btn-ghost" style={{fontSize:12,color:syncing||!hasBank?"var(--text-3)":"var(--green)"}}>
+            {syncing?"Syncing…":"↻ Sync"}
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* STATUS BAR */}
-      {(status||hasBank)&&(
-        <div style={{background:"rgba(255,255,255,0.02)",borderBottom:"1px solid rgba(255,255,255,0.05)",padding:"7px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-            {linkedAccounts.map(a=>(
-              <div key={a.item_id} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(200,255,0,0.06)",border:"1px solid rgba(200,255,0,0.15)",borderRadius:6,padding:"3px 10px"}}>
-                <div style={{width:5,height:5,borderRadius:"50%",background:"#c8ff00"}}/>
-                <span style={{fontSize:11,fontFamily:"monospace",color:"#c8ff00"}}>{a.name}</span>
-                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"#444",fontSize:13,lineHeight:1,cursor:"pointer",paddingLeft:3}}>×</button>
+      {/* STATUS */}
+      {(hasBank||status)&&(
+        <div style={{padding:"8px 28px",background:"rgba(255,255,255,0.02)",borderBottom:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {linked.map(a=>(
+              <div key={a.item_id} className="pill">
+                <div className="pill-dot"/>
+                <span style={{color:"var(--text-2)"}}>{a.name}</span>
+                <button onClick={()=>removeAccount(a.item_id)} style={{background:"none",border:"none",color:"var(--text-3)",fontSize:13,cursor:"pointer",lineHeight:1,marginLeft:2}}>×</button>
               </div>
             ))}
           </div>
-          {status&&<div style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{status}</div>}
+          {status&&<div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{status}</div>}
         </div>
       )}
 
-      <div style={{maxWidth:1060,margin:"0 auto",padding:"28px 28px 80px"}}>
+      <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 28px 100px"}}>
 
         {/* ── PORTFOLIO ── */}
         {tab==="Portfolio"&&(
-          <div>
-            <div style={{marginBottom:22}}>
-              <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em"}}>All Properties · Live from Plaid</div>
-              <div style={{fontSize:22,fontWeight:700,marginTop:3}}>Portfolio Overview</div>
+          <div className="fade-in">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+              <div>
+                <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>All Properties · Live from Plaid</div>
+                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Portfolio Overview</div>
+              </div>
+              <button onClick={()=>setShowInvest(true)} className="btn-ghost" style={{fontSize:12}}>⚙ Investment Inputs</button>
             </div>
 
-            {!hasBank&&<EmptyBank onConnect={connectBank}/>}
+            {!hasBank&&(
+              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
+                <div style={{fontSize:40,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>No bank connected</div>
+                <div style={{fontSize:13,color:"var(--text-3)",marginBottom:20}}>Click "+ Add Bank" to connect via Plaid</div>
+              </div>
+            )}
 
             {hasBank&&<>
-              <div style={g3}>
-                {[{l:"Gross Revenue",v:fmt$(metrics.totalRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.totalExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.totalCF),a:metrics.totalCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                  <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"24px 22px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                    <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                    <div style={{fontSize:30,fontWeight:800,color:c.a,fontFamily:"monospace",letterSpacing:"-0.02em"}}>{c.v}</div>
+              {/* Top 3 stats */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+                {[
+                  {l:"Gross Revenue",v:fmt$(M.totalRev),a:"var(--green)"},
+                  {l:"Total Expenses",v:fmt$(M.totalExp),a:"var(--red)"},
+                  {l:"Net Cash Flow", v:fmt$(M.totalCF), a:M.totalCF>=0?"var(--green)":"var(--red)"},
+                ].map(c=>(
+                  <div key={c.l} className="glass" style={{padding:"22px 24px"}}>
+                    <div className="stat-label" style={{marginBottom:10}}>{c.l}</div>
+                    <div className="stat-num" style={{color:c.a}}>{c.v}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Per-group summary */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2,marginTop:2,marginBottom:2}}>
+              {/* Real estate metrics */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
                 {[
-                  {l:"Airbnb Portfolio (3 units)",rev:metrics.airbnbRev,exp:metrics.airbnbExp,cf:metrics.airbnbCF,color:"#c8ff00"},
-                  {l:"Pierce Ave · Section 8",    rev:metrics.pierceRev,exp:metrics.pierceExp,cf:metrics.pierceCF,color:"#60cfff"},
+                  {l:"Net Margin",     v:fmtPct(M.netMargin),   sub:"Revenue → profit"},
+                  {l:"Cash-on-Cash",   v:fmtPct(M.cocReturn),   sub:"Total return on invested"},
+                  {l:"Annualized CoC", v:fmtPct(M.annualCoc),   sub:"Projected annual"},
+                  {l:"Expense Ratio",  v:fmtPct(M.totalRev>0?(M.totalExp/M.totalRev)*100:null), sub:"Expenses ÷ revenue"},
+                ].map(m=>(
+                  <div key={m.l} className="metric-card">
+                    <div className="stat-label" style={{marginBottom:8}}>{m.l}</div>
+                    <div style={{fontSize:20,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",color:m.v==="—"?"var(--text-3)":"var(--text)",letterSpacing:"-0.02em"}}>{m.v}</div>
+                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:4}}>{m.sub}{m.l.includes("Cash")&&!invest.lockwood&&!invest.pierce?' · add investment inputs ↑':''}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Property split */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                {[
+                  {l:"Airbnb Portfolio (3 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
+                  {l:"Pierce Ave · Section 8",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"#64d2ff"},
                 ].map(r=>(
-                  <div key={r.l} style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${r.color}20`,padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
-                    <div style={{fontSize:10,color:r.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>{r.l}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>REVENUE</div><div style={{fontSize:16,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(r.rev)}</div></div>
-                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>EXPENSES</div><div style={{fontSize:16,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(r.exp)}</div></div>
-                      <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:4}}>CASH FLOW</div><div style={{fontSize:16,fontWeight:800,color:r.cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(r.cf)}</div></div>
+                  <div key={r.l} className="glass" style={{padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
+                    <div style={{fontSize:10,color:r.color,fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14,fontWeight:700}}>{r.l}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+                      {[{l:"Revenue",v:r.rev,c:"var(--green)"},{l:"Expenses",v:r.exp,c:"var(--red)"},{l:"Cash Flow",v:r.cf,c:r.cf>=0?"var(--green)":"var(--red)"}].map(s=>(
+                        <div key={s.l}><div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>{s.l}</div><div style={{fontSize:18,fontWeight:700,color:s.c,fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(s.v)}</div></div>
+                      ))}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* General LLC */}
-              {metrics.llcExp>0&&(
-                <div style={{background:"rgba(192,132,252,0.05)",border:"1px solid rgba(192,132,252,0.15)",padding:"14px 20px",borderLeft:"3px solid #c084fc",marginBottom:2}}>
-                  <div style={{fontSize:10,color:"#c084fc",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>General LLC Expenses</div>
-                  <div style={{fontSize:20,fontWeight:800,color:"#c084fc",fontFamily:"monospace"}}>{fmt$(metrics.llcExp)}</div>
+              {M.llcExp>0&&(
+                <div className="glass" style={{padding:"14px 20px",marginBottom:10,borderLeft:"3px solid #bf5af2",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:10,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>General LLC Expenses</div>
+                  <div style={{fontSize:20,fontWeight:700,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(M.llcExp)}</div>
                 </div>
               )}
 
-              {/* Monthly chart */}
-              {metrics.months.length>0&&(
-                <div style={{background:"rgba(255,255,255,0.02)",padding:"20px 20px 14px",border:"1px solid rgba(255,255,255,0.06)",marginTop:16}}>
-                  <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16}}>Monthly Revenue vs Expenses</div>
-                  <div style={{display:"flex",gap:3,alignItems:"flex-end",height:70}}>
-                    {metrics.months.map(([mo,v])=>(
-                      <div key={mo} style={{flex:1,display:"flex",gap:1,alignItems:"flex-end",height:"100%"}}>
-                        <div style={{flex:1,background:"#c8ff00",opacity:0.8,height:`${Math.max(3,(v.rev/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
-                        <div style={{flex:1,background:"#ff5c5c",opacity:0.7,height:`${Math.max(3,(v.exp/maxMonth)*100)}%`,borderRadius:"2px 2px 0 0"}}/>
-                      </div>
-                    ))}
+              {/* Charts */}
+              {M.months.length>0&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div className="glass" style={{padding:"20px"}}>
+                    <div className="stat-label" style={{marginBottom:14}}>Monthly Revenue</div>
+                    <BarChart months={M.months} colorKey="green" label="Revenue"/>
                   </div>
-                  <div style={{display:"flex",marginTop:5}}>
-                    {metrics.months.map(([mo])=><div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"#444",fontFamily:"monospace"}}>{mo.slice(5)}</div>)}
+                  <div className="glass" style={{padding:"20px"}}>
+                    <div className="stat-label" style={{marginBottom:14}}>Monthly Expenses</div>
+                    <BarChart months={M.months} colorKey="red" label="Expenses"/>
                   </div>
                 </div>
               )}
 
-              <div style={{marginTop:14,display:"flex",gap:10,alignItems:"center"}}>
-                <div style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{tagged.length} tagged · {untagged.length} untagged</div>
-                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"#ffb800",fontFamily:"monospace",background:"none",border:"none",textDecoration:"underline"}}>tag now →</button>}
+              {/* 5-year projections */}
+              <div className="glass" style={{padding:"22px",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <div>
+                    <div className="stat-label" style={{marginBottom:4}}>5-Year Projection</div>
+                    <div style={{fontSize:12,color:"var(--text-3)"}}>3% annual revenue growth · 2% expense growth · based on current run rate</div>
+                  </div>
+                </div>
+                <LineChart data={M.projections}/>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginTop:16}}>
+                  {M.projections.map(d=>(
+                    <div key={d.year} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"10px 8px",textAlign:"center"}}>
+                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{d.year}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(d.net)}</div>
+                      <div style={{fontSize:9,color:"var(--text-3)",marginTop:3}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)} margin</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>
+                {tagged.length} tagged · {untagged.length} untagged
+                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"var(--yellow)",fontFamily:"'JetBrains Mono',monospace",background:"none",border:"none",textDecoration:"underline",marginLeft:8,cursor:"pointer"}}>tag now →</button>}
               </div>
             </>}
           </div>
@@ -339,211 +831,205 @@ function App() {
 
         {/* ── AIRBNB ── */}
         {tab==="Airbnb"&&(
-          <div>
+          <div className="fade-in">
             <div style={{marginBottom:22}}>
-              <div style={{fontSize:10,color:"#c8ff00",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>● Airbnb Portfolio</div>
-              <div style={{fontSize:22,fontWeight:700}}>Short-Term Rentals · 3 Units</div>
-              <div style={{fontSize:12,color:"#444",marginTop:4}}>Lockwood + Everton + B Street · tagged transactions only</div>
+              <div style={{fontSize:10,color:"var(--green)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Airbnb Portfolio</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 3 Units</div>
             </div>
 
-            {/* Combined Airbnb total */}
-            <div style={g3}>
-              {[{l:"Total Revenue",v:fmt$(metrics.airbnbRev),a:"#c8ff00"},{l:"Total Expenses",v:fmt$(metrics.airbnbExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.airbnbCF),a:metrics.airbnbCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"22px 20px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                  <div style={{fontSize:26,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+              {[{l:"Total Revenue",v:fmt$(M.airbnbRev),a:"var(--green)"},{l:"Total Expenses",v:fmt$(M.airbnbExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.airbnbCF),a:M.airbnbCF>=0?"var(--green)":"var(--red)"}].map(c=>(
+                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
+                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
+                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
                 </div>
               ))}
             </div>
 
-            {/* Individual property breakdown */}
-            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>Individual Properties</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
-              {AIRBNB_PROPS.map(p=>(
-                <PropPL key={p.id} prop={p} txs={metrics.propMetrics[p.id].txs}/>
+            {/* Metrics */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+              {[
+                {l:"Net Margin",     v:fmtPct(M.airbnbRev>0?(M.airbnbCF/M.airbnbRev)*100:null)},
+                {l:"Expense Ratio",  v:fmtPct(M.airbnbRev>0?(M.airbnbExp/M.airbnbRev)*100:null)},
+                {l:"Avg Monthly CF", v:fmt$(M.airbnbCF/M.moCount)},
+              ].map(m=>(
+                <div key={m.l} className="metric-card">
+                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
+                  <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+                </div>
               ))}
             </div>
 
-            {/* All Airbnb transactions */}
-            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>All Airbnb Transactions</div>
-            <TxTable txs={AIRBNB_PROPS.flatMap(p=>metrics.propMetrics[p.id].txs)} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
+            {/* Per-property cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+              {AIRBNB_IDS.map(id=>{
+                const p=PROPERTIES.find(x=>x.id===id);
+                const pm=M.propM[id];
+                const coc=M.propCoc[id];
+                return (
+                  <div key={id} className="glass" style={{padding:"16px 18px",borderTop:`2px solid ${p.color}`}}>
+                    <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>{p.label}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                      {[{l:"Revenue",v:pm.rev,c:"var(--green)"},{l:"Expenses",v:pm.exp,c:"var(--red)"},{l:"Cash Flow",v:pm.cf,c:pm.cf>=0?"var(--green)":"var(--red)"},{l:"CoC Return",v:fmtPct(coc),c:"var(--text)"}].map(s=>(
+                        <div key={s.l}>
+                          <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:3}}>{s.l}</div>
+                          <div style={{fontSize:14,fontWeight:700,color:s.c,fontFamily:"'JetBrains Mono',monospace"}}>{s.l==="CoC Return"?s.v:fmt$(s.v)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {!invest[id]&&<div style={{fontSize:9,color:"var(--text-3)"}}>Add investment → CoC return</div>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>All Airbnb Transactions</div>
+            <TxList
+              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs)}
+              tagging={tagging} setTagging={setTagging} doTag={doTag}
+              filter={airbnbTxFilter} setFilter={setAirbnbTxFilter}
+            />
           </div>
         )}
 
         {/* ── PIERCE AVE ── */}
         {tab==="Pierce Ave"&&(
-          <div>
+          <div className="fade-in">
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:10,color:"#60cfff",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:3}}>● Section 8</div>
-              <div style={{fontSize:22,fontWeight:700}}>1703 Pierce Ave · Niagara Falls</div>
-              <div style={{fontSize:12,color:"#444",marginTop:4}}>Tagged transactions only</div>
+              <div style={{fontSize:10,color:"#64d2ff",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
+              <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · Niagara Falls</div>
             </div>
 
-            <div style={g3}>
-              {[{l:"Gross Rent",v:fmt$(metrics.pierceRev),a:"#60cfff"},{l:"Total Expenses",v:fmt$(metrics.pierceExp),a:"#ff5c5c"},{l:"Net Cash Flow",v:fmt$(metrics.pierceCF),a:metrics.pierceCF>=0?"#c8ff00":"#ff5c5c"}].map(c=>(
-                <div key={c.l} style={{background:"rgba(255,255,255,0.03)",padding:"22px 20px",borderRight:"1px solid rgba(255,255,255,0.05)"}}>
-                  <div style={{fontSize:10,color:"#555",textTransform:"uppercase",letterSpacing:"0.12em",fontFamily:"monospace",marginBottom:8}}>{c.l}</div>
-                  <div style={{fontSize:26,fontWeight:800,color:c.a,fontFamily:"monospace"}}>{c.v}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+              {[{l:"Gross Rent",v:fmt$(M.pierceRev),a:"#64d2ff"},{l:"Total Expenses",v:fmt$(M.pierceExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.pierceCF),a:M.pierceCF>=0?"var(--green)":"var(--red)"}].map(c=>(
+                <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
+                  <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
+                  <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{fontSize:10,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.14em",margin:"20px 0 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",paddingBottom:8}}>Pierce Ave Transactions</div>
-            <TxTable txs={metrics.propMetrics.pierce.txs} tagging={tagging} setTagging={setTagging} doTag={doTag}/>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+              {[
+                {l:"Net Margin",     v:fmtPct(M.pierceRev>0?(M.pierceCF/M.pierceRev)*100:null)},
+                {l:"CoC Return",     v:fmtPct(M.propCoc.pierce)},
+                {l:"Avg Monthly CF", v:fmt$(M.pierceCF/M.moCount)},
+              ].map(m=>(
+                <div key={m.l} className="metric-card">
+                  <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
+                  <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>Pierce Ave Transactions</div>
+            <TxList
+              txs={M.propM.pierce.txs}
+              tagging={tagging} setTagging={setTagging} doTag={doTag}
+              filter={pierceTxFilter} setFilter={setPierceTxFilter}
+            />
           </div>
         )}
 
         {/* ── FEED ── */}
         {tab==="Feed"&&(
-          <div>
+          <div className="fade-in">
             <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:18}}>
               <div>
-                <div style={{fontSize:22,fontWeight:700}}>Transaction Feed</div>
-                <div style={{fontSize:12,color:"#444",marginTop:3}}>Tag each transaction to a property · drives all numbers everywhere</div>
+                <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Transaction Feed</div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginTop:3}}>Tag each transaction · drives all numbers everywhere</div>
               </div>
-              <div style={{display:"flex",gap:5}}>
-                {[{k:"untagged",l:`Untagged (${untagged.length})`},{k:"tagged",l:"Tagged"},{k:"all",l:"All"}].map(o=>(
-                  <button key={o.k} onClick={()=>setFeedFilter(o.k)} style={{background:feedFilter===o.k?"rgba(255,255,255,0.08)":"transparent",color:feedFilter===o.k?"#e0e0e0":"#555",border:"1px solid",borderColor:feedFilter===o.k?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.07)",borderRadius:6,padding:"6px 13px",fontSize:11,fontFamily:"monospace"}}>
-                    {o.l}
-                  </button>
+              <div className="seg-ctrl">
+                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
+                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
                 ))}
               </div>
             </div>
 
             {!hasBank&&(
-              <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
+              <div className="glass" style={{textAlign:"center",padding:"60px 0"}}>
                 <div style={{fontSize:40,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:14}}>No bank connected</div>
-                <button onClick={connectBank} style={{background:"#c8ff00",color:"#000",border:"none",borderRadius:8,padding:"11px 24px",fontSize:13,fontWeight:700,fontFamily:"monospace"}}>Connect Bank →</button>
+                <div style={{fontSize:16,fontWeight:600,marginBottom:14}}>No bank connected</div>
+                <button onClick={connectBank} className="btn-primary">Connect Bank →</button>
               </div>
             )}
 
-            {hasBank&&displayTxs.length===0&&(
-              <div style={{textAlign:"center",padding:"50px 0",color:"#444",fontSize:13}}>
-                {feedFilter==="untagged"?"All transactions tagged ✓":"No transactions yet — hit Sync"}
-              </div>
-            )}
-
-            {hasBank&&displayTxs.length>0&&(
-              <div style={{border:"1px solid rgba(255,255,255,0.07)"}}>
-                <div style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 100px 140px",padding:"9px 16px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
-                  <span>Date</span><span></span><span>Payee</span><span>Amount</span><span>Account</span><span>Property</span>
-                </div>
-                {displayTxs.map(tx=>(
-                  <div key={tx.id}>
-                    <div onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
-                      style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 100px 140px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                    >
-                      <span style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{fmtDate(tx.date)}</span>
-                      <span style={{fontSize:13,textAlign:"center",color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"↓":"↑"}</span>
-                      <div>
-                        <div style={{fontSize:12,fontFamily:"monospace"}}>{tx.payee}</div>
-                        {tx.account&&<div style={{fontSize:10,color:"#444",marginTop:1}}>{tx.account}</div>}
-                      </div>
-                      <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>
-                        {tx.type==="in"?"+":"-"}{fmt$(Math.abs(tx.amount))}
-                      </span>
-                      <span style={{fontSize:10,color:"#444",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account}</span>
-                      <div onClick={e=>e.stopPropagation()}>
-                        {tagging===tx.id
-                          ? <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
-                          : tx.propId
-                            ? <span onClick={e=>{e.stopPropagation();setTagging(tx.id);}}><Badge id={tx.propId} small/></span>
-                            : <button onClick={e=>{e.stopPropagation();setTagging(tx.id);}} style={{background:"rgba(255,184,0,0.1)",color:"#ffb800",border:"1px solid rgba(255,184,0,0.25)",borderRadius:5,padding:"4px 10px",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Tag →</button>
-                        }
-                      </div>
-                    </div>
-                    {tagging===tx.id&&(
-                      <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
-                        <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
-                      </div>
-                    )}
+            {hasBank&&(
+              <>
+                {/* Money In / Money Out filter on feed */}
+                <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+                  <div className="seg-ctrl">
+                    {[["all","All"],["in","Money In"],["out","Money Out"]].map(([k,l])=>(
+                      <button key={k} className={`seg-btn${txFilter===k?" active":""}`} onClick={()=>setTxFilter(k)}>{l}</button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Auto-tag rules */}
-            {Object.keys(autoTags).length>0&&(
-              <div style={{marginTop:22,padding:"16px 18px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)"}}>
-                <div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules (learned)</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {Object.entries(autoTags).map(([payee,pid])=>(
-                    <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:5,padding:"3px 10px"}}>
-                      <span style={{fontSize:10,fontFamily:"monospace",color:"#777"}}>{payee}</span>
-                      <span style={{color:"#444",fontSize:10}}>→</span>
-                      <Badge id={pid} small/>
-                    </div>
-                  ))}
+                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{feedDisplayed.length} transactions</span>
                 </div>
-              </div>
+
+                {feedDisplayed.length===0&&(
+                  <div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:13}}>
+                    {feedFilter==="untagged"?"All transactions tagged ✓":"No transactions yet — hit Sync"}
+                  </div>
+                )}
+
+                {feedDisplayed.length>0&&(
+                  <div className="glass" style={{overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"76px 28px 1fr 100px 96px 120px",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8}}>
+                      {["DATE","","PAYEE","AMOUNT","ACCOUNT","PROPERTY"].map(h=>(
+                        <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+                      ))}
+                    </div>
+                    {[...feedDisplayed].sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>(
+                      <div key={tx.id}>
+                        <div className="tx-row" onClick={()=>setTagging(tagging===tx.id?null:tx.id)}>
+                          <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                          <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:500}}>{tx.payee}</div>
+                            {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
+                          </div>
+                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                            {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
+                          </span>
+                          <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.account||""}</span>
+                          <div onClick={e=>e.stopPropagation()}>
+                            <span onClick={e=>{e.stopPropagation();setTagging(tagging===tx.id?null:tx.id);}}>
+                              <PropBadge id={tx.propId} small/>
+                            </span>
+                          </div>
+                        </div>
+                        {tagging===tx.id&&(
+                          <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                            <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Auto-tag rules */}
+                {Object.keys(autoTags).length>0&&(
+                  <div style={{marginTop:20,padding:"16px 18px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:12}}>
+                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10}}>Auto-Tag Rules</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {Object.entries(autoTags).map(([payee,pid])=>(
+                        <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"3px 10px"}}>
+                          <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
+                          <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
+                          <PropBadge id={pid} small/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function EmptyBank({ onConnect }) {
-  return (
-    <div style={{textAlign:"center",padding:"60px 0",color:"#444"}}>
-      <div style={{fontSize:36,marginBottom:12}}>🏦</div>
-      <div style={{fontSize:15,fontWeight:600,color:"#666",marginBottom:6}}>No bank connected</div>
-      <div style={{fontSize:13,marginBottom:20}}>Click "+ Add Bank" in the header to connect via Plaid.</div>
-    </div>
-  );
-}
-
-function TxTable({ txs, tagging, setTagging, doTag }) {
-  const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
-  if(!sorted.length) return <div style={{color:"#444",fontSize:13,padding:"20px 0",fontFamily:"monospace"}}>No transactions tagged yet.</div>;
-  return (
-    <div style={{border:"1px solid rgba(255,255,255,0.07)"}}>
-      <div style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 140px",padding:"9px 16px",background:"rgba(255,255,255,0.04)",fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.08em",gap:8}}>
-        <span>Date</span><span></span><span>Payee</span><span>Amount</span><span>Property</span>
-      </div>
-      {sorted.map(tx=>(
-        <div key={tx.id}>
-          <div onClick={()=>setTagging(tagging===tx.id?null:tx.id)}
-            style={{display:"grid",gridTemplateColumns:"88px 32px 1fr 100px 140px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center",gap:8,cursor:"pointer"}}
-            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
-            onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-          >
-            <span style={{fontSize:11,color:"#555",fontFamily:"monospace"}}>{fmtDate(tx.date)}</span>
-            <span style={{fontSize:13,textAlign:"center",color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"↓":"↑"}</span>
-            <span style={{fontSize:12,fontFamily:"monospace"}}>{tx.payee}</span>
-            <span style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#c8ff00":"#ff5c5c"}}>{tx.type==="in"?"+":"-"}{fmt$(Math.abs(tx.amount))}</span>
-            <div onClick={e=>e.stopPropagation()}>
-              <span onClick={e=>{e.stopPropagation();setTagging(tx.id);}}><Badge id={tx.propId} small/></span>
-            </div>
-          </div>
-          {tagging===tx.id&&(
-            <div style={{padding:"0 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
-              <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)}/>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PropPL({ prop, txs }) {
-  const rev=txs.filter(t=>t.type==="in").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const exp=txs.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const cf=rev-exp;
-  return (
-    <div style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${prop.color}25`,padding:"16px 18px",borderLeft:`3px solid ${prop.color}`}}>
-      <div style={{fontSize:10,color:prop.color,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,fontWeight:700}}>{prop.label}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Revenue</div><div style={{fontSize:15,fontWeight:800,color:"#c8ff00",fontFamily:"monospace"}}>{fmt$(rev)}</div></div>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Expenses</div><div style={{fontSize:15,fontWeight:800,color:"#ff5c5c",fontFamily:"monospace"}}>{fmt$(exp)}</div></div>
-        <div><div style={{fontSize:9,color:"#555",fontFamily:"monospace",textTransform:"uppercase",marginBottom:3}}>Cash Flow</div><div style={{fontSize:15,fontWeight:800,color:cf>=0?"#c8ff00":"#ff5c5c",fontFamily:"monospace"}}>{fmt$(cf)}</div></div>
-      </div>
-      {txs.length===0&&<div style={{fontSize:10,color:"#444",marginTop:8,fontFamily:"monospace"}}>No transactions tagged</div>}
+      {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
     </div>
   );
 }
