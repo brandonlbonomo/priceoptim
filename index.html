@@ -291,14 +291,16 @@ const moLabel = s => { try { const [y,m]=s.split("-"); return ["Jan","Feb","Mar"
 
 // ── Properties ────────────────────────────────────────────────
 const PROPERTIES = [
-  { id:"lockwood", label:"Lockwood",          color:"#30d158", group:"airbnb" },
-  { id:"everton",  label:"Everton",            color:"var(--text)", group:"airbnb" },
-  { id:"bstreet",  label:"B Street",           color:"var(--text)", group:"airbnb" },
-  { id:"pierce",   label:"Pierce Ave",         color:"var(--text)", group:"pierce" },
-  { id:"llc",      label:"General LLC",        color:"var(--text)", group:"llc"    },
-  { id:"transfer", label:"Internal Transfer",  color:"#636366", group:"transfer"},
+  { id:"airbnb",   label:"Airbnb (portfolio)", color:"#30d158", group:"airbnb" },
+  { id:"lockwood", label:"Lockwood",            color:"#30d158", group:"airbnb" },
+  { id:"everton",  label:"Everton",             color:"var(--text)", group:"airbnb" },
+  { id:"bstreet",  label:"B Street",            color:"var(--text)", group:"airbnb" },
+  { id:"pierce",   label:"Pierce Ave",          color:"var(--text)", group:"pierce" },
+  { id:"llc",      label:"General LLC",         color:"var(--text)", group:"llc"    },
+  { id:"transfer", label:"Internal Transfer",   color:"#636366", group:"transfer"},
 ];
-const AIRBNB_IDS = ["lockwood","everton","bstreet"];
+// All IDs that count as Airbnb revenue/expense
+const AIRBNB_IDS = ["airbnb","lockwood","everton","bstreet"];
 
 // ── Storage ───────────────────────────────────────────────────
 const LS = {
@@ -330,10 +332,20 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div style={{display:"flex",gap:5,flexWrap:"wrap",padding:"8px 0 2px",alignItems:"center"}}>
-      {PROPERTIES.map(p=>(
-        <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{background:`${p.color}15`,color:p.color,border:`1px solid ${p.color}35`,borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
-          {p.label}
-        </button>
+      {PROPERTIES.map((p,i)=>(
+        <React.Fragment key={p.id}>
+          {i===1&&<div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>}
+          {i===5&&<div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>}
+          <button onClick={()=>onTag(tx.id,p.id)} style={{
+            background:p.id==="airbnb"?"rgba(48,209,88,0.12)":"rgba(0,0,0,0.04)",
+            color:p.id==="airbnb"?"#30d158":"var(--text)",
+            border:p.id==="airbnb"?"1px solid rgba(48,209,88,0.35)":"1px solid rgba(0,0,0,0.1)",
+            borderRadius:8,padding:"5px 12px",fontSize:11,
+            fontFamily:"'JetBrains Mono',monospace",fontWeight:p.id==="airbnb"?700:600,cursor:"pointer"
+          }}>
+            {p.label}
+          </button>
+        </React.Fragment>
       ))}
       <div style={{width:1,height:20,background:"rgba(0,0,0,0.1)",margin:"0 2px",flexShrink:0}}/>
       {confirmDelete
@@ -895,7 +907,7 @@ function App() {
 
     // Per-property CoC
     const propCoc={};
-    ["lockwood","everton","bstreet","pierce"].forEach(id=>{
+    ["lockwood","everton","bstreet","pierce"].forEach(id=>{ // per-property CoC only
       const inv=invest[id]||0;
       propCoc[id]=inv>0?(propM[id].cf/inv)*100:null;
     });
@@ -1165,7 +1177,7 @@ function App() {
               Expenses by Property
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
-              {AIRBNB_IDS.map(id=>{
+              {["lockwood","everton","bstreet"].map(id=>{
                 const p=PROPERTIES.find(x=>x.id===id);
                 const pm=M.propM[id];
                 const expTxs=pm.txs.filter(t=>t.type==="out");
@@ -1194,7 +1206,7 @@ function App() {
                   ↓ Money In · portfolio deposits
                 </div>
                 <TxList
-                  txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.some(id=>t.propId===id)||!t.propId))}
+                  txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.includes(t.propId)||!t.propId))}
                   tagging={tagging} setTagging={setTagging}
                   doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
                   filter="in" setFilter={()=>{}}
