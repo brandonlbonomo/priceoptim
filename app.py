@@ -41,7 +41,10 @@ plaid_client = plaid_api.PlaidApi(api_client)
 # store = {
 #   "accounts": [ { "access_token": "...", "item_id": "...", "cursor": "...", "name": "..." } ]
 # }
-STORE_FILE = "/data/plaid_store.json"  # Persistent disk — survives redeploys
+# Use persistent disk if available, fall back to local
+import os as _os
+STORE_FILE = "/data/plaid_store.json" if _os.path.isdir("/data") else "plaid_store.json"
+print(f"Store file: {STORE_FILE}")
 STORE_ENV   = "PLAID_STORE_JSON"  # Render env var — survives deploys and filesystem wipes
 
 def load_store():
