@@ -419,8 +419,8 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
   );
 }
 
-// ── MiniBar — compact sparkline bar chart ─────────────────────
-function MiniBar({ months, valueKey, color, label, fmt=null }) {
+// ── MiniBar — compact sparkline bar chart (clickable) ─────────
+function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null }) {
   const [hov, setHov] = useState(null);
   const H = 72;
   const vals = months.map(([,v])=> {
@@ -437,14 +437,18 @@ function MiniBar({ months, valueKey, color, label, fmt=null }) {
           const val = vals[i];
           const px  = Math.max(3, Math.round((Math.abs(val)/max)*H));
           const c   = color || (val>=0?"#30d158":"#ff453a");
+          const clickable = !!onBarClick;
           return (
-            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative"}}
-              onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
-              <div style={{width:"100%",borderRadius:"2px 2px 0 0",background:hov===i?c:`${c}bb`,height:px,transition:"height 0.3s ease"}}/>
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:clickable?"pointer":"default"}}
+              onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
+              onClick={()=>clickable&&onBarClick(mo,valueKey)}>
+              <div style={{width:"100%",borderRadius:"2px 2px 0 0",background:hov===i?c:`${c}bb`,height:px,transition:"height 0.3s ease",
+                outline:clickable&&hov===i?"2px solid "+c:"none",outlineOffset:1}}/>
               {hov===i&&(
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",left:"50%",fontSize:11}}>
                   <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}</div>
                   <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
+                  {clickable&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>tap to drill in</div>}
                 </div>
               )}
             </div>
@@ -457,6 +461,50 @@ function MiniBar({ months, valueKey, color, label, fmt=null }) {
             opacity: months.length>12 ? (i%3===0?1:0) : 1
           }}>{moLabel(mo).split(" ")[0]}</div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── MonthDrillDown — modal showing transactions for a clicked bar ──
+function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, doBulkDelete, getSuggestion }) {
+  const [tagging, setTagging] = useState(null);
+  // type: "rev" = money in, "exp" = money out, "net" = both
+  const filtered = txs.filter(t => {
+    const k = t.date?.slice(0,7);
+    if(k !== mo) return false;
+    if(type==="rev") return t.type==="in";
+    if(type==="exp") return t.type==="out";
+    return true;
+  });
+  const total = filtered.reduce((s,t)=> t.type==="in" ? s+Math.abs(t.amount) : s-Math.abs(t.amount), 0);
+  const typeLabel = type==="rev"?"Revenue":type==="exp"?"Expenses":"Net";
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:"#f5f5f7",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:680,maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div>
+            <div style={{fontSize:12,color:"var(--text-3)",marginBottom:2}}>{moLabel(mo)} · {typeLabel}</div>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:total>=0?"#30d158":"#ff453a"}}>{fmt$(Math.abs(total))}</div>
+          </div>
+          <button onClick={onClose} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        {/* Transaction list */}
+        <div style={{overflowY:"auto",flex:1,padding:"8px 12px 24px"}}>
+          {filtered.length===0
+            ? <div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:13}}>No transactions for this period</div>
+            : <TxList
+                txs={filtered}
+                tagging={tagging} setTagging={setTagging}
+                doTag={doTag} doDelete={doDelete}
+                doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+                filter="all" setFilter={()=>{}} getSuggestion={getSuggestion}
+              />
+          }
+        </div>
       </div>
     </div>
   );
@@ -863,6 +911,7 @@ function App() {
   const [feedFilter, setFeedFilter] = useState("untagged");
   const [txFilter, setTxFilter] = useState("all");
   const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
+  const [drillDown, setDrillDown] = useState(null); // {mo:"2025-11", type:"rev"|"exp"|"net", txs:[]}
   const [pierceTxFilter, setPierceTxFilter] = useState("all");
 
   useEffect(()=>{
@@ -1211,17 +1260,17 @@ function App() {
             {M.months.length>0&&(<>
               <div className="section-title">Revenue · Month by Month</div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="rev" color="#30d158"/>
+                <MiniBar months={M.months} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
               </div>
 
               <div className="section-title">Expenses · Month by Month</div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="exp" color="#ff453a"/>
+                <MiniBar months={M.months} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
               </div>
 
               <div className="section-title">Net Income · Month by Month</div>
               <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.months} valueKey="net" color={null}/>
+                <MiniBar months={M.months} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
               </div>
 
               <div className="section-title">Net Margin % · Month by Month</div>
@@ -1307,29 +1356,31 @@ function App() {
 
             {/* Month-by-month charts */}
             {M.months.length>0&&(()=>{
-              // Build airbnb-only months from tagged txs + manual income
+              // Build airbnb-only months — manual OVERRIDES Plaid rev for that month
               const aMo={};
+              const manualMos = new Set(Object.keys(manualIncome).filter(k=>manualIncome[k]>0));
               tagged.filter(t=>AIRBNB_IDS.includes(t.propId)).forEach(t=>{
                 const k=t.date?.slice(0,7)||"?";
                 if(!aMo[k])aMo[k]={rev:0,exp:0};
-                if(t.type==="in") aMo[k].rev+=Math.abs(t.amount);
+                // Only count Plaid rev for months NOT covered by manual entry
+                if(t.type==="in"&&!manualMos.has(k)) aMo[k].rev+=Math.abs(t.amount);
                 if(t.type==="out") aMo[k].exp+=Math.abs(t.amount);
               });
               Object.entries(manualIncome).forEach(([k,v])=>{
                 if(!v)return;
                 if(!aMo[k])aMo[k]={rev:0,exp:0};
-                aMo[k].rev+=v;
+                aMo[k].rev=v; // override, not additive
               });
               const aMths=Object.entries(aMo).sort((a,b)=>a[0].localeCompare(b[0]));
               if(aMths.length===0) return null;
               return (
                 <>
                   <div className="section-title">Revenue · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="rev" color="#30d158"/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched.filter(t=>AIRBNB_IDS.includes(t.propId)||(!t.propId&&t.type==="in"))})}/></div>
                   <div className="section-title">Expenses · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="exp" color="#ff453a"/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched.filter(t=>AIRBNB_IDS.includes(t.propId))})}/></div>
                   <div className="section-title">Net Income · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="net" color={null}/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched.filter(t=>AIRBNB_IDS.includes(t.propId)||(!t.propId&&t.type==="in"))})}/></div>
                   <div className="section-title">Net Margin % · Month by Month</div>
                   <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
                 </>
@@ -1414,11 +1465,11 @@ function App() {
               return (
                 <>
                   <div className="section-title">Rent · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="rev" color="#30d158"/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:M.propM.pierce.txs})}/></div>
                   <div className="section-title">Expenses · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="exp" color="#ff453a"/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:M.propM.pierce.txs})}/></div>
                   <div className="section-title">Net Income · Month by Month</div>
-                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="net" color={null}/></div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:M.propM.pierce.txs})}/></div>
                   <div className="section-title">Net Margin % · Month by Month</div>
                   <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
                 </>
@@ -1596,6 +1647,11 @@ function App() {
       </div>
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
+      {drillDown&&<MonthDrillDown mo={drillDown.mo} type={drillDown.type} txs={drillDown.txs}
+        onClose={()=>setDrillDown(null)}
+        doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+        getSuggestion={getSuggestion}
+      />}
       {showManual&&<ManualIncomeModal manual={manualIncome} onSave={saveManual} onClose={()=>setShowManual(false)}/>}
     </div>
   );
