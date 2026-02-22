@@ -11,7 +11,9 @@
   <meta name="apple-mobile-web-app-title" content="Pigeon"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#eef2f7"/>
-  <link rel="apple-touch-icon" href="/icon-192.png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
@@ -316,6 +318,7 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
 const { useState, useMemo, useEffect, useCallback, useRef } = React;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 const BACKEND = "";
 
 // ── Formatters ────────────────────────────────────────────────
@@ -428,7 +431,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null }) {
   const max = Math.max(...vals.map(Math.abs), 1);
   if(months.length===0) return <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)",fontSize:11}}>No data yet</div>;
   return (
-    <div style={{position:"relative"}}>
+    <div style={{position:"relative",paddingTop:32}}>
       <div style={{display:"flex",gap:2,alignItems:"flex-end",height:H}}>
         {months.map(([mo,v],i)=>{
           const val = vals[i];
@@ -852,14 +855,9 @@ function App() {
   const [status, setStatus]     = useState(null);
   const [linking, setLinking]   = useState(false);
   const [invest, setInvest]     = useState(()=>LS.get(INVEST_KEY)||DEFAULT_INVEST);
-  const DEFAULT_MANUAL = {
-    "2025-10": 12550.70,
-    "2025-11": 13972.97,
-    "2025-12": 11850.97,
-    "2026-01": 8472.21,
-    "2026-02": 9574.77,  // in progress — update when month closes
-  };
-  const [manualIncome, setManualIncome] = useState(()=>LS.get(MANUAL_KEY)||DEFAULT_MANUAL);
+  // Manual income starts empty — user fills via ✎ button in nav
+  // Previously-saved entries persist in localStorage
+  const [manualIncome, setManualIncome] = useState(()=>LS.get(MANUAL_KEY)||{});
   const [showManual, setShowManual] = useState(false);
   const [showInvest, setShowInvest] = useState(false);
   const [feedFilter, setFeedFilter] = useState("untagged");
@@ -1116,7 +1114,7 @@ function App() {
     return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,moCount,projections,annualRev,annualExp,quarters};
   },[tagged,enriched,invest,manualIncome]);
 
-  const hasBank=linked.length>0;
+  const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
   const TABS=["Portfolio","Airbnb","Pierce","Feed","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
@@ -1170,6 +1168,14 @@ function App() {
               </div>
             </div>
 
+            {/* Nudge to enter manual income if empty */}
+            {Object.keys(manualIncome).length===0&&(
+              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
+                <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
+              </div>
+            )}
+
             {/* Summary cards */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
               {[
@@ -1189,22 +1195,22 @@ function App() {
             {/* Month-by-month charts */}
             {M.months.length>0&&(<>
               <div className="section-title">Revenue · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8}}>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
                 <MiniBar months={M.months} valueKey="rev" color="#30d158"/>
               </div>
 
               <div className="section-title">Expenses · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8}}>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
                 <MiniBar months={M.months} valueKey="exp" color="#ff453a"/>
               </div>
 
               <div className="section-title">Net Income · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8}}>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
                 <MiniBar months={M.months} valueKey="net" color={null}/>
               </div>
 
               <div className="section-title">Net Margin % · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8}}>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
                 <MiniBar months={M.months} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/>
               </div>
             </>)}
@@ -1262,44 +1268,91 @@ function App() {
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
               <div className="big-num">{fmt$(M.airbnbRev)}</div>
-              <div style={{display:"flex",gap:16,marginTop:6}}>
+              <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.airbnbExp)} expenses</span>
                 <span style={{fontSize:13,color:M.airbnbCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.airbnbCF)} net</span>
+                {M.airbnbRev>0&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct((M.airbnbCF/M.airbnbRev)*100)} margin</span>}
               </div>
             </div>
 
-            {/* Per-property breakdown */}
-            <div className="section-title">By Property</div>
+            {/* KPI cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Gross Revenue",  v:fmt$(M.airbnbRev),  green:true},
+                {l:"Total Expenses", v:fmt$(M.airbnbExp),  red:true},
+                {l:"Net Income",     v:fmt$(M.airbnbCF),   green:M.airbnbCF>=0, red:M.airbnbCF<0},
+                {l:"Net Margin",     v:M.airbnbRev>0?fmtPct((M.airbnbCF/M.airbnbRev)*100):"—", green:M.airbnbCF>=0},
+              ].map(c=>(
+                <div key={c.l} className="card card-padded">
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Month-by-month charts */}
+            {M.months.length>0&&(()=>{
+              // Build airbnb-only months from tagged txs + manual income
+              const aMo={};
+              tagged.filter(t=>AIRBNB_IDS.includes(t.propId)).forEach(t=>{
+                const k=t.date?.slice(0,7)||"?";
+                if(!aMo[k])aMo[k]={rev:0,exp:0};
+                if(t.type==="in") aMo[k].rev+=Math.abs(t.amount);
+                if(t.type==="out") aMo[k].exp+=Math.abs(t.amount);
+              });
+              Object.entries(manualIncome).forEach(([k,v])=>{
+                if(!v)return;
+                if(!aMo[k])aMo[k]={rev:0,exp:0};
+                aMo[k].rev+=v;
+              });
+              const aMths=Object.entries(aMo).sort((a,b)=>a[0].localeCompare(b[0]));
+              if(aMths.length===0) return null;
+              return (
+                <>
+                  <div className="section-title">Revenue · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="rev" color="#30d158"/></div>
+                  <div className="section-title">Expenses · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="exp" color="#ff453a"/></div>
+                  <div className="section-title">Net Income · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="net" color={null}/></div>
+                  <div className="section-title">Net Margin % · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={aMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
+                </>
+              );
+            })()}
+
+            {/* Per-property EXPENSES only (revenue comes in as lump sum, can't split) */}
+            <div className="section-title">Expenses by Property</div>
             <div className="card" style={{marginBottom:8,overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>Property</span>
+                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:"right"}}>Expenses</span>
+              </div>
               {["lockwood","everton","bstreet"].map((id,i)=>{
                 const pm=M.propM[id]; const p=PROPERTIES.find(x=>x.id===id);
+                const pct=M.airbnbExp>0?(pm.exp/M.airbnbExp)*100:0;
                 return (
-                  <div key={id} style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",padding:"13px 16px",borderBottom:i<2?"1px solid rgba(0,0,0,0.05)":"none",gap:12,alignItems:"center"}}>
-                    <span style={{fontSize:13,fontWeight:600}}>{p.label}</span>
-                    <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt$(pm.rev)}</span>
-                    <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</span>
-                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:pm.cf>=0?"#30d158":"#ff453a"}}>{fmt$(pm.cf)}</span>
+                  <div key={id} style={{padding:"12px 16px",borderBottom:i<2?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                      <span style={{fontSize:13,fontWeight:600}}>{p.label}</span>
+                      <span style={{fontSize:13,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt$(pm.exp)}</span>
+                    </div>
+                    <div style={{height:3,background:"rgba(0,0,0,0.06)",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${pct}%`,background:"#ff453a",borderRadius:2}}/>
+                    </div>
+                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:3}}>{pct.toFixed(0)}% of total Airbnb expenses</div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Money In */}
-            <div className="section-title">Money In · Deposits</div>
+            {/* Transactions — unified All/In/Out */}
+            <div className="section-title">Transactions</div>
             <TxList
-              txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.includes(t.propId)||!t.propId))}
+              txs={enriched.filter(t=>AIRBNB_IDS.includes(t.propId)||(t.type==="in"&&!t.propId)||(t.type==="out"&&!t.propId))}
               tagging={tagging} setTagging={setTagging}
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter="in" setFilter={()=>{}} getSuggestion={getSuggestion}
-            />
-
-            {/* Money Out */}
-            <div className="section-title">Money Out · Expenses</div>
-            <TxList
-              txs={enriched.filter(t=>t.type==="out"&&AIRBNB_IDS.some(id=>t.propId===id||!t.propId))}
-              tagging={tagging} setTagging={setTagging}
-              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter="out" setFilter={()=>{}} getSuggestion={getSuggestion}
+              filter={airbnbTxFilter} setFilter={setAirbnbTxFilter} getSuggestion={getSuggestion}
             />
           </div>
         )}
@@ -1310,12 +1363,54 @@ function App() {
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
               <div className="big-num">{fmt$(M.pierceRev)}</div>
-              <div style={{display:"flex",gap:16,marginTop:6}}>
+              <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.pierceExp)} expenses</span>
                 <span style={{fontSize:13,color:M.pierceCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.pierceCF)} net</span>
+                {M.pierceRev>0&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct((M.pierceCF/M.pierceRev)*100)} margin</span>}
               </div>
             </div>
 
+            {/* KPI cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Gross Rent",    v:fmt$(M.pierceRev),  green:true},
+                {l:"Expenses",     v:fmt$(M.pierceExp),   red:true},
+                {l:"Net Income",   v:fmt$(M.pierceCF),    green:M.pierceCF>=0, red:M.pierceCF<0},
+                {l:"Net Margin",   v:M.pierceRev>0?fmtPct((M.pierceCF/M.pierceRev)*100):"—", green:M.pierceCF>=0},
+              ].map(c=>(
+                <div key={c.l} className="card card-padded">
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Month-by-month charts */}
+            {(()=>{
+              const pMo={};
+              M.propM.pierce.txs.forEach(t=>{
+                const k=t.date?.slice(0,7)||"?";
+                if(!pMo[k])pMo[k]={rev:0,exp:0};
+                if(t.type==="in") pMo[k].rev+=Math.abs(t.amount);
+                if(t.type==="out") pMo[k].exp+=Math.abs(t.amount);
+              });
+              const pMths=Object.entries(pMo).sort((a,b)=>a[0].localeCompare(b[0]));
+              if(pMths.length===0) return null;
+              return (
+                <>
+                  <div className="section-title">Rent · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="rev" color="#30d158"/></div>
+                  <div className="section-title">Expenses · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="exp" color="#ff453a"/></div>
+                  <div className="section-title">Net Income · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="net" color={null}/></div>
+                  <div className="section-title">Net Margin % · Month by Month</div>
+                  <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={pMths} valueKey="margin" color="#1a1a2e" fmt={v=>`${v.toFixed(1)}%`}/></div>
+                </>
+              );
+            })()}
+
+            {/* Transactions */}
             <div className="section-title">Transactions</div>
             <TxList
               txs={M.propM.pierce.txs}
@@ -1344,7 +1439,7 @@ function App() {
               </div>
             </div>
 
-            {!hasBank&&(
+            {txs.length===0&&linked.length===0&&(
               <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
                 <div style={{fontSize:32,marginBottom:12}}>🏦</div>
                 <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
@@ -1352,7 +1447,7 @@ function App() {
               </div>
             )}
 
-            {hasBank&&<TxList
+            {(txs.length>0||linked.length>0)&&<TxList
               txs={feedTxs}
               tagging={tagging} setTagging={setTagging}
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
