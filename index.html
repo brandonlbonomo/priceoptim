@@ -309,11 +309,28 @@
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease forwards; }
-    @keyframes slideLeft  { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0); } }
-    @keyframes slideRight { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
-    .slide-left  { animation: slideLeft  0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
-    .slide-right { animation: slideRight 0.28s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
-    .page { touch-action: pan-y; }
+    .page {
+      touch-action: pan-y;
+      overflow: hidden;
+      position: fixed;
+      top: 56px; /* header height */
+      left: 0; right: 0;
+      bottom: 0;
+    }
+    .swipe-track {
+      display: flex;
+      will-change: transform;
+      height: 100%;
+      align-items: flex-start;
+    }
+    .swipe-pane {
+      min-width: 100%;
+      flex-shrink: 0;
+      overflow-y: auto;
+      height: 100%;
+      padding: 0 0 110px 0;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -902,27 +919,74 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
-  const [tabDir, setTabDir]     = useState("left"); // slide direction
-  const swipeRef                = useRef(null);      // tracks touch start
+  const [tabIdx, setTabIdx]     = useState(2); // Portfolio is index 2
+  const trackRef                = useRef(null);
+  const dragRef                 = useRef({active:false, startX:0, startY:0, dx:0, axisLocked:null});
+
+  const TABS_ARR = TABS; // alias
 
   const navigateTab = (t) => {
-    if(t === tab) return;
-    const curIdx = TABS.indexOf(tab);
-    const nextIdx = TABS.indexOf(t);
-    setTabDir(nextIdx > curIdx ? "left" : "right");
+    const idx = TABS.indexOf(t);
+    if(idx === tabIdx) return;
+    setTabIdx(idx);
     setTab(t);
+    // Animate track to new position
+    if(trackRef.current){
+      trackRef.current.style.transition = "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)";
+      trackRef.current.style.transform  = `translateX(${-idx * 100}%)`;
+    }
   };
 
-  // Swipe gesture handler — attach to .page div
-  const onTouchStart = (e) => { swipeRef.current = e.touches[0].clientX; };
-  const onTouchEnd   = (e) => {
-    if(swipeRef.current === null) return;
-    const dx = e.changedTouches[0].clientX - swipeRef.current;
-    swipeRef.current = null;
-    if(Math.abs(dx) < 50) return; // ignore small drags
-    const curIdx = TABS.indexOf(tab);
-    if(dx < 0 && curIdx < TABS.length-1) navigateTab(TABS[curIdx+1]); // swipe left → next
-    if(dx > 0 && curIdx > 0)             navigateTab(TABS[curIdx-1]); // swipe right → prev
+  const onTouchStart = (e) => {
+    const d = dragRef.current;
+    d.active = true;
+    d.startX = e.touches[0].clientX;
+    d.startY = e.touches[0].clientY;
+    d.dx = 0;
+    d.axisLocked = null;
+    if(trackRef.current) trackRef.current.style.transition = "none";
+  };
+
+  const onTouchMove = (e) => {
+    const d = dragRef.current;
+    if(!d.active) return;
+    const dx = e.touches[0].clientX - d.startX;
+    const dy = e.touches[0].clientY - d.startY;
+    // Lock axis on first significant move
+    if(!d.axisLocked){
+      if(Math.abs(dx) > Math.abs(dy) + 4) d.axisLocked = "x";
+      else if(Math.abs(dy) > Math.abs(dx) + 4) d.axisLocked = "y";
+      else return;
+    }
+    if(d.axisLocked !== "x") return;
+    e.preventDefault(); // prevent scroll when swiping horizontally
+    d.dx = dx;
+    const base = -tabIdx * 100;
+    const pct  = (dx / window.innerWidth) * 100;
+    // Resist at edges
+    const resist = (tabIdx === 0 && dx > 0) || (tabIdx === TABS.length-1 && dx < 0);
+    const move = resist ? pct * 0.2 : pct;
+    if(trackRef.current)
+      trackRef.current.style.transform = `translateX(calc(${base}% + ${move * (window.innerWidth/100)}px))`;
+  };
+
+  const onTouchEnd = (e) => {
+    const d = dragRef.current;
+    if(!d.active) return;
+    d.active = false;
+    const dx = d.dx;
+    const curIdx = tabIdx;
+    const threshold = window.innerWidth * 0.3;
+    let nextIdx = curIdx;
+    if(dx < -threshold && curIdx < TABS.length-1) nextIdx = curIdx + 1;
+    if(dx >  threshold && curIdx > 0)             nextIdx = curIdx - 1;
+    const t = TABS[nextIdx];
+    setTabIdx(nextIdx);
+    setTab(t);
+    if(trackRef.current){
+      trackRef.current.style.transition = "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)";
+      trackRef.current.style.transform  = `translateX(${-nextIdx * 100}%)`;
+    }
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
@@ -1306,7 +1370,7 @@ function App() {
     setStatus("All local data cleared");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
-  const TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections","Feed","Archive"];
+  const TABS=["Airbnb","Pierce","Portfolio","Quarterly","Projections","Feed","Archive"];
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
 
   // Tab icons
@@ -1335,6 +1399,9 @@ function App() {
             {syncing?"…":"↻ Sync"}
           </button>}
           <button onClick={()=>setShowManual(true)} style={{background:"transparent",border:"none",color:"var(--text-2)",fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:8,cursor:"pointer",whiteSpace:"nowrap"}}>+ Airbnb Rev</button>
+          <button onClick={()=>navigateTab("Archive")} title="Archive" style={{background:"transparent",border:"none",color:"var(--text-3)",padding:"4px 6px",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          </button>
           <button onClick={connectBank} disabled={linking} style={{background:"#1a1a2e",border:"none",color:"#fff",fontSize:11,fontWeight:600,padding:"6px 12px",borderRadius:10,cursor:"pointer"}}>
             {linking?"…":"+ Bank"}
           </button>
@@ -1342,11 +1409,12 @@ function App() {
       </div>
 
       {/* CONTENT */}
-      <div className="page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="page" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <div ref={trackRef} className="swipe-track" style={{transform:"translateX(-200%)"}}>
 
         {/* ── PORTFOLIO ─────────────────────────────────────────── */}
-        {tab==="Portfolio"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        {true&&(
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
               <div style={{display:"flex",alignItems:"baseline",gap:10}}>
@@ -1441,8 +1509,8 @@ function App() {
         )}
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
-        {tab==="Airbnb"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        {true&&(
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
               <div className="big-num">{fmt$(M.airbnbRev)}</div>
@@ -1551,8 +1619,8 @@ function App() {
         )}
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
-        {tab==="Pierce"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        {true&&(
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
               <div className="big-num">{fmt$(M.pierceRev)}</div>
@@ -1625,8 +1693,8 @@ function App() {
         )}
 
         {/* ── FEED ───────────────────────────────────────────────── */}
-        {tab==="Feed"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        {true&&(
+          <div className="swipe-pane">
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
@@ -1660,18 +1728,18 @@ function App() {
         )}
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
-        {tab==="Quarterly"&&(()=>{
+        {true&&(()=>{
           const qs = M.quarters;
-          if(qs.length===0) return <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
+          if(qs.length===0) return <div className="swipe-pane"><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
 
-          // Helper — delta badge
-          const Delta = ({cur, prev, invert=false}) => {
+          // Helper — delta badge: up=green, down=red. Always. User knows context.
+          const Delta = ({cur, prev}) => {
             if(prev==null||prev===0) return null;
             const pct = ((cur-prev)/Math.abs(prev))*100;
-            const good = invert ? pct<=0 : pct>=0;
-            const sign = pct>=0?"+":"";
+            const up = pct >= 0;
+            const sign = up?"+":"";
             return (
-              <span style={{fontSize:10,fontWeight:700,color:good?"#30d158":"#ff453a",background:good?"rgba(48,209,88,0.1)":"rgba(255,69,58,0.1)",borderRadius:6,padding:"2px 6px",marginLeft:6,fontFamily:"'JetBrains Mono',monospace"}}>
+              <span style={{fontSize:10,fontWeight:700,color:up?"#30d158":"#ff453a",background:up?"rgba(48,209,88,0.1)":"rgba(255,69,58,0.1)",borderRadius:6,padding:"2px 6px",marginLeft:6,fontFamily:"'JetBrains Mono',monospace"}}>
                 {sign}{pct.toFixed(1)}%
               </span>
             );
@@ -1690,7 +1758,7 @@ function App() {
           const yoyQ  = qs.find(q=>q.q===curQ?.q && q.year===curQ?.year-1) || null;
 
           return (
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>All Properties · Combined</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div>
@@ -1716,7 +1784,7 @@ function App() {
                           color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
                           {r.pct?`${r.cur.toFixed(1)}%`:fmt$(r.cur)}
                         </span>
-                        <Delta cur={r.cur} prev={r.prev} invert={r.red}/>
+                        <Delta cur={r.cur} prev={r.prev}/>
                       </div>
                     </div>
                   ))}
@@ -1734,7 +1802,6 @@ function App() {
                     {l:"Expenses",  cur:curQ.exp,    prev:prevQ.exp,    red:true},
                     {l:"Net Income",cur:curQ.net,    prev:prevQ.net,    red:false},
                     {l:"Net Margin",cur:curQ.margin, prev:prevQ.margin, red:false, pct:true},
-                    {l:"Tx Count",  cur:curQ.txCount,prev:prevQ.txCount,red:false, raw:true},
                   ].map((r,i)=>(
                     <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:i<4?"1px solid rgba(0,0,0,0.05)":"none"}}>
                       <div style={{fontSize:13,color:"var(--text-2)",fontWeight:500}}>{r.l}</div>
@@ -1743,7 +1810,7 @@ function App() {
                           color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
                           {r.pct?`${r.cur.toFixed(1)}%`:r.raw?r.cur:fmt$(r.cur)}
                         </span>
-                        <Delta cur={r.cur} prev={r.prev} invert={r.red}/>
+                        <Delta cur={r.cur} prev={r.prev}/>
                       </div>
                     </div>
                   ))}
@@ -1768,7 +1835,7 @@ function App() {
                         color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
                         {r.pct?`${r.cur.toFixed(1)}%`:fmt$(r.cur)}
                       </span>
-                      <Delta cur={r.cur} prev={r.prev} invert={r.red}/>
+                      <Delta cur={r.cur} prev={r.prev}/>
                     </div>
                   </div>
                 ))}
@@ -1790,21 +1857,21 @@ function App() {
               {[...qs].reverse().map((q,i,arr)=>{
                 const prev = arr[i+1];
                 return (
-                  <div key={q.key} style={{display:"grid",gridTemplateColumns:"72px 1fr 1fr 1fr 60px",padding:"12px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
-                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:i===0?"#30d158":"var(--text)"}}>{q.label}</span>
+                  <div key={q.key} style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr 1fr 52px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:6,alignItems:"start",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
+                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:i===0?"#30d158":"var(--text)",paddingTop:3}}>{q.label}</span>
                     <div style={{textAlign:"right"}}>
-                      <span style={{fontSize:11,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#30d158"}}>{fmt$(q.rev)}</span>
-                      {prev&&<Delta cur={q.rev} prev={prev.rev}/>}
+                      <div style={{fontSize:11,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#30d158"}}>{fmt$(q.rev)}</div>
+                      {prev&&<div style={{marginTop:3}}><Delta cur={q.rev} prev={prev.rev}/></div>}
                     </div>
                     <div style={{textAlign:"right"}}>
-                      <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#ff453a"}}>{fmt$(q.exp)}</span>
-                      {prev&&<Delta cur={q.exp} prev={prev.exp} invert/>}
+                      <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#ff453a"}}>{fmt$(q.exp)}</div>
+                      {prev&&<div style={{marginTop:3}}><Delta cur={q.exp} prev={prev.exp}/></div>}
                     </div>
                     <div style={{textAlign:"right"}}>
-                      <span style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:q.net>=0?"#30d158":"#ff453a"}}>{fmt$(q.net)}</span>
-                      {prev&&<Delta cur={q.net} prev={prev.net}/>}
+                      <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:q.net>=0?"#30d158":"#ff453a"}}>{fmt$(q.net)}</div>
+                      {prev&&<div style={{marginTop:3}}><Delta cur={q.net} prev={prev.net}/></div>}
                     </div>
-                    <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:q.margin>=30?"#30d158":q.margin>=0?"var(--text-3)":"#ff453a"}}>{q.margin.toFixed(1)}%</span>
+                    <div style={{textAlign:"right",fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:q.margin>=30?"#30d158":q.margin>=0?"var(--text-3)":"#ff453a",paddingTop:3}}>{q.margin.toFixed(1)}%</div>
                   </div>
                 );
               })}
@@ -1813,7 +1880,7 @@ function App() {
           );
         })()}
 
-        {tab==="Projections"&&(()=>{
+        {true&&(()=>{
           const now = new Date();
           const thisYear = now.getFullYear();
           const thisMo = now.getMonth(); // 0-indexed
@@ -1822,7 +1889,7 @@ function App() {
           const moElapsed = thisMo;
 
           return (
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>5-Year Outlook · as of {now.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Projections</div>
@@ -1931,8 +1998,8 @@ function App() {
           );
         })()}
 
-        {tab==="Archive"&&(
-          <div className={`${tabDir==="left"?"slide-left":"slide-right"}`}>
+        {true&&(
+          <div className="swipe-pane">
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
               <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
@@ -2039,11 +2106,12 @@ function App() {
           </div>
         )}
 
+        </div>{/* end .swipe-track */}
       </div>{/* end .page */}
 
       {/* BOTTOM TAB BAR */}
       <div className="tab-bar">
-        {TABS.map(t=>(
+        {TABS.filter(t=>t!=="Archive").map(t=>(
           <button key={t} className={`tab-item${tab===t?" active":""}`} onClick={()=>navigateTab(t)}>
             {TAB_ICONS[t]}
             <span>{t==="Pierce"?"Pierce":t}</span>
