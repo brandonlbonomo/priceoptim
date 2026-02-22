@@ -292,10 +292,10 @@ const moLabel = s => { try { const [y,m]=s.split("-"); return ["Jan","Feb","Mar"
 // ── Properties ────────────────────────────────────────────────
 const PROPERTIES = [
   { id:"lockwood", label:"Lockwood",          color:"#30d158", group:"airbnb" },
-  { id:"everton",  label:"Everton",            color:"#0a84ff", group:"airbnb" },
-  { id:"bstreet",  label:"B Street",           color:"#5e5ce6", group:"airbnb" },
-  { id:"pierce",   label:"Pierce Ave",         color:"#64d2ff", group:"pierce" },
-  { id:"llc",      label:"General LLC",        color:"#bf5af2", group:"llc"    },
+  { id:"everton",  label:"Everton",            color:"var(--text)", group:"airbnb" },
+  { id:"bstreet",  label:"B Street",           color:"var(--text)", group:"airbnb" },
+  { id:"pierce",   label:"Pierce Ave",         color:"var(--text)", group:"pierce" },
+  { id:"llc",      label:"General LLC",        color:"var(--text)", group:"llc"    },
   { id:"transfer", label:"Internal Transfer",  color:"#636366", group:"transfer"},
 ];
 const AIRBNB_IDS = ["lockwood","everton","bstreet"];
@@ -321,7 +321,7 @@ function PropBadge({ id, small }) {
   const p = PROPERTIES.find(x=>x.id===id);
   const fs = small ? 9 : 10;
   const pad = small ? "2px 7px" : "3px 9px";
-  if (!p) return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:"rgba(255,214,10,0.15)",color:"#ffd60a",border:"1px solid rgba(255,214,10,0.25)"}}>UNTAGGED</span>;
+  if (!p) return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:"rgba(255,214,10,0.15)",color:"var(--text)",border:"1px solid rgba(255,214,10,0.25)"}}>UNTAGGED</span>;
   return <span className="prop-badge" style={{fontSize:fs,padding:pad,background:`${p.color}18`,color:p.color,border:`1px solid ${p.color}30`}}>{p.label.toUpperCase()}</span>;
 }
 
@@ -352,26 +352,32 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
 // ── BarChart with hover tooltip ───────────────────────────────
 function BarChart({ months, colorKey="green", label="Revenue" }) {
   const [hov, setHov] = useState(null);
+  const H = 90;
   const vals = months.map(([,v])=> colorKey==="green" ? v.rev : colorKey==="red" ? v.exp : v.rev-v.exp);
   const max  = Math.max(...vals, 1);
 
+  if(months.length===0) return (
+    <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)",fontSize:12}}>
+      No data — sync transactions
+    </div>
+  );
+
   return (
     <div style={{position:"relative"}}>
-      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:90,padding:"0 4px"}}>
+      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:H,padding:"0 4px"}}>
         {months.map(([mo,v],i)=>{
-          const val = colorKey==="green"?v.rev:colorKey==="red"?v.exp:v.rev-v.exp;
-          const pct = Math.max(4,(val/max)*100);
-          const color = colorKey==="green"?"#30d158":colorKey==="red"?"#ff453a":val>=0?"#30d158":"#ff453a";
+          const val  = colorKey==="green"?v.rev:colorKey==="red"?v.exp:v.rev-v.exp;
+          const px   = Math.max(3, Math.round((val/max)*H));
+          const color= colorKey==="green"?"#30d158":colorKey==="red"?"#ff453a":val>=0?"#30d158":"#ff453a";
           return (
-            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative"}}
+            <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",position:"relative",height:H,justifyContent:"flex-end"}}
               onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
               <div style={{
-                width:"100%",borderRadius:"4px 4px 0 0",
-                background: hov===i ? color : `${color}bb`,
-                height:`${pct}%`,
-                transition:"all 0.15s",
+                width:"100%",borderRadius:"3px 3px 0 0",
+                background: hov===i ? color : `${color}cc`,
+                height:px,
+                transition:"height 0.3s ease, background 0.15s",
                 cursor:"pointer",
-                boxShadow: hov===i ? `0 0 12px ${color}60` : "none",
               }}/>
               {hov===i&&(
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 8px)",left:"50%"}}>
@@ -404,7 +410,7 @@ function ProjectionChart({ data }) {
   const lines=[
     {key:"rev",color:"#30d158",label:"Revenue"},
     {key:"exp",color:"#ff453a",label:"Expenses"},
-    {key:"net",color:"#0a84ff",label:"Net Income"},
+    {key:"net",color:"#444",label:"Net Income"},
   ];
 
   const allVals=data.flatMap(d=>[d.rev,d.exp,d.net]);
@@ -524,7 +530,7 @@ function ProjectionChart({ data }) {
               {l:"Year",     v:yr,           c:"var(--text)"},
               {l:"Revenue",  v:fmt$(d.rev),  c:"#30d158"},
               {l:"Expenses", v:fmt$(d.exp),  c:"#ff453a"},
-              {l:"Net Income",v:fmt$(d.net), c:"#0a84ff"},
+              {l:"Net Income",v:fmt$(d.net), c:d.net>=0?"#30d158":"#ff453a"},
             ].map(item=>(
               <div key={item.l} style={{background:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.7)",borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all 0.1s"}}>
                 <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{item.l}</div>
@@ -594,7 +600,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
   const handleBulkDel = ()  => { doBulkDelete([...selected]); clearSel(); };
 
   const Checkbox = ({id, checked}) => (
-    <div onClick={e=>toggle(id,e)} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"#0a84ff":"rgba(0,0,0,0.2)"}`,background:checked?"#0a84ff":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
+    <div onClick={e=>toggle(id,e)} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"#1a1a2e":"rgba(0,0,0,0.2)"}`,background:checked?"#1a1a2e":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
       {checked&&<span style={{color:"white",fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
     </div>
   );
@@ -960,7 +966,7 @@ function App() {
           {TABS.map(t=>(
             <button key={t} className={`nav-tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
               {t}
-              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-4,right:-2,background:"#ffd60a",color:"#000",borderRadius:"50%",width:14,height:14,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
+              {t==="Feed"&&untagged.length>0&&<span style={{position:"absolute",top:-4,right:-2,background:"rgba(0,0,0,0.12)",color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:8,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{untagged.length}</span>}
             </button>
           ))}
           <div style={{width:1,height:18,background:"rgba(255,255,255,0.1)",margin:"0 6px"}}/>
@@ -1045,7 +1051,7 @@ function App() {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 {[
                   {l:"Airbnb Portfolio (8 units)",rev:M.airbnbRev,exp:M.airbnbExp,cf:M.airbnbCF,color:"#30d158"},
-                  {l:"Pierce Ave · Section 8 · 7 Units",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"#64d2ff"},
+                  {l:"Pierce Ave · Section 8 · 7 Units",    rev:M.pierceRev,exp:M.pierceExp,cf:M.pierceCF,color:"var(--text)"},
                 ].map(r=>(
                   <div key={r.l} className="glass" style={{padding:"18px 20px",borderLeft:`3px solid ${r.color}`}}>
                     <div style={{fontSize:10,color:r.color,fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14,fontWeight:700}}>{r.l}</div>
@@ -1059,9 +1065,9 @@ function App() {
               </div>
 
               {M.llcExp>0&&(
-                <div className="glass" style={{padding:"14px 20px",marginBottom:10,borderLeft:"3px solid #bf5af2",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div style={{fontSize:10,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>General LLC Expenses</div>
-                  <div style={{fontSize:20,fontWeight:700,color:"#bf5af2",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(M.llcExp)}</div>
+                <div className="glass" style={{padding:"14px 20px",marginBottom:10,borderLeft:"3px solid rgba(0,0,0,0.15)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:10,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>General LLC Expenses</div>
+                  <div style={{fontSize:20,fontWeight:700,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(M.llcExp)}</div>
                 </div>
               )}
 
@@ -1084,7 +1090,7 @@ function App() {
 
               <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>
                 {tagged.length} tagged · {untagged.length} untagged
-                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"var(--yellow)",fontFamily:"'JetBrains Mono',monospace",background:"none",border:"none",textDecoration:"underline",marginLeft:8,cursor:"pointer"}}>tag now →</button>}
+                {untagged.length>0&&<button onClick={()=>setTab("Feed")} style={{fontSize:11,color:"var(--text-2)",fontFamily:"'JetBrains Mono',monospace",background:"none",border:"none",textDecoration:"underline",marginLeft:8,cursor:"pointer"}}>tag now →</button>}
               </div>
             </>}
           </div>
@@ -1153,25 +1159,31 @@ function App() {
               })}
             </div>
 
-            {/* Side-by-side: Money In | Money Out — both with bulk select */}
-            <div style={{marginBottom:8,fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>
-              ↓ Money In <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,marginLeft:6,fontSize:10}}>· Airbnb deposits portfolio lump sum</span>
+            {/* Side-by-side: Money In | Money Out */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,alignItems:"start"}}>
+              <div>
+                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↓ Money In · portfolio deposits
+                </div>
+                <TxList
+                  txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.some(id=>t.propId===id)||!t.propId))}
+                  tagging={tagging} setTagging={setTagging}
+                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+                  filter="in" setFilter={()=>{}}
+                />
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(0,0,0,0.07)"}}>
+                  ↑ Money Out · tag to property
+                </div>
+                <TxList
+                  txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
+                  tagging={tagging} setTagging={setTagging}
+                  doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+                  filter="out" setFilter={()=>{}}
+                />
+              </div>
             </div>
-            <TxList
-              txs={enriched.filter(t=>t.type==="in"&&(AIRBNB_IDS.some(id=>t.propId===id)||!t.propId))}
-              tagging={tagging} setTagging={setTagging}
-              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter="in" setFilter={()=>{}}
-            />
-            <div style={{marginTop:20,marginBottom:8,fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>
-              ↑ Money Out <span style={{fontWeight:400,textTransform:"none",letterSpacing:0,marginLeft:6,fontSize:10}}>· tag each expense to a property</span>
-            </div>
-            <TxList
-              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
-              tagging={tagging} setTagging={setTagging}
-              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter="out" setFilter={()=>{}}
-            />
 
 
 
@@ -1183,12 +1195,12 @@ function App() {
         {tab==="Pierce Ave"&&(
           <div className="fade-in">
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:10,color:"#64d2ff",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
+              <div style={{fontSize:10,color:"var(--text)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>● Section 8</div>
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>1703 Pierce Ave · 7 Units · Niagara Falls</div>
             </div>
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
-              {[{l:"Gross Rent",v:fmt$(M.pierceRev),a:"#64d2ff"},{l:"Total Expenses",v:fmt$(M.pierceExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.pierceCF),a:M.pierceCF>=0?"var(--green)":"var(--red)"}].map(c=>(
+              {[{l:"Gross Rent",v:fmt$(M.pierceRev),a:"#30d158"},{l:"Total Expenses",v:fmt$(M.pierceExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.pierceCF),a:M.pierceCF>=0?"var(--green)":"var(--red)"}].map(c=>(
                 <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
                   <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
                   <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
@@ -1269,7 +1281,7 @@ function App() {
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13}}>{d.year}{i===0?" (now)":""}</span>
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#30d158"}}>{fmt$(d.rev)}</span>
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:13,color:"#ff453a"}}>{fmt$(d.exp)}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:d.net>=0?"#0a84ff":"#ff453a"}}>{fmt$(d.net)}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
                   <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text-2)"}}>{fmtPct(d.rev>0?(d.net/d.rev)*100:0)}</span>
                 </div>
               ))}
@@ -1302,9 +1314,9 @@ function App() {
               const metrics = [
                 {key:"rev",    label:"Gross Revenue",  fmt:fmt$,    color:"#30d158"},
                 {key:"exp",    label:"Total Expenses",  fmt:fmt$,    color:"#ff453a"},
-                {key:"net",    label:"Net Income",      fmt:fmt$,    color:"#0a84ff"},
-                {key:"margin", label:"Net Margin",      fmt:v=>`${v.toFixed(1)}%`, color:"#bf5af2"},
-                {key:"expRatio",label:"Expense Ratio",  fmt:v=>`${v.toFixed(1)}%`, color:"#ffd60a"},
+                {key:"net",    label:"Net Income",      fmt:fmt$,    color:"var(--text)"},
+                {key:"margin", label:"Net Margin",      fmt:v=>`${v.toFixed(1)}%`, color:"var(--text)"},
+                {key:"expRatio",label:"Expense Ratio",  fmt:v=>`${v.toFixed(1)}%`, color:"var(--text)"},
               ];
 
               return (
@@ -1348,7 +1360,7 @@ function App() {
                     <div style={{display:"flex",gap:4,alignItems:"flex-end",height:70,marginBottom:8}}>
                       {M.quarters.map(q=>{
                         const pct = Math.max(0, q.margin);
-                        const color = q.margin>=0?"#bf5af2":"#ff453a";
+                        const color = q.margin>=0?"var(--text)":"#ff453a";
                         return (
                           <div key={q.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
                             <span style={{fontSize:8,color:color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{q.margin.toFixed(0)}%</span>
@@ -1388,7 +1400,7 @@ function App() {
                           const delta = prev!==null&&prev!==0?((val-prev)/Math.abs(prev))*100:null;
                           return (
                             <div key={q.key} style={{textAlign:"right"}}>
-                              <div style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#0a84ff":"#ff453a"):m.color}}>{m.fmt(val||0)}</div>
+                              <div style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#30d158":"#ff453a"):m.color}}>{m.fmt(val||0)}</div>
                               {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}%</div>}
                             </div>
                           );
@@ -1425,7 +1437,7 @@ function App() {
                                     <div key={yr} style={{textAlign:"right"}}>
                                       {val!==null
                                         ? <>
-                                            <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#0a84ff":"#ff453a"):m.color}}>{m.fmt(val)}</div>
+                                            <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.key==="net"?(val>=0?"#30d158":"#ff453a"):m.color}}>{m.fmt(val)}</div>
                                             {delta!==null&&<div style={{fontSize:9,color:delta>=0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{delta>=0?"▲":"▼"}{Math.abs(delta).toFixed(0)}% YoY</div>}
                                             <div style={{fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{yr}</div>
                                           </>
@@ -1461,7 +1473,7 @@ function App() {
                           <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{progress}%</div>
                         </div>
                         <div style={{height:4,background:"rgba(0,0,0,0.06)",borderRadius:4,marginBottom:16,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,#0a84ff,#30d158)",borderRadius:4,transition:"width 0.5s"}}/>
+                          <div style={{height:"100%",width:`${progress}%`,background:"#30d158",borderRadius:4,transition:"width 0.5s"}}/>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
                           {metrics.map(m=>(
