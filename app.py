@@ -107,17 +107,17 @@ def exchange_token():
         access_token = response["access_token"]
         item_id      = response["item_id"]
 
-        # Check if already linked (re-link updates cursor only)
+        # Check if already linked — keep cursor so Plaid doesn't replay old transactions
         existing = next((a for a in store["accounts"] if a["item_id"] == item_id), None)
         if existing:
             existing["access_token"] = access_token
-            existing["cursor"]       = None
             existing["name"]         = account_name
+            # DO NOT reset cursor — that causes transaction duplication
         else:
             store["accounts"].append({
                 "access_token": access_token,
                 "item_id":      item_id,
-                "cursor":       None,
+                "cursor":       None,  # None = start from beginning (first link only)
                 "name":         account_name,
             })
 
@@ -142,7 +142,10 @@ def sync_transactions():
     if not store["accounts"]:
         return jsonify({"error": "No bank account linked yet"}), 400
 
-    all_added, all_modified, all_removed = [], [], []
+    # Server-side transaction store — keyed by transaction_id, survives code updates
+    tx_store = store.get("transactions", {})
+
+    all_added, all_modified, all_removed_ids = [], [], []
 
     for account in store["accounts"]:
         try:
@@ -151,7 +154,7 @@ def sync_transactions():
             has_more = True
 
             while has_more:
-                kwargs = {"access_token": account["access_token"], "count": 100}
+                kwargs = {"access_token": account["access_token"], "count": 500}
                 if cursor:
                     kwargs["cursor"] = cursor
                 response = plaid_client.transactions_sync(TransactionsSyncRequest(**kwargs))
@@ -167,34 +170,52 @@ def sync_transactions():
             def normalize(tx):
                 amount = tx.get("amount", 0)
                 return {
-                    "id":        tx.get("transaction_id"),
-                    "date":      str(tx.get("date", "")),
-                    "payee":     tx.get("merchant_name") or tx.get("name", ""),
-                    "amount":    amount,
-                    # Plaid: positive = money OUT, negative = money IN
-                    "type":      "out" if amount > 0 else "in",
-                    "category":  (tx.get("personal_finance_category") or {}).get("primary"),
-                    "pending":   tx.get("pending", False),
-                    "account":   account.get("name", "Bank Account"),
-                    "bucket":    None,  # tagged bucket: airbnb / pierce / llc / transfer
+                    "id":      tx.get("transaction_id"),
+                    "date":    str(tx.get("date", "")),
+                    "payee":   tx.get("merchant_name") or tx.get("name", ""),
+                    "amount":  amount,
+                    "type":    "out" if amount > 0 else "in",
+                    "pending": tx.get("pending", False),
+                    "account": account.get("name", "Bank Account"),
                 }
 
-            all_added    += [normalize(t) for t in added]
+            for tx in added:
+                n = normalize(tx)
+                if n["id"] and not n["pending"]:
+                    tx_store[n["id"]] = n  # upsert — ID is the key, no duplication possible
+            for tx in modified:
+                n = normalize(tx)
+                if n["id"]:
+                    tx_store[n["id"]] = n
+            for r in removed:
+                rid = r.get("transaction_id")
+                if rid and rid in tx_store:
+                    del tx_store[rid]
+                    all_removed_ids.append(rid)
+
+            all_added    += [normalize(t) for t in added if not t.get("pending")]
             all_modified += [normalize(t) for t in modified]
-            all_removed  += [r.get("transaction_id") for r in removed]
 
         except Exception as e:
             print(f"Sync error for {account.get('name')}: {e}")
             continue
 
+    store["transactions"] = tx_store
     save_store(store)
 
     return jsonify({
-        "added":    all_added,
-        "modified": all_modified,
-        "removed":  all_removed,
-        "total":    len(all_added),
+        "added":        all_added,
+        "modified":     all_modified,
+        "removed":      all_removed_ids,
+        "total":        len(all_added),
+        "total_stored": len(tx_store),
     })
+
+# ── Get all stored transactions (called on page load) ─────────
+@app.route("/api/transactions/all")
+def get_all_transactions():
+    tx_store = store.get("transactions", {})
+    return jsonify({"transactions": list(tx_store.values())})
 
 # ── Balances ──────────────────────────────────────────────────
 @app.route("/api/balances")
