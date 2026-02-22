@@ -9,9 +9,9 @@
   <style>
     :root {
       --bg: #0a0a0f;
-      --glass: rgba(255,255,255,0.055);
-      --glass-border: rgba(255,255,255,0.10);
-      --glass-hover: rgba(255,255,255,0.09);
+      --glass: rgba(255,255,255,0.08);
+      --glass-border: rgba(255,255,255,0.14);
+      --glass-hover: rgba(255,255,255,0.12);
       --green: #30d158;
       --green-dim: rgba(48,209,88,0.15);
       --red: #ff453a;
@@ -27,15 +27,52 @@
       --radius-sm: 10px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      background: var(--bg);
+      background: #0d1117;
       color: var(--text);
       font-family: 'Figtree', -apple-system, sans-serif;
       min-height: 100vh;
-      background-image:
-        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(10,132,255,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(48,209,88,0.08) 0%, transparent 60%);
+      position: relative;
+      overflow-x: hidden;
     }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 15% 10%,  rgba(10,132,255,0.45)  0%, transparent 65%),
+        radial-gradient(ellipse 55% 50% at 85% 15%,  rgba(191,90,242,0.35)  0%, transparent 60%),
+        radial-gradient(ellipse 60% 45% at 75% 75%,  rgba(48,209,88,0.30)   0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 10% 80%,  rgba(255,69,58,0.20)   0%, transparent 55%),
+        radial-gradient(ellipse 80% 60% at 50% 50%,  rgba(100,210,255,0.08) 0%, transparent 70%),
+        linear-gradient(160deg, #0d1117 0%, #111827 50%, #0a0f1a 100%);
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(circle 300px at 20% 60%, rgba(48,209,88,0.10) 0%, transparent 70%),
+        radial-gradient(circle 250px at 80% 40%, rgba(10,132,255,0.08) 0%, transparent 70%);
+      animation: driftOrbs 18s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes driftOrbs {
+      0%   { transform: translate(0, 0) scale(1); }
+      33%  { transform: translate(30px, -20px) scale(1.05); }
+      66%  { transform: translate(-20px, 30px) scale(0.97); }
+      100% { transform: translate(15px, -10px) scale(1.02); }
+    }
+
+    #root { position: relative; z-index: 1; }
+
     button { cursor: pointer; font-family: inherit; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -60,7 +97,7 @@
     .nav {
       position: sticky; top: 0; z-index: 100;
       padding: 14px 28px;
-      background: rgba(10,10,15,0.75);
+      background: rgba(13,17,23,0.60);
       backdrop-filter: blur(32px) saturate(1.8);
       -webkit-backdrop-filter: blur(32px) saturate(1.8);
       border-bottom: 1px solid rgba(255,255,255,0.07);
@@ -837,58 +874,83 @@ function App() {
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Short-Term Rentals · 3 Units</div>
             </div>
 
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
-              {[{l:"Total Revenue",v:fmt$(M.airbnbRev),a:"var(--green)"},{l:"Total Expenses",v:fmt$(M.airbnbExp),a:"var(--red)"},{l:"Net Cash Flow",v:fmt$(M.airbnbCF),a:M.airbnbCF>=0?"var(--green)":"var(--red)"}].map(c=>(
+            {/* Top stats — portfolio-level only, no per-property income */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Total Airbnb Revenue",v:fmt$(M.airbnbRev),a:"var(--green)",sub:"Deposited as portfolio lump sum"},
+                {l:"Total Airbnb Expenses",v:fmt$(M.airbnbExp),a:"var(--red)",sub:"Tracked per property below"},
+              ].map(c=>(
                 <div key={c.l} className="glass" style={{padding:"20px 22px"}}>
                   <div className="stat-label" style={{marginBottom:8}}>{c.l}</div>
                   <div className="stat-num" style={{color:c.a,fontSize:28}}>{c.v}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:6}}>{c.sub}</div>
                 </div>
               ))}
             </div>
 
-            {/* Metrics */}
+            {/* Portfolio-level metrics */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
               {[
-                {l:"Net Margin",     v:fmtPct(M.airbnbRev>0?(M.airbnbCF/M.airbnbRev)*100:null)},
-                {l:"Expense Ratio",  v:fmtPct(M.airbnbRev>0?(M.airbnbExp/M.airbnbRev)*100:null)},
-                {l:"Avg Monthly CF", v:fmt$(M.airbnbCF/M.moCount)},
+                {l:"Net Cash Flow",    v:fmt$(M.airbnbCF),  accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
+                {l:"Expense Ratio",   v:fmtPct(M.airbnbRev>0?(M.airbnbExp/M.airbnbRev)*100:null), accent:"var(--text)"},
+                {l:"Avg Monthly CF",  v:fmt$(M.airbnbCF/M.moCount), accent:M.airbnbCF>=0?"var(--green)":"var(--red)"},
               ].map(m=>(
                 <div key={m.l} className="metric-card">
                   <div className="stat-label" style={{marginBottom:6}}>{m.l}</div>
-                  <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{m.v}</div>
+                  <div style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:m.accent||"var(--text)"}}>{m.v}</div>
                 </div>
               ))}
             </div>
 
-            {/* Per-property cards */}
+            {/* Per-property EXPENSES only */}
+            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              Expenses by Property
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
               {AIRBNB_IDS.map(id=>{
                 const p=PROPERTIES.find(x=>x.id===id);
                 const pm=M.propM[id];
-                const coc=M.propCoc[id];
+                const expTxs=pm.txs.filter(t=>t.type==="out");
+                const pct=M.airbnbExp>0?(pm.exp/M.airbnbExp)*100:0;
                 return (
                   <div key={id} className="glass" style={{padding:"16px 18px",borderTop:`2px solid ${p.color}`}}>
                     <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>{p.label}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                      {[{l:"Revenue",v:pm.rev,c:"var(--green)"},{l:"Expenses",v:pm.exp,c:"var(--red)"},{l:"Cash Flow",v:pm.cf,c:pm.cf>=0?"var(--green)":"var(--red)"},{l:"CoC Return",v:fmtPct(coc),c:"var(--text)"}].map(s=>(
-                        <div key={s.l}>
-                          <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:3}}>{s.l}</div>
-                          <div style={{fontSize:14,fontWeight:700,color:s.c,fontFamily:"'JetBrains Mono',monospace"}}>{s.l==="CoC Return"?s.v:fmt$(s.v)}</div>
-                        </div>
-                      ))}
+                    <div style={{marginBottom:10}}>
+                      <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:4}}>Total Expenses</div>
+                      <div style={{fontSize:22,fontWeight:700,color:"var(--red)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(pm.exp)}</div>
                     </div>
-                    {!invest[id]&&<div style={{fontSize:9,color:"var(--text-3)"}}>Add investment → CoC return</div>}
+                    {/* Expense share bar */}
+                    <div style={{background:"rgba(255,255,255,0.06)",borderRadius:4,height:4,marginBottom:6,overflow:"hidden"}}>
+                      <div style={{width:`${pct}%`,height:"100%",background:p.color,borderRadius:4,transition:"width 0.5s ease"}}/>
+                    </div>
+                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{pct.toFixed(0)}% of total expenses · {expTxs.length} transactions</div>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{marginBottom:6,fontSize:13,fontWeight:600}}>All Airbnb Transactions</div>
+            {/* Revenue deposits — lump sum, tagged to portfolio not per property */}
+            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              Revenue Deposits <span style={{color:"var(--text-3)",fontWeight:400,textTransform:"none",fontSize:10,letterSpacing:0,marginLeft:6}}>· Airbnb pays as portfolio lump sum</span>
+            </div>
             <TxList
-              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs)}
+              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="in")}
               tagging={tagging} setTagging={setTagging} doTag={doTag}
-              filter={airbnbTxFilter} setFilter={setAirbnbTxFilter}
+              filter="in" setFilter={()=>{}}
             />
+
+            <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",margin:"22px 0 10px",paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              Expenses by Property
+            </div>
+            <TxList
+              txs={AIRBNB_IDS.flatMap(id=>M.propM[id].txs).filter(t=>t.type==="out")}
+              tagging={tagging} setTagging={setTagging} doTag={doTag}
+              filter="out" setFilter={()=>{}}
+            />
+
+
+
+
           </div>
         )}
 
