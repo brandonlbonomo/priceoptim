@@ -418,7 +418,7 @@ const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("
 const moLabel = s => { try { if(s&&/^\d{4}-Q\d$/.test(s)){const[y,q]=s.split("-");return `${q} '${y.slice(2)}`;} const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
 
 // ── Properties ────────────────────────────────────────────────
-const PROPERTIES = [
+const BASE_PROPERTIES = [
   { id:"airbnb",   label:"Airbnb (portfolio)", color:"#30d158", group:"airbnb" },
   { id:"lockwood", label:"Lockwood",            color:"#30d158", group:"airbnb" },
   { id:"everton",  label:"Everton",             color:"var(--text)", group:"airbnb" },
@@ -427,8 +427,10 @@ const PROPERTIES = [
   { id:"llc",      label:"General LLC",         color:"var(--text)", group:"llc"    },
   { id:"transfer", label:"Internal Transfer",   color:"#636366", group:"transfer"},
 ];
+let PROPERTIES = [...BASE_PROPERTIES];
 // All IDs that count as Airbnb revenue/expense
-const AIRBNB_IDS = ["airbnb","lockwood","everton","bstreet"];
+const BASE_AIRBNB_IDS = ["airbnb","lockwood","everton","bstreet"];
+let AIRBNB_IDS = [...BASE_AIRBNB_IDS];
 
 // ── Storage ───────────────────────────────────────────────────
 const LS = {
@@ -440,6 +442,7 @@ const AUTO_KEY    = "pg_auto_v2";
 const TX_KEY      = "pg_txs_v2";
 const INVEST_KEY  = "pg_invest";
 const MANUAL_KEY  = "pg_manual_income"; // { "2025-10": 12550.70, "2025-11": 13972.97, ... }
+const CUSTOM_PROPS_KEY = "pg_custom_props";
 const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
 const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
 
@@ -463,19 +466,11 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isIn = tx.type === "in";
 
-  const inOptions  = [
-    {id:"airbnb", label:"Airbnb"},
-    {id:"pierce", label:"Pierce Ave"},
-    {id:"transfer",label:"Transfer"},
-  ];
-  const outOptions = [
-    {id:"lockwood",label:"Lockwood"},
-    {id:"everton", label:"Everton"},
-    {id:"bstreet", label:"B Street"},
-    {id:"pierce",  label:"Pierce Ave"},
-    {id:"llc",     label:"LLC"},
-    {id:"transfer",label:"Transfer"},
-  ];
+  const STATIC_IDS = new Set(['airbnb','lockwood','everton','bstreet','pierce','llc','transfer']);
+  const customOpts = PROPERTIES.filter(p=>!STATIC_IDS.has(p.id)).map(p=>({id:p.id,label:p.label}));
+  const inOptions  = [{id:"airbnb",label:"Airbnb"},{id:"pierce",label:"Pierce Ave"},{id:"transfer",label:"Transfer"},...customOpts];
+  const outOptions = [{id:"lockwood",label:"Lockwood"},{id:"everton",label:"Everton"},{id:"bstreet",label:"B Street"},
+                     {id:"pierce",label:"Pierce Ave"},{id:"llc",label:"LLC"},{id:"transfer",label:"Transfer"},...customOpts];
   const opts = isIn ? inOptions : outOptions;
 
   const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(0,0,0,0.1)",background:"rgba(255,255,255,0.7)",color:"var(--text)",transition:"all 0.12s"};
@@ -1015,8 +1010,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
-const TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections"];
-const FEED_IDX=5; // Feed pane lives at index 5 in the swipe track, accessed via "view all"
+const BASE_TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections"];
 
 
 // ── Rule Prompt Modal — Copilot-style "apply to all?" ────────────
@@ -1059,7 +1053,7 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
 
 // ── Settings Page ─────────────────────────────────────────────────
 function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSaveSettings,
-  archived, doRestore, doTag, linked, onRemoveAccount, onClearAll }) {
+  archived, doRestore, doTag, linked, onRemoveAccount, onClearAll, customProps=[], onDeleteProp }) {
   const [section, setSection] = React.useState("main");
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
@@ -1121,6 +1115,23 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           {toggle("New transactions","notifications")}
           {toggle("Daily sync at 7am","autoSync")}
         </div>
+        {customProps.length>0&&<>
+          <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+            padding:"8px 20px 6px"}}>Properties</div>
+          <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
+            {customProps.map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+                <div>
+                  <div style={{fontSize:15,color:"#1c1c1e",fontWeight:500}}>{p.label}</div>
+                  <div style={{fontSize:12,color:"#636366"}}>{p.isAirbnb?"Airbnb property":"Non-Airbnb property"}</div>
+                </div>
+                <button onClick={()=>{if(window.confirm(`Delete "${p.label}"? Transactions will become untagged.`))onDeleteProp(p.id);}}
+                  style={{background:"none",border:"none",color:"#ff3b30",fontSize:14,cursor:"pointer",padding:"4px 8px"}}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </>}
         <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Account</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
@@ -1183,10 +1194,78 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   );
 }
 
+// ── AddPropertyModal ──────────────────────────────────────────
+function AddPropertyModal({ onSave, onClose }) {
+  const [name, setName] = React.useState("");
+  const [isAirbnb, setIsAirbnb] = React.useState(false);
+  const nameRef = React.useRef(null);
+  React.useEffect(()=>{ nameRef.current?.focus(); },[]);
+  const handleSave = () => {
+    if(!name.trim()) return;
+    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") + "-" + Date.now().toString(36);
+    onSave({ id, label: name.trim(), isAirbnb });
+  };
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",
+      justifyContent:"flex-end",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(8px)"}}>
+      <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,
+          margin:"0 auto 20px",cursor:"pointer"}} onClick={onClose}/>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"#636366",
+          textTransform:"uppercase",marginBottom:8}}>Add Property</div>
+        <input
+          ref={nameRef}
+          value={name} onChange={e=>setName(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter") handleSave(); }}
+          placeholder="Property name"
+          style={{width:"100%",boxSizing:"border-box",fontSize:17,padding:"12px 14px",
+            border:"1px solid rgba(0,0,0,0.15)",borderRadius:12,outline:"none",marginBottom:16,
+            fontFamily:"inherit",color:"#1c1c1e"}}
+        />
+        <div style={{display:"flex",gap:8,marginBottom:name.trim()&&isAirbnb?8:16}}>
+          {[{v:false,l:"Non-Airbnb"},{v:true,l:"Airbnb"}].map(opt=>(
+            <button key={String(opt.v)} onClick={()=>setIsAirbnb(opt.v)}
+              style={{flex:1,padding:"10px",border:`1.5px solid ${isAirbnb===opt.v?"#007aff":"rgba(0,0,0,0.15)"}`,
+                borderRadius:10,fontSize:14,fontWeight:isAirbnb===opt.v?600:400,
+                color:isAirbnb===opt.v?"#007aff":"#636366",
+                background:isAirbnb===opt.v?"rgba(0,122,255,0.07)":"transparent",cursor:"pointer"}}>
+              {opt.l}
+            </button>
+          ))}
+        </div>
+        {isAirbnb&&<div style={{fontSize:12,color:"#636366",marginBottom:16,padding:"8px 12px",
+          background:"rgba(0,0,0,0.04)",borderRadius:8}}>
+          No separate tab — rolled into Airbnb aggregate
+        </div>}
+        <button onClick={handleSave} disabled={!name.trim()}
+          style={{width:"100%",padding:"15px",borderRadius:12,fontSize:16,fontWeight:600,
+            border:"none",cursor:name.trim()?"pointer":"default",
+            background:name.trim()?"#1a1a2e":"rgba(0,0,0,0.08)",
+            color:name.trim()?"#fff":"rgba(0,0,0,0.3)"}}>
+          Add Property
+        </button>
+        <button onClick={onClose} style={{width:"100%",marginTop:8,padding:"12px",background:"none",
+          border:"none",fontSize:15,color:"#636366",cursor:"pointer"}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
-  const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
+  const [tabIdx, setTabIdx]     = useState(0);
+  const [customProps, setCustomProps] = useState(()=>LS.get(CUSTOM_PROPS_KEY)||[]);
+  const [showAddProp, setShowAddProp] = useState(false);
+
+  // Dynamic tabs: base 5 + any non-Airbnb custom props
+  const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
+  const feedIdx    = tabs.length;
+  const archiveIdx = tabs.length + 1;
+
+  // Sync module-level mutable arrays so PropBadge/TagMenu child components see current properties
+  PROPERTIES = [...BASE_PROPERTIES,...customProps.map(p=>({id:p.id,label:p.label,color:"var(--text)",group:p.isAirbnb?"airbnb":p.id}))];
+  AIRBNB_IDS = [...BASE_AIRBNB_IDS,...customProps.filter(p=>p.isAirbnb).map(p=>p.id)];
   // Center active pill in nav when tabIdx changes
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
@@ -1225,19 +1304,18 @@ function App() {
     track.style.transform = `translateX(${offset}px)`;
   };
 
-  const ARCHIVE_IDX = 6; // Archive is always last pane, outside TABS
   const navigateTab = (t) => {
     if(t === "Archive"){
-      setTab("Archive"); setTabIdx(ARCHIVE_IDX);
-      setTrackPos(-ARCHIVE_IDX * window.innerWidth, true);
+      setTab("Archive"); setTabIdx(archiveIdx);
+      setTrackPos(-archiveIdx * window.innerWidth, true);
       return;
     }
     if(t === "Feed"){
-      setTab("Feed"); setTabIdx(FEED_IDX);
-      setTrackPos(-FEED_IDX * window.innerWidth, true);
+      setTab("Feed"); setTabIdx(feedIdx);
+      setTrackPos(-feedIdx * window.innerWidth, true);
       return;
     }
-    const idx = TABS.indexOf(t);
+    const idx = tabs.indexOf(t);
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
     setTrackPos(-idx * window.innerWidth, true);
@@ -1246,6 +1324,7 @@ function App() {
 
 
   const onTouchStart = (e) => {
+    if(tabIdx >= feedIdx) return; // block swipe navigation from Feed or Archive panes
     const d = drag.current;
     d.active = true; d.axis = null;
     d.startX = d.lastX = e.touches[0].clientX;
@@ -1276,7 +1355,7 @@ function App() {
     d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
     const atStart = tabIdx===0 && dx>0;
-    const atEnd   = tabIdx===TABS.length-1 && dx<0;
+    const atEnd   = tabIdx===tabs.length-1 && dx<0;
     const clampedDx = atStart ? Math.min(dx*0.06,16) : atEnd ? Math.max(dx*0.06,-16) : dx;
     setTrackPos(base + clampedDx, false);
     // Slide nav track so active pill stays centered proportionally during drag
@@ -1303,9 +1382,9 @@ function App() {
     const dx = d.lastX - d.startX;
     const vw = window.innerWidth;
     let next = tabIdx;
-    if(dx < -vw*0.25 && tabIdx < TABS.length-1) next = tabIdx+1;
+    if(dx < -vw*0.25 && tabIdx < tabs.length-1) next = tabIdx+1;
     if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
-    setTab(TABS[next] !== undefined ? TABS[next] : tab); setTabIdx(next);
+    setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
     setTrackPos(-next*vw, true);
     // Animate nav pill to final position with same timing as swipe track
     centerNavPill(next, true);
@@ -1560,6 +1639,16 @@ function App() {
 
   const saveInvest=vals=>{ setInvest(vals); LS.set(INVEST_KEY,vals); };
 
+  const saveCustomProp = p => {
+    const next=[...customProps,p]; setCustomProps(next); LS.set(CUSTOM_PROPS_KEY,next); setShowAddProp(false);
+  };
+  const deleteCustomProp = id => {
+    const newTags={...tags};
+    Object.keys(newTags).forEach(k=>{ if(newTags[k]===id) delete newTags[k]; });
+    setTags(newTags); serverSaveTags(newTags);
+    const next=customProps.filter(p=>p.id!==id); setCustomProps(next); LS.set(CUSTOM_PROPS_KEY,next);
+  };
+
   // Server sync — write to localStorage AND server. localStorage = instant fallback if server fails.
   const serverSaveTags = useCallback((nextTags) => {
     LS.set(TAGS_KEY, nextTags);
@@ -1786,8 +1875,8 @@ function App() {
       {/* TOP NAV */}
       <div className="top-nav" ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
-          {TABS.map(t=>(
-            <button key={t} className={`top-nav-pill${TABS[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
+          {tabs.map(t=>(
+            <button key={t} className={`top-nav-pill${tabs[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
               {t}
             </button>
           ))}
@@ -2356,6 +2445,48 @@ function App() {
         })()}
         </div>
 
+        {/* ── CUSTOM PROPERTY PANES ──────────────────────────────── */}
+        {customProps.filter(p=>!p.isAirbnb).map(p=>{
+          const cMo = {};
+          enriched.filter(t=>t.propId===p.id).forEach(t=>{
+            const mo=t.date?.slice(0,7); if(!mo) return;
+            if(!cMo[mo]) cMo[mo]={rev:0,exp:0};
+            if(t.type==="in") cMo[mo].rev+=Math.abs(t.amount); else cMo[mo].exp+=Math.abs(t.amount);
+          });
+          const cMths=Object.entries(cMo).sort(([a],[b])=>a<b?-1:1).map(([mo,v])=>[mo,{...v,net:v.rev-v.exp,margin:v.rev>0?((v.rev-v.exp)/v.rev)*100:0}]);
+          const totRev=cMths.reduce((s,[,v])=>s+v.rev,0), totExp=cMths.reduce((s,[,v])=>s+v.exp,0), totCF=totRev-totExp;
+          return (
+            <div className="swipe-pane" key={p.id}>
+              <div className="page-header">
+                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>{p.label}</div>
+                <div className="big-num">{fmt$(totRev)}</div>
+                <div style={{display:"flex",gap:16,marginTop:6}}>
+                  <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(totExp)} expenses</span>
+                  <span style={{fontSize:13,color:totCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(totCF)} net</span>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                {[{l:"Gross Revenue",v:fmt$(totRev),green:true},{l:"Expenses",v:fmt$(totExp),red:true},
+                  {l:"Net Income",v:fmt$(totCF),green:totCF>=0,red:totCF<0},
+                  {l:"Net Margin",v:totRev>0?fmtPct((totCF/totRev)*100):"—",green:totCF>=0}].map(c=>(
+                  <div key={c.l} className="card card-padded">
+                    <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                    <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                  </div>
+                ))}
+              </div>
+              {cMths.length>0&&<>
+                <div className="section-title">Revenue · Month by Month</div>
+                <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={cMths} valueKey="rev" color="#30d158"/></div>
+                <div className="section-title">Expenses · Month by Month</div>
+                <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={cMths} valueKey="exp" color="#ff453a"/></div>
+                <div className="section-title">Net Income · Month by Month</div>
+                <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}><MiniBar months={cMths} valueKey="net" color={null}/></div>
+              </>}
+            </div>
+          );
+        })}
+
         {/* ── FEED ───────────────────────────────────────────────── */}
         <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
@@ -2506,30 +2637,94 @@ function App() {
 
       {/* SIDE DRAWER */}
       {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column"}}>
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
         {/* Drawer header */}
-        <div style={{padding:"20px 20px 12px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
             <span style={{fontWeight:700,fontSize:14,letterSpacing:"-0.01em"}}>Property Pigeon</span>
           </div>
-          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>✕</button>
+          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+          </button>
         </div>
-        {/* Menu items */}
+
+        {/* NAVIGATE section */}
+        {(()=>{
+          const DRAWER_ICONS = {
+            "Portfolio":    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="8" width="3" height="6" rx="0.5"/><rect x="6.5" y="5" width="3" height="9" rx="0.5"/><rect x="12" y="2" width="3" height="12" rx="0.5"/></svg>,
+            "Airbnb":       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6l7-5 7 5v8a1 1 0 01-1 1H2a1 1 0 01-1-1z"/><polyline points="6 15 6 8 10 8 10 15"/></svg>,
+            "Pierce":       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="12" height="9" rx="1"/><path d="M5 6V4a3 3 0 016 0v2"/><line x1="8" y1="9" x2="8" y2="12"/></svg>,
+            "Quarterly":    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="8" y1="2" x2="8" y2="14"/></svg>,
+            "Projections":  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 5 7 9 9 15 3"/><polyline points="11 3 15 3 15 7"/></svg>,
+            "Feed":         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>,
+            "Archive":      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="14" height="4" rx="1"/><path d="M2 5v8a1 1 0 001 1h10a1 1 0 001-1V5"/><line x1="6" y1="8" x2="10" y2="8"/></svg>,
+          };
+          const customIcon = <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><line x1="5" y1="7" x2="11" y2="7"/></svg>;
+          const navRows = [
+            ...tabs.map(t => ({ label: t, icon: DRAWER_ICONS[t] || customIcon, isTab: true })),
+            { label: "Transactions", icon: DRAWER_ICONS["Feed"], isTab: false, action: ()=>{navigateTab("Feed");setShowDrawer(false);} },
+            { label: "Archive",      icon: DRAWER_ICONS["Archive"], isTab: false, action: ()=>{navigateTab("Archive");setShowDrawer(false);} },
+          ];
+          return (
+            <>
+              <div style={{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"var(--text-3)",
+                fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",
+                padding:"14px 20px 6px",flexShrink:0}}>Navigate</div>
+              {navRows.map((item,i)=>{
+                const isActive = item.isTab && tabs[tabIdx]===item.label;
+                return (
+                  <button key={item.label+i} onClick={item.isTab ? ()=>{navigateTab(item.label);setShowDrawer(false);} : item.action}
+                    style={{background:isActive?"rgba(128,128,128,0.08)":"transparent",border:"none",
+                      padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
+                      gap:12,cursor:"pointer",textAlign:"left",width:"100%",
+                      color:isActive?"var(--text)":"var(--text-2)",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <span style={{flexShrink:0,opacity:isActive?1:0.7}}>{item.icon}</span>
+                      <span style={{fontSize:15,fontWeight:isActive?600:500}}>{item.label}</span>
+                    </div>
+                    <span style={{color:"var(--text-3)",fontSize:16}}>›</span>
+                  </button>
+                );
+              })}
+            </>
+          );
+        })()}
+
+        {/* ACTIONS section */}
+        <div style={{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"var(--text-3)",
+          fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",
+          padding:"14px 20px 6px",borderTop:"1px solid rgba(128,128,128,0.1)",flexShrink:0,marginTop:4}}>Actions</div>
         {[
-          {icon:"⚙", label:"Settings",           action:()=>{setShowSettings(true);setShowDrawer(false);}},
-          {icon:"＋", label:"Airbnb Revenue",     action:()=>{setShowManual(true);setShowDrawer(false);}},
-          {icon:"🏠", label:"Add New Property",   action:()=>{}},
-          {icon:"🗂", label:"Archived / Deleted", action:()=>{navigateTab("Archive");setShowDrawer(false);}},
-          {icon:"🏦", label:"Add Bank",           action:()=>{connectBank();setShowDrawer(false);}},
-        ].map(item=>(
-          <button key={item.label} onClick={item.action} style={{background:"transparent",border:"none",borderBottom:"1px solid rgba(128,128,128,0.08)",padding:"0 20px",height:56,display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",width:"100%",color:"var(--text)",fontSize:15,fontWeight:500,flexShrink:0}}>
-            <span style={{fontSize:20,width:26,textAlign:"center",flexShrink:0}}>{item.icon}</span>
-            <span>{item.label}</span>
+          { label:"Airbnb Revenue",
+            icon:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="8" r="7"/><line x1="8" y1="4" x2="8" y2="12"/><line x1="4" y1="8" x2="12" y2="8"/></svg>,
+            action:()=>{setShowManual(true);setShowDrawer(false);}},
+          { label:"Add Property",
+            icon:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/></svg>,
+            action:()=>{setShowAddProp(true);setShowDrawer(false);}},
+          { label:"Add Bank",
+            icon:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="1" y="4" width="14" height="10" rx="1.5"/><line x1="1" y1="8" x2="15" y2="8"/><line x1="4" y1="11.5" x2="6" y2="11.5"/></svg>,
+            action:()=>{connectBank();setShowDrawer(false);}},
+          { label:"Settings",
+            icon:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
+            action:()=>{setShowSettings(true);setShowDrawer(false);}},
+        ].map((item,i,arr)=>(
+          <button key={item.label} onClick={item.action}
+            style={{background:"transparent",border:"none",
+              borderBottom:i<arr.length-1?"1px solid rgba(128,128,128,0.07)":"none",
+              padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
+              gap:12,cursor:"pointer",textAlign:"left",width:"100%",
+              color:"var(--text-2)",flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <span style={{flexShrink:0,opacity:0.7}}>{item.icon}</span>
+              <span style={{fontSize:15,fontWeight:500}}>{item.label}</span>
+            </div>
+            <span style={{color:"var(--text-3)",fontSize:16}}>›</span>
           </button>
         ))}
       </div>
 
+      {showAddProp&&<AddPropertyModal onSave={saveCustomProp} onClose={()=>setShowAddProp(false)}/>}
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
       {drillDown&&<MonthDrillDown mo={drillDown.mo} type={drillDown.type} txs={drillDown.txs}
         onClose={()=>setDrillDown(null)}
@@ -2545,6 +2740,7 @@ function App() {
       />}
       {showSettings&&<SettingsPage
         onClose={()=>setShowSettings(false)}
+        customProps={customProps} onDeleteProp={deleteCustomProp}
         autoTags={autoTags} rules={rules}
         onDeleteRule={payee=>{
           const nr={...rules}; delete nr[payee];
