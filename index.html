@@ -1310,6 +1310,7 @@ function App() {
   const [customProps, setCustomProps] = useState(()=>LS.get(CUSTOM_PROPS_KEY)||[]);
   const [showAddProp, setShowAddProp] = useState(false);
   const [lastSync, setLastSync]       = useState(()=>LS.get(LAST_SYNC_KEY)||null);
+  const [drawerHomesExpanded, setDrawerHomesExpanded] = useState(false);
   const subNavRef                     = useRef(null);
 
   // Dynamic tabs: base 5 + any non-Airbnb custom props
@@ -1463,6 +1464,8 @@ function App() {
   const [settings, setSettings]   = useState({darkMode:false,notifications:true});
   const [showSettings, setShowSettings] = useState(false);
   const [showDrawer, setShowDrawer]     = useState(false);
+  // Auto-expand Homes when drawer opens while on a property sub-pane
+  useEffect(()=>{ if(showDrawer && isPortfolioGroup && tabIdx!==0) setDrawerHomesExpanded(true); },[showDrawer]);
   const [rulePrompt, setRulePrompt]     = useState(null); // {txId, payee, propId}
   const [tagging, setTagging]   = useState(null);
   const [linked, setLinked]     = useState([]);
@@ -2727,42 +2730,80 @@ function App() {
 
         {/* NAVIGATE section */}
         {(()=>{
-          const DRAWER_ICONS = {
-            "Portfolio":    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="8" width="3" height="6" rx="0.5"/><rect x="6.5" y="5" width="3" height="9" rx="0.5"/><rect x="12" y="2" width="3" height="12" rx="0.5"/></svg>,
-            "Airbnb":       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6l7-5 7 5v8a1 1 0 01-1 1H2a1 1 0 01-1-1z"/><polyline points="6 15 6 8 10 8 10 15"/></svg>,
-            "Pierce":       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="12" height="9" rx="1"/><path d="M5 6V4a3 3 0 016 0v2"/><line x1="8" y1="9" x2="8" y2="12"/></svg>,
-            "Quarterly":    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="8" y1="2" x2="8" y2="14"/></svg>,
-            "Projections":  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 5 7 9 9 15 3"/><polyline points="11 3 15 3 15 7"/></svg>,
-            "Feed":         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>,
-            "Archive":      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="14" height="4" rx="1"/><path d="M2 5v8a1 1 0 001 1h10a1 1 0 001-1V5"/><line x1="6" y1="8" x2="10" y2="8"/></svg>,
+          const ICO = {
+            portfolio:   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="8" width="3" height="6" rx="0.5"/><rect x="6.5" y="5" width="3" height="9" rx="0.5"/><rect x="12" y="2" width="3" height="12" rx="0.5"/></svg>,
+            homes:       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 6l7-5 7 5v8a1 1 0 01-1 1H2a1 1 0 01-1-1z"/><polyline points="6 15 6 8 10 8 10 15"/></svg>,
+            quarterly:   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="14" height="12" rx="1.5"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="8" y1="2" x2="8" y2="14"/></svg>,
+            projections: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 12 5 7 9 9 15 3"/><polyline points="11 3 15 3 15 7"/></svg>,
+            feed:        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="14" y2="8"/><line x1="4" y1="12" x2="14" y2="12"/><circle cx="1.5" cy="4" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="8" r="0.8" fill="currentColor" stroke="none"/><circle cx="1.5" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>,
+            archive:     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1" width="14" height="4" rx="1"/><path d="M2 5v8a1 1 0 001 1h10a1 1 0 001-1V5"/><line x1="6" y1="8" x2="10" y2="8"/></svg>,
+            custom:      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="12" height="9" rx="1"/><path d="M5 6V4a3 3 0 016 0v2"/><line x1="8" y1="9" x2="8" y2="12"/></svg>,
           };
-          const customIcon = <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z"/><line x1="5" y1="7" x2="11" y2="7"/></svg>;
-          const navRows = [
-            ...tabs.map(t => ({ label: t, icon: DRAWER_ICONS[t] || customIcon, isTab: true })),
-            { label: "Transactions", icon: DRAWER_ICONS["Feed"], isTab: false, action: ()=>{navigateTab("Feed");setShowDrawer(false);} },
-            { label: "Archive",      icon: DRAWER_ICONS["Archive"], isTab: false, action: ()=>{navigateTab("Archive");setShowDrawer(false);} },
-          ];
+          const homeTabs = ["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)];
+          const isHomesActive = isPortfolioGroup && tabIdx !== 0;
+          const row = (icon, label, isActive, onClick) => (
+            <button onClick={onClick}
+              style={{background:isActive?"rgba(128,128,128,0.08)":"transparent",border:"none",
+                padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
+                gap:12,cursor:"pointer",textAlign:"left",width:"100%",
+                color:isActive?"var(--text)":"var(--text-2)",flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <span style={{flexShrink:0,opacity:isActive?1:0.7}}>{icon}</span>
+                <span style={{fontSize:15,fontWeight:isActive?600:500}}>{label}</span>
+              </div>
+              <span style={{color:"var(--text-3)",fontSize:16}}>›</span>
+            </button>
+          );
           return (
             <>
               <div style={{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"var(--text-3)",
                 fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",
                 padding:"14px 20px 6px",flexShrink:0}}>Navigate</div>
-              {navRows.map((item,i)=>{
-                const isActive = item.isTab && tabs[tabIdx]===item.label;
+
+              {/* Portfolio */}
+              {row(ICO.portfolio, "Portfolio", tabIdx===0, ()=>{navigateTab("Portfolio");setShowDrawer(false);})}
+
+              {/* Homes — expandable accordion */}
+              <button onClick={()=>setDrawerHomesExpanded(v=>!v)}
+                style={{background:isHomesActive?"rgba(128,128,128,0.08)":"transparent",border:"none",
+                  padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
+                  gap:12,cursor:"pointer",textAlign:"left",width:"100%",
+                  color:isHomesActive?"var(--text)":"var(--text-2)",flexShrink:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{flexShrink:0,opacity:isHomesActive?1:0.7}}>{ICO.homes}</span>
+                  <span style={{fontSize:15,fontWeight:isHomesActive?600:500}}>Homes</span>
+                </div>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  style={{transition:"transform 0.2s",transform:drawerHomesExpanded?"rotate(90deg)":"rotate(0deg)",color:"var(--text-3)"}}>
+                  <polyline points="4 2 8 6 4 10"/>
+                </svg>
+              </button>
+
+              {/* Homes sub-rows */}
+              {drawerHomesExpanded&&homeTabs.map(t=>{
+                const active = tabs[tabIdx]===t;
+                const icon = t==="Airbnb" ? ICO.homes : ICO.custom;
                 return (
-                  <button key={item.label+i} onClick={item.isTab ? ()=>{navigateTab(item.label);setShowDrawer(false);} : item.action}
-                    style={{background:isActive?"rgba(128,128,128,0.08)":"transparent",border:"none",
-                      padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
-                      gap:12,cursor:"pointer",textAlign:"left",width:"100%",
-                      color:isActive?"var(--text)":"var(--text-2)",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <span style={{flexShrink:0,opacity:isActive?1:0.7}}>{item.icon}</span>
-                      <span style={{fontSize:15,fontWeight:isActive?600:500}}>{item.label}</span>
+                  <button key={t} onClick={()=>{navigateTab(t);setShowDrawer(false);}}
+                    style={{background:active?"rgba(128,128,128,0.08)":"transparent",border:"none",
+                      padding:"0 20px 0 52px",height:44,display:"flex",alignItems:"center",
+                      justifyContent:"space-between",gap:12,cursor:"pointer",textAlign:"left",
+                      width:"100%",color:active?"var(--text)":"var(--text-3)",flexShrink:0,
+                      borderTop:"1px solid rgba(128,128,128,0.05)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{flexShrink:0,opacity:active?1:0.6}}>{icon}</span>
+                      <span style={{fontSize:13,fontWeight:active?600:400}}>{t}</span>
                     </div>
-                    <span style={{color:"var(--text-3)",fontSize:16}}>›</span>
+                    {active&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 5 3.5 8 9 2"/></svg>}
                   </button>
                 );
               })}
+
+              {row(ICO.quarterly,   "Quarterly",    tabs[tabIdx]==="Quarterly",    ()=>{navigateTab("Quarterly");setShowDrawer(false);})}
+              {row(ICO.projections, "Projections",  tabs[tabIdx]==="Projections",  ()=>{navigateTab("Projections");setShowDrawer(false);})}
+              {row(ICO.feed,        "Transactions",  false,                         ()=>{navigateTab("Feed");setShowDrawer(false);})}
+              {row(ICO.archive,     "Archive",       false,                         ()=>{navigateTab("Archive");setShowDrawer(false);})}
             </>
           );
         })()}
