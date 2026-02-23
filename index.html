@@ -132,21 +132,26 @@
       background: transparent;
       border: none;
       color: var(--text-3);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      padding: 6px 16px;
+      padding: 6px 14px;
       border-radius: 20px;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.18s;
+      transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
       flex-shrink: 0;
+      transform: scale(0.9);
+      opacity: 0.6;
     }
     .top-nav-pill.active {
-      background: rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.09);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       color: var(--text);
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 15px;
+      transform: scale(1.0);
+      opacity: 1;
     }
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
@@ -536,9 +541,10 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
   const typeLabel = type==="rev"?"Revenue":type==="exp"?"Expenses":"Net";
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"#f5f5f7",borderRadius:20,width:"100%",maxWidth:680,maxHeight:"85vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 24px 80px rgba(0,0,0,0.35)"}}>
+      <div style={{background:"#f5f5f7",borderRadius:"20px 20px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -8px 40px rgba(0,0,0,0.25)"}}>
+        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
         {/* Header */}
         <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div>
@@ -946,7 +952,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
-const TABS=["Airbnb","Pierce","Portfolio","Quarterly","Projections","Feed"];
+const TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections","Feed"];
 
 
 // ── Rule Prompt Modal — Copilot-style "apply to all?" ────────────
@@ -1119,9 +1125,8 @@ function App() {
   const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
-    // Portfolio is index 2 — start centered on it
-    const initIdx = TABS.indexOf("Portfolio");
-    if(trackRef.current) trackRef.current.style.transform = `translateX(${-initIdx*window.innerWidth}px)`;
+    // Portfolio is index 0 — start at translateX(0)
+    if(trackRef.current) trackRef.current.style.transform = "translateX(0px)";
     // Measure actual header + top-nav height for page-outer
     const headerH = headerRef.current?.offsetHeight || 56;
     const navH = document.querySelector(".top-nav")?.offsetHeight || 44;
@@ -1690,6 +1695,159 @@ function App() {
         {pullLabel&&<div className="pull-label visible" style={{position:"absolute",top:0,left:0,right:0,zIndex:50}}>{pullLabel}</div>}
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+          <div style={{minHeight:"100%"}}>
+            <div className="page-header">
+              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                <div className="big-num">{fmt$(M.totalRev)}</div>
+                <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
+              </div>
+              <div style={{display:"flex",gap:16,marginTop:6}}>
+                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.totalExp)} expenses</span>
+                <span style={{fontSize:13,color:M.totalCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.totalCF)} net</span>
+                {M.netMargin!==null&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct(M.netMargin)} margin</span>}
+              </div>
+            </div>
+
+            {/* Nudge to enter manual income if empty */}
+            {Object.keys(manualIncome).length===0&&(
+              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
+                <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
+              </div>
+            )}
+
+            {/* Summary cards */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[
+                {l:"Airbnb Revenue",  v:fmt$(M.airbnbRev), sub:"8 units"},
+                {l:"Pierce Revenue",  v:fmt$(M.pierceRev), sub:"7 units"},
+                {l:"Total Expenses",  v:fmt$(M.totalExp),  sub:"all properties", red:true},
+                {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
+              ].map(c=>(
+                <div key={c.l} className="card card-padded">
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* To Review — Copilot-style */}
+            {(()=>{
+              const toReview = untagged.slice(0, 8);
+              if(toReview.length===0) return null;
+              return (
+                <div style={{marginBottom:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,paddingLeft:2}}>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",textTransform:"uppercase"}}>To Review</div>
+                    <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"none",fontSize:12,color:"#007aff",cursor:"pointer",padding:0,fontWeight:500}}>View all ›</button>
+                  </div>
+                  <div className="card" style={{overflow:"hidden",borderRadius:16}}>
+                    {toReview.map((tx,i)=>{
+                      const sug = getSuggestion(tx);
+                      const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave",llc:"General LLC",transfer:"Transfer"};
+                      const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2",llc:"#636366",transfer:"#636366"};
+                      return (
+                        <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
+                            <div style={{flex:1,minWidth:0,marginRight:12}}>
+                              <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{tx.payee||tx.name}</div>
+                              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+                                <span style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</span>
+                                {sug&&(
+                                  <button onClick={e=>{e.stopPropagation();doTag(tx.id,sug);}}
+                                    style={{background:`${PROP_COLOR[sug]||"#636366"}20`,border:"none",borderRadius:20,
+                                      fontSize:11,fontWeight:700,color:PROP_COLOR[sug]||"#636366",
+                                      padding:"2px 10px",cursor:"pointer",letterSpacing:"0.04em",textTransform:"uppercase"}}>
+                                    {PROP_LABEL[sug]||sug}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                              <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>
+                                {tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}
+                              </span>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:"#007aff",flexShrink:0}}/>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <button onClick={async()=>{
+                      for(const tx of toReview){
+                        const sug=getSuggestion(tx);
+                        if(sug) await doTag(tx.id,sug);
+                        else await doTag(tx.id,"llc");
+                      }
+                    }} style={{width:"100%",padding:"14px",background:"none",border:"none",
+                      borderTop:"1px solid rgba(0,0,0,0.06)",fontSize:13,fontWeight:600,
+                      color:"var(--text-2)",cursor:"pointer",textAlign:"center",letterSpacing:"0.02em"}}>
+                      MARK AS REVIEWED
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Month-by-month charts */}
+            {M.months.length>0&&(<>
+              <div className="section-title">Revenue · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Expenses · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Net Income · Month by Month</div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
+              </div>
+
+              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=marginal · red=negative</span></div>
+              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+                <MiniBar months={M.monthsWithProjections} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
+              </div>
+            </>)}
+
+
+
+            {/* CoC return */}
+            {M.annualCoc&&(
+              <>
+                <div className="section-title">Return on Investment</div>
+                <div className="card card-padded" style={{marginBottom:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    {[
+                      {l:"Cash-on-Cash",v:fmtPct(M.annualCoc),sub:"annualized"},
+                      {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
+                    ].map(c=>(
+                      <div key={c.l}>
+                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                        <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
+                        <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setShowInvest(true)} style={{marginTop:12,fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>
+                    Edit down payments →
+                  </button>
+                </div>
+              </>
+            )}
+            {!M.annualCoc&&(
+              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
+                + Add down payments to see CoC return
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
@@ -1874,134 +2032,6 @@ function App() {
           </div>
         </div>
 
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
-          <div style={{minHeight:"100%"}}>
-            <div className="page-header">
-              <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                <div className="big-num">{fmt$(M.totalRev)}</div>
-                <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
-              </div>
-              <div style={{display:"flex",gap:16,marginTop:6}}>
-                <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.totalExp)} expenses</span>
-                <span style={{fontSize:13,color:M.totalCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.totalCF)} net</span>
-                {M.netMargin!==null&&<span style={{fontSize:13,color:"var(--text-3)"}}>{fmtPct(M.netMargin)} margin</span>}
-              </div>
-            </div>
-
-            {/* Nudge to enter manual income if empty */}
-            {Object.keys(manualIncome).length===0&&(
-              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-                <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
-                <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
-              </div>
-            )}
-
-            {/* Summary cards */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              {[
-                {l:"Airbnb Revenue",  v:fmt$(M.airbnbRev), sub:"8 units"},
-                {l:"Pierce Revenue",  v:fmt$(M.pierceRev), sub:"7 units"},
-                {l:"Total Expenses",  v:fmt$(M.totalExp),  sub:"all properties", red:true},
-                {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
-              ].map(c=>(
-                <div key={c.l} className="card card-padded">
-                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
-                  <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
-                  <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* To Review — recent untagged transactions */}
-            {untagged.length>0&&(
-              <div style={{marginBottom:8}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <div className="section-title" style={{margin:0}}>TO REVIEW</div>
-                  <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"none",fontSize:11,color:"var(--text-3)",cursor:"pointer",padding:0}}>View all ›</button>
-                </div>
-                <div className="card" style={{overflow:"hidden"}}>
-                  <div style={{padding:"10px 14px 4px",fontSize:11,color:"var(--text-3)"}}>So far this month</div>
-                  {untagged.slice(0,5).map((tx,i)=>(
-                    <div key={tx.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderTop:"1px solid rgba(0,0,0,0.05)"}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.name}</div>
-                        <div style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</div>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:13,fontWeight:600,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>{tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}</span>
-                        <button onClick={()=>{setTagging(tx.id);setTxFilter("all");navigateTab("Feed");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,fontSize:11,fontWeight:600,padding:"4px 10px",cursor:"pointer",color:"var(--text-2)",whiteSpace:"nowrap"}}>Tag →</button>
-                      </div>
-                    </div>
-                  ))}
-                  {untagged.length>0&&(
-                    <button onClick={async()=>{
-                      const toTag = untagged.slice(0,5);
-                      for(const tx of toTag){ await doTag(tx.id,"General LLC"); }
-                    }} style={{width:"100%",padding:"12px",background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.05)",fontSize:12,fontWeight:600,color:"var(--text-2)",cursor:"pointer",textAlign:"center"}}>
-                      Mark All as Reviewed ✓
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Month-by-month charts */}
-            {M.months.length>0&&(<>
-              <div className="section-title">Revenue · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="rev" color="#30d158" onBarClick={(mo)=>setDrillDown({mo,type:"rev",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Expenses · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="exp" color="#ff453a" onBarClick={(mo)=>setDrillDown({mo,type:"exp",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Net Income · Month by Month</div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="net" color={null} onBarClick={(mo)=>setDrillDown({mo,type:"net",txs:enriched})}/>
-              </div>
-
-              <div className="section-title">Net Margin % · Month by Month <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=marginal · red=negative</span></div>
-              <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-                <MiniBar months={M.monthsWithProjections} valueKey="margin" color={null} marginMode fmt={v=>`${v.toFixed(1)}%`}/>
-              </div>
-            </>)}
-
-
-
-            {/* CoC return */}
-            {M.annualCoc&&(
-              <>
-                <div className="section-title">Return on Investment</div>
-                <div className="card card-padded" style={{marginBottom:8}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    {[
-                      {l:"Cash-on-Cash",v:fmtPct(M.annualCoc),sub:"annualized"},
-                      {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
-                    ].map(c=>(
-                      <div key={c.l}>
-                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
-                        <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
-                        <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={()=>setShowInvest(true)} style={{marginTop:12,fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",textDecoration:"underline",padding:0}}>
-                    Edit down payments →
-                  </button>
-                </div>
-              </>
-            )}
-            {!M.annualCoc&&(
-              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
-                + Add down payments to see CoC return
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
         <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
         {(()=>{
@@ -2157,41 +2187,6 @@ function App() {
         })()}
         </div>
 
-        {/* ── FEED ───────────────────────────────────────────────── */}
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
-          <div style={{minHeight:"100%"}}>
-            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
-              <div>
-                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <div className="big-num" style={{fontSize:26}}>{untagged.length}</div>
-                  <div style={{fontSize:13,color:"var(--text-3)"}}>untagged</div>
-                </div>
-              </div>
-              <div className="seg-ctrl" style={{marginTop:4}}>
-                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
-                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
-                ))}
-              </div>
-            </div>
-
-            {txs.length===0&&linked.length===0&&(
-              <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
-                <div style={{fontSize:32,marginBottom:12}}>🏦</div>
-                <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
-                <button onClick={connectBank} className="btn-primary">Connect Bank</button>
-              </div>
-            )}
-
-            {(txs.length>0||linked.length>0)&&<TxList
-              txs={feedTxs}
-              tagging={tagging} setTagging={setTagging}
-              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
-              filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
-            />}
-          </div>
-        </div>
-
         <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
         {(()=>{
           const now = new Date();
@@ -2310,6 +2305,41 @@ function App() {
           </div>
           );
         })()}
+        </div>
+
+        {/* ── FEED ───────────────────────────────────────────────── */}
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+          <div style={{minHeight:"100%"}}>
+            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div className="big-num" style={{fontSize:26}}>{untagged.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>untagged</div>
+                </div>
+              </div>
+              <div className="seg-ctrl" style={{marginTop:4}}>
+                {[["untagged",`Untagged (${untagged.length})`],["tagged","Tagged"],["all","All"]].map(([k,l])=>(
+                  <button key={k} className={`seg-btn${feedFilter===k?" active":""}`} onClick={()=>setFeedFilter(k)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            {txs.length===0&&linked.length===0&&(
+              <div className="card card-padded" style={{textAlign:"center",padding:"48px 24px"}}>
+                <div style={{fontSize:32,marginBottom:12}}>🏦</div>
+                <div style={{fontSize:15,fontWeight:600,marginBottom:12}}>No bank connected</div>
+                <button onClick={connectBank} className="btn-primary">Connect Bank</button>
+              </div>
+            )}
+
+            {(txs.length>0||linked.length>0)&&<TxList
+              txs={feedTxs}
+              tagging={tagging} setTagging={setTagging}
+              doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
+              filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
+            />}
+          </div>
         </div>
 
         <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
