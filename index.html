@@ -16,7 +16,7 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
-      --bg: #eef0f8;
+      --bg: #dce4ff;
       --bg2: #ffffff;
       --glass: rgba(255,255,255,0.62);
       --glass-border: rgba(255,255,255,0.80);
@@ -32,7 +32,7 @@
       --text-2: rgba(20,20,42,0.58);
       --text-3: rgba(20,20,42,0.36);
       --card-bg: rgba(255,255,255,0.68);
-      --header-bg: rgba(238,240,250,0.82);
+      --header-bg: rgba(220,228,255,0.78);
       --radius: 20px;
       --radius-sm: 12px;
       --specular: inset 0 1px 0 rgba(255,255,255,0.88);
@@ -66,12 +66,12 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(ellipse 75% 65% at 5% 8%,   rgba(140,100,255,0.18) 0%, transparent 55%),
-        radial-gradient(ellipse 65% 60% at 95% 5%,   rgba(50,140,255,0.16) 0%, transparent 55%),
-        radial-gradient(ellipse 70% 60% at 88% 92%,  rgba(40,200,130,0.11) 0%, transparent 55%),
-        radial-gradient(ellipse 55% 55% at 8% 92%,   rgba(255,100,180,0.10) 0%, transparent 52%),
-        radial-gradient(ellipse 50% 45% at 50% 50%,  rgba(180,160,255,0.06) 0%, transparent 60%),
-        linear-gradient(150deg, #e8ecff 0%, #e4eaff 30%, #eaeeff 60%, #ede8ff 100%);
+        radial-gradient(ellipse 80% 70% at 2% 4%,    rgba(130,80,255,0.52) 0%, transparent 48%),
+        radial-gradient(ellipse 70% 65% at 98% 3%,   rgba(40,110,255,0.46) 0%, transparent 48%),
+        radial-gradient(ellipse 75% 65% at 92% 96%,  rgba(30,190,120,0.38) 0%, transparent 48%),
+        radial-gradient(ellipse 60% 60% at 4% 97%,   rgba(255,70,160,0.34) 0%, transparent 48%),
+        radial-gradient(ellipse 55% 50% at 50% 50%,  rgba(160,140,255,0.18) 0%, transparent 55%),
+        linear-gradient(155deg, #dce4ff 0%, #d8dcff 28%, #dce8ff 58%, #e0d8ff 100%);
       pointer-events: none;
     }
 
@@ -81,10 +81,10 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(circle 600px at 18% 48%, rgba(100,130,255,0.16) 0%, transparent 65%),
-        radial-gradient(circle 500px at 82% 28%, rgba(120,210,170,0.13) 0%, transparent 65%),
-        radial-gradient(circle 450px at 58% 82%, rgba(190,140,255,0.14) 0%, transparent 60%),
-        radial-gradient(circle 300px at 35% 15%, rgba(255,150,100,0.07) 0%, transparent 55%);
+        radial-gradient(circle 700px at 16% 45%, rgba(100,120,255,0.30) 0%, transparent 62%),
+        radial-gradient(circle 580px at 84% 25%, rgba(110,200,160,0.24) 0%, transparent 62%),
+        radial-gradient(circle 520px at 55% 85%, rgba(190,120,255,0.26) 0%, transparent 58%),
+        radial-gradient(circle 360px at 38% 12%, rgba(255,140,90,0.14) 0%, transparent 52%);
       animation: driftOrbs 22s ease-in-out infinite alternate;
       pointer-events: none;
     }
@@ -385,7 +385,7 @@
       top: 100px; /* header + top-nav */
       left: 0; right: 0; bottom: 0;
       overflow: hidden;
-      background: var(--bg);
+      background: transparent;
       touch-action: pan-y; /* let browser own vertical scroll; we own horizontal */
     }
     /* Sync spinner — centered fixed below header */
@@ -430,7 +430,7 @@
       -webkit-overflow-scrolling: touch;
       padding: 0 16px 40px;
       box-sizing: border-box;
-      background: var(--bg);
+      background: transparent;
     }
     .pull-spinner {
       position: absolute;
@@ -455,12 +455,12 @@
       margin-bottom: 10px; margin-top: 22px;
     }
     .card {
-      background: rgba(255,255,255,0.66);
-      border: 1px solid rgba(255,255,255,0.72);
+      background: rgba(255,255,255,0.44);
+      border: 1px solid rgba(255,255,255,0.76);
       border-radius: 20px;
       overflow: hidden;
-      backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
-      -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
+      backdrop-filter: blur(56px) saturate(2.2) brightness(1.06);
+      -webkit-backdrop-filter: blur(56px) saturate(2.2) brightness(1.06);
       box-shadow: var(--card-shadow), var(--specular);
     }
     .card-padded { padding: 16px 18px; }
@@ -638,7 +638,8 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
             ? (val >= 30 ? "#30d158" : val >= 0 ? "#aaaaaa" : "#ff453a")
             : color || (val>=0?"#30d158":"#ff453a");
           const canClick = !!onBarClick && !isProj;
-          const isActive = hov===i || tapped===i;
+          // When any bar is tapped, only show that bar's tooltip — prevent hover-linger bleed
+          const isActive = tapped !== null ? tapped===i : hov===i;
           // Position tooltip so it never clips off screen edges
           const frac = months.length > 1 ? i / (months.length - 1) : 0.5;
           const tipAnchor = frac < 0.2
