@@ -443,6 +443,7 @@ const TX_KEY      = "pg_txs_v2";
 const INVEST_KEY  = "pg_invest";
 const MANUAL_KEY  = "pg_manual_income"; // { "2025-10": 12550.70, "2025-11": 13972.97, ... }
 const CUSTOM_PROPS_KEY = "pg_custom_props";
+const LAST_SYNC_KEY   = "pg_last_sync";
 const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
 const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
 
@@ -1053,7 +1054,8 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
 
 // ── Settings Page ─────────────────────────────────────────────────
 function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSaveSettings,
-  archived, doRestore, doTag, linked, onRemoveAccount, onClearAll, customProps=[], onDeleteProp }) {
+  archived, doRestore, doTag, linked, onRemoveAccount, onClearAll, customProps=[], onDeleteProp,
+  onSync, syncing=false, lastSync=null }) {
   const [section, setSection] = React.useState("main");
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
@@ -1106,6 +1108,20 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
         <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Data</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+            <div>
+              <span style={{fontSize:15,color:"#1c1c1e"}}>Sync Transactions</span>
+              {lastSync&&<div style={{fontSize:11,color:"#636366",marginTop:2}}>
+                Last synced {new Date(lastSync).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
+              </div>}
+            </div>
+            <button onClick={onSync} disabled={syncing}
+              style={{background:syncing?"rgba(0,0,0,0.05)":"#1a1a2e",border:"none",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"#636366":"#fff",cursor:syncing?"default":"pointer"}}>
+              {syncing?"Syncing…":"Sync Now"}
+            </button>
+          </div>
           {row("Tag Rules",`${Object.keys(rules).length} rules ›`,()=>setSection("tags"))}
           {row("Archive / Deleted",`${archived.length} transactions ›`,()=>setSection("archive"))}
         </div>
@@ -1257,11 +1273,26 @@ function App() {
   const [tabIdx, setTabIdx]     = useState(0);
   const [customProps, setCustomProps] = useState(()=>LS.get(CUSTOM_PROPS_KEY)||[]);
   const [showAddProp, setShowAddProp] = useState(false);
+  const [lastSync, setLastSync]       = useState(()=>LS.get(LAST_SYNC_KEY)||null);
+  const [showHomesDD, setShowHomesDD] = useState(false);
+  const [homesDDPos, setHomesDDPos]   = useState({top:0,left:0});
+  const homesPillRef                  = useRef(null);
 
   // Dynamic tabs: base 5 + any non-Airbnb custom props
   const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
   const feedIdx    = tabs.length;
   const archiveIdx = tabs.length + 1;
+
+  // Home tabs: Airbnb, Pierce, and all custom non-Airbnb props
+  const homeTabSet = useMemo(()=>new Set(["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)]),[customProps]);
+  const isHomesActive = homeTabSet.has(tabs[tabIdx]);
+  // Map tab index → visual pill index (Portfolio=0, Homes=1, Quarterly=2, Projections=3)
+  const tabToPillIdx = t => {
+    if(t===0) return 0;
+    if(tabs[t]==="Quarterly") return 2;
+    if(tabs[t]==="Projections") return 3;
+    return 1;
+  };
 
   // Sync module-level mutable arrays so PropBadge/TagMenu child components see current properties
   PROPERTIES = [...BASE_PROPERTIES,...customProps.map(p=>({id:p.id,label:p.label,color:"var(--text)",group:p.isAirbnb?"airbnb":p.id}))];
@@ -1319,7 +1350,7 @@ function App() {
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
     setTrackPos(-idx * window.innerWidth, true);
-    centerNavPill(idx, true);
+    centerNavPill(tabToPillIdx(idx), true);
   };
 
 
@@ -1363,9 +1394,11 @@ function App() {
     if(navTrackRef.current && dragPillOffsets.current && !atStart && !atEnd){
       const frac = clampedDx / window.innerWidth;
       const offsets = dragPillOffsets.current;
-      const toPillIdx = dx < 0 ? tabIdx+1 : tabIdx-1;
-      const fromOff = offsets[tabIdx];
-      const toOff   = offsets[toPillIdx];
+      const fromPill = tabToPillIdx(tabIdx);
+      const nextTab  = dx < 0 ? tabIdx+1 : tabIdx-1;
+      const toPill   = (nextTab>=0 && nextTab<tabs.length) ? tabToPillIdx(nextTab) : fromPill;
+      const fromOff = offsets[fromPill];
+      const toOff   = offsets[toPill];
       if(fromOff !== undefined && toOff !== undefined){
         const lerp = fromOff + (toOff - fromOff) * Math.min(1, Math.abs(frac));
         navTrackRef.current.style.transform = `translateX(${lerp}px)`;
@@ -1378,7 +1411,7 @@ function App() {
     if(!d.active) return;
     d.active = false;
     dragPillOffsets.current = null;
-    if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); centerNavPill(tabIdx, true); return; }
+    if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); centerNavPill(tabToPillIdx(tabIdx), true); return; }
     const dx = d.lastX - d.startX;
     const vw = window.innerWidth;
     let next = tabIdx;
@@ -1387,7 +1420,7 @@ function App() {
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
     setTrackPos(-next*vw, true);
     // Animate nav pill to final position with same timing as swipe track
-    centerNavPill(next, true);
+    centerNavPill(tabToPillIdx(next), true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
@@ -1524,6 +1557,7 @@ function App() {
       const data=await res.json();
       if(data.error) throw new Error(data.error);
       await loadAll(true);
+      const ts = new Date().toISOString(); setLastSync(ts); LS.set(LAST_SYNC_KEY,ts);
       setStatus(`Synced · ${data.total_stored} transactions total`);
     } catch(e){setStatus("Sync failed: "+e.message);}
     finally{setSyncing(false);}
@@ -1875,13 +1909,44 @@ function App() {
       {/* TOP NAV */}
       <div className="top-nav" ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
-          {tabs.map(t=>(
-            <button key={t} className={`top-nav-pill${tabs[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
-              {t}
-            </button>
-          ))}
+          <button className={`top-nav-pill${tabIdx===0?" active":""}`} onClick={()=>navigateTab("Portfolio")}>Portfolio</button>
+          <button ref={homesPillRef} className={`top-nav-pill${isHomesActive?" active":""}`}
+            onClick={()=>{
+              if(!showHomesDD && homesPillRef.current){
+                const r=homesPillRef.current.getBoundingClientRect();
+                setHomesDDPos({top:r.bottom+4, left:r.left + r.width/2});
+              }
+              setShowHomesDD(v=>!v);
+            }}>
+            Homes
+          </button>
+          <button className={`top-nav-pill${tabs[tabIdx]==="Quarterly"?" active":""}`} onClick={()=>navigateTab("Quarterly")}>Quarterly</button>
+          <button className={`top-nav-pill${tabs[tabIdx]==="Projections"?" active":""}`} onClick={()=>navigateTab("Projections")}>Projections</button>
         </div>
       </div>
+      {/* Homes dropdown */}
+      {showHomesDD&&<>
+        <div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowHomesDD(false)}/>
+        <div style={{position:"fixed",top:homesDDPos.top,left:homesDDPos.left,transform:"translateX(-50%)",
+          zIndex:150,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",
+          borderRadius:12,border:"1px solid rgba(128,128,128,0.14)",
+          boxShadow:"0 8px 28px rgba(0,0,0,0.14)",overflow:"hidden",minWidth:148}}>
+          {["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)].map(t=>{
+            const active = tabs[tabIdx]===t;
+            return (
+              <button key={t} onClick={()=>{navigateTab(t);setShowHomesDD(false);}}
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                  width:"100%",padding:"12px 16px",background:active?"rgba(128,128,128,0.10)":"transparent",
+                  border:"none",borderBottom:"1px solid rgba(128,128,128,0.08)",
+                  fontSize:14,fontWeight:active?600:400,color:active?"var(--text)":"var(--text-2)",
+                  cursor:"pointer",textAlign:"left",gap:10}}>
+                <span>{t}</span>
+                {active&&<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 6 4.5 10 11 2"/></svg>}
+              </button>
+            );
+          })}
+        </div>
+      </>}
 
       {/* CONTENT */}
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
@@ -2741,6 +2806,7 @@ function App() {
       {showSettings&&<SettingsPage
         onClose={()=>setShowSettings(false)}
         customProps={customProps} onDeleteProp={deleteCustomProp}
+        onSync={sync} syncing={syncing} lastSync={lastSync}
         autoTags={autoTags} rules={rules}
         onDeleteRule={payee=>{
           const nr={...rules}; delete nr[payee];
