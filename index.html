@@ -535,6 +535,11 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
           const val = vals[i];
           const px  = Math.max(3, Math.round((Math.abs(val)/max)*H));
           const isProj = !!(v && v.projected);
+          // Delta vs previous actual (non-projected) bar
+          const prevActualIdx = [...Array(i)].map((_,j)=>i-1-j).find(j=>j>=0&&!(months[j][1]?.projected));
+          const prevVal = prevActualIdx!==undefined?vals[prevActualIdx]:null;
+          const prevMo  = prevActualIdx!==undefined?months[prevActualIdx][0]:null;
+          const delta   = prevVal!==null&&Math.abs(prevVal)>0.01?((val-prevVal)/Math.abs(prevVal))*100:null;
           const c = isProj ? "#bbbbbb"
             : marginMode
             ? (val >= 30 ? "#30d158" : val >= 0 ? "#aaaaaa" : "#ff453a")
@@ -565,6 +570,11 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",fontSize:11,...tipAnchor}}>
                   <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}{isProj?" · projected":""}</div>
                   <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
+                  {delta!==null&&(
+                    <div style={{fontSize:9,marginTop:3,color:delta>=0?"#30d158":"#ff453a",fontWeight:600}}>
+                      {delta>=0?"▲":"▼"} {delta>=0?"+":""}{delta.toFixed(1)}% vs {moLabel(prevMo)}
+                    </div>
+                  )}
                   {canClick&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>{tapped===i?"tap again for transactions":"tap for details"}</div>}
                 </div>
               )}
@@ -1306,6 +1316,7 @@ function App() {
   const [rules, setRules]         = useState({}); // payee→propId persistent rules
   const [settings, setSettings]   = useState({darkMode:false,notifications:true});
   const [showSettings, setShowSettings] = useState(false);
+  const [showDrawer, setShowDrawer]     = useState(false);
   const [rulePrompt, setRulePrompt]     = useState(null); // {txId, payee, propId}
   const [tagging, setTagging]   = useState(null);
   const [linked, setLinked]     = useState([]);
@@ -1758,28 +1769,18 @@ function App() {
   return (
     <div style={{minHeight:"100vh",background:"#f5f5f7"}}>
 
-      {/* TOP HEADER */}
-      <div className="top-header" ref={headerRef}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <svg width="26" height="26" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
+      {/* TOP HEADER — minimal 3-slot */}
+      <div className="top-header" ref={headerRef} style={{position:"relative",justifyContent:"space-between"}}>
+        {/* Left: hamburger */}
+        <button onClick={()=>setShowDrawer(true)} style={{background:"transparent",border:"none",color:"var(--text-2)",padding:"6px 8px",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",fontSize:22,lineHeight:1,zIndex:1,flexShrink:0}}>☰</button>
+        {/* Center: logo + name (absolutely centered) */}
+        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:7,pointerEvents:"none"}}>
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
           <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <button onClick={()=>setShowSettings(true)} style={{background:"transparent",border:"none",
-            color:"var(--text-3)",padding:"4px 6px",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center"}}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
-          {status&&<span style={{fontSize:10,color:"var(--text-3)",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{status}</span>}
-          {tab==="Feed"&&<button onClick={sync} disabled={syncing||!hasBank} style={{background:"transparent",border:"none",color:syncing?"var(--text-3)":"var(--text-2)",fontSize:12,fontWeight:500,padding:"4px 8px",borderRadius:8,cursor:"pointer"}}>
-            {syncing?"…":"↻ Sync"}
-          </button>}
-          <button onClick={()=>setShowManual(true)} style={{background:"transparent",border:"none",color:"var(--text-2)",fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:8,cursor:"pointer",whiteSpace:"nowrap"}}>+ Airbnb Rev</button>
-          <button onClick={()=>navigateTab("Archive")} title="Archive" style={{background:"transparent",border:"none",color:"var(--text-3)",padding:"4px 6px",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center"}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-          </button>
-          <button onClick={connectBank} disabled={linking} style={{background:"#1a1a2e",border:"none",color:"#fff",fontSize:11,fontWeight:600,padding:"6px 12px",borderRadius:10,cursor:"pointer"}}>
-            {linking?"…":"+ Bank"}
-          </button>
+        {/* Right: subtle sync dot when syncing, otherwise spacer */}
+        <div style={{width:40,display:"flex",alignItems:"center",justifyContent:"flex-end",flexShrink:0}}>
+          {syncing&&<div style={{width:7,height:7,borderRadius:"50%",background:"var(--green)",opacity:0.7}}/>}
         </div>
       </div>
       {/* TOP NAV */}
@@ -2155,7 +2156,7 @@ function App() {
           // Convert quarter objects to [key, data] pairs for MiniBar
           const qMths = qData.map(q=>[q.key,{rev:q.rev,exp:q.exp,net:q.net,margin:q.margin,projected:q.projected}]);
           // X-axis label: just the quarter number (Q1, Q2…)
-          const qAxisLabel = k => { const q=qData.find(x=>x.key===k); return q?`Q${q.q}`:k; };
+          const qAxisLabel = k => { const q=qData.find(x=>x.key===k); return q?`Q${q.q}'${q.year.toString().slice(2)}`:k; };
 
           // Delta badge for summary table
           const Delta = ({cur, prev}) => {
@@ -2502,6 +2503,32 @@ function App() {
       </div>{/* end .page-outer */}
 
 
+
+      {/* SIDE DRAWER */}
+      {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column"}}>
+        {/* Drawer header */}
+        <div style={{padding:"20px 20px 12px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
+            <span style={{fontWeight:700,fontSize:14,letterSpacing:"-0.01em"}}>Property Pigeon</span>
+          </div>
+          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>✕</button>
+        </div>
+        {/* Menu items */}
+        {[
+          {icon:"⚙", label:"Settings",           action:()=>{setShowSettings(true);setShowDrawer(false);}},
+          {icon:"＋", label:"Airbnb Revenue",     action:()=>{setShowManual(true);setShowDrawer(false);}},
+          {icon:"🏠", label:"Add New Property",   action:()=>{}},
+          {icon:"🗂", label:"Archived / Deleted", action:()=>{navigateTab("Archive");setShowDrawer(false);}},
+          {icon:"🏦", label:"Add Bank",           action:()=>{connectBank();setShowDrawer(false);}},
+        ].map(item=>(
+          <button key={item.label} onClick={item.action} style={{background:"transparent",border:"none",borderBottom:"1px solid rgba(128,128,128,0.08)",padding:"0 20px",height:56,display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",width:"100%",color:"var(--text)",fontSize:15,fontWeight:500,flexShrink:0}}>
+            <span style={{fontSize:20,width:26,textAlign:"center",flexShrink:0}}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
       {drillDown&&<MonthDrillDown mo={drillDown.mo} type={drillDown.type} txs={drillDown.txs}
