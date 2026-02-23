@@ -113,47 +113,41 @@
       border-bottom: 1px solid rgba(0,0,0,0.06);
       display: flex; align-items: center; justify-content: space-between;
     }
-    /* Bottom tab bar */
-    .tab-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(245,245,247,0.92);
+    /* Top pill navigation */
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px 4px;
+      background: rgba(245,245,247,0.88);
       backdrop-filter: blur(28px) saturate(1.6);
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      border-top: 1px solid rgba(0,0,0,0.08);
-      display: grid;
-      grid-template-columns: 1fr 1fr 64px 1fr 1fr 1fr;
-      align-items: end;
-      padding: 10px 24px max(28px,env(safe-area-inset-bottom));
-      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      gap: 4px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
     }
-    .tab-item {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 4px 0;
-      background: transparent; border: none;
+    .top-nav::-webkit-scrollbar { display: none; }
+    .top-nav-pill {
+      background: transparent;
+      border: none;
       color: var(--text-3);
-      font-size: 9px; font-weight: 500;
-      transition: all 0.15s;
-      width: 100%;
-      position: relative;
-    }
-    .tab-item.active { color: var(--text); }
-    .tab-item svg { transition: all 0.15s; }
-    .tab-item.active svg { transform: scale(1.05); }
-    .tab-item-center {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      background: var(--text); border: none;
-      color: #fff;
-      font-size: 10px; font-weight: 600;
-      border-radius: 16px;
-      padding: 8px 0 7px;
-      width: 100%;
-      transition: all 0.15s;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 6px 16px;
+      border-radius: 20px;
       cursor: pointer;
-      position: relative;
-      margin-bottom: 2px;
+      white-space: nowrap;
+      transition: all 0.18s;
+      flex-shrink: 0;
     }
-    .tab-item-center.active { background: #1a1a2e; }
-    .tab-item-center svg { transition: all 0.15s; }
+    .top-nav-pill.active {
+      background: rgba(0,0,0,0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--text);
+      font-weight: 600;
+    }
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
       padding: 7px 16px; border-radius: 20px; font-size: 13px;
@@ -296,7 +290,7 @@
     /* Swipe container */
     .page-outer {
       position: fixed;
-      top: 56px; /* header height approx */
+      top: 100px; /* header + top-nav */
       left: 0; right: 0; bottom: 0;
       overflow: hidden;
     }
@@ -316,9 +310,22 @@
       height: 100%;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      padding: 0 16px 120px;
+      padding: 0 16px 40px;
       box-sizing: border-box;
     }
+    .pull-label {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-3);
+      padding: 8px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .pull-label.visible { opacity: 1; }
     .page { padding: 0; }
     .page-header { padding: 20px 0 16px; }
     .section-title {
@@ -950,10 +957,11 @@ function App() {
     // Portfolio is index 2 — start centered on it
     const initIdx = TABS.indexOf("Portfolio");
     if(trackRef.current) trackRef.current.style.transform = `translateX(${-initIdx*window.innerWidth}px)`;
-    // Measure actual header height for page-outer
-    const h = headerRef.current?.offsetHeight || 56;
+    // Measure actual header + top-nav height for page-outer
+    const headerH = headerRef.current?.offsetHeight || 56;
+    const navH = document.querySelector(".top-nav")?.offsetHeight || 44;
     const outer = document.querySelector(".page-outer");
-    if(outer) outer.style.top = h + "px";
+    if(outer) outer.style.top = (headerH + navH) + "px";
   },[]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
@@ -965,11 +973,42 @@ function App() {
     el.style.transform  = `translateX(${px}px)`;
   };
 
+  const ARCHIVE_IDX = 6; // Archive is always last pane, outside TABS
   const navigateTab = (t) => {
+    if(t === "Archive"){
+      setTab("Archive"); setTabIdx(ARCHIVE_IDX);
+      setTrackPos(-ARCHIVE_IDX * window.innerWidth, true);
+      return;
+    }
     const idx = TABS.indexOf(t);
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
     setTrackPos(-idx * window.innerWidth, true);
+  };
+
+  // Pull-to-refresh state
+  const pullRef = useRef({startY:0,pulling:false});
+  const [pullLabel, setPullLabel] = useState(null);
+
+  const onPullStart = (e) => {
+    const el = e.currentTarget;
+    if(el.scrollTop === 0) {
+      pullRef.current = {startY: e.touches[0].clientY, pulling:true};
+    }
+  };
+  const onPullMove = (e) => {
+    if(!pullRef.current.pulling) return;
+    const dy = e.touches[0].clientY - pullRef.current.startY;
+    if(dy > 60) setPullLabel("Release to refresh");
+    else if(dy > 20) setPullLabel("Pull to refresh");
+    else setPullLabel(null);
+  };
+  const onPullEnd = async (e) => {
+    if(!pullRef.current.pulling) return;
+    const dy = e.changedTouches[0].clientY - pullRef.current.startY;
+    pullRef.current.pulling = false;
+    setPullLabel(null);
+    if(dy > 60 && hasBank) await sync();
   };
 
   const onTouchStart = (e) => {
@@ -1428,13 +1467,22 @@ function App() {
           </button>
         </div>
       </div>
+      {/* TOP NAV */}
+      <div className="top-nav">
+        {TABS.map(t=>(
+          <button key={t} className={`top-nav-pill${TABS[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
 
       {/* CONTENT */}
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {pullLabel&&<div className="pull-label visible" style={{position:"absolute",top:0,left:0,right:0,zIndex:50}}>{pullLabel}</div>}
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
@@ -1544,7 +1592,7 @@ function App() {
         </div>
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
@@ -1617,7 +1665,7 @@ function App() {
           </div>
         </div>
 
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
@@ -1655,6 +1703,39 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* To Review — recent untagged transactions */}
+            {untagged.length>0&&(
+              <div style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div className="section-title" style={{margin:0}}>TO REVIEW</div>
+                  <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"none",fontSize:11,color:"var(--text-3)",cursor:"pointer",padding:0}}>View all ›</button>
+                </div>
+                <div className="card" style={{overflow:"hidden"}}>
+                  <div style={{padding:"10px 14px 4px",fontSize:11,color:"var(--text-3)"}}>So far this month</div>
+                  {untagged.slice(0,5).map((tx,i)=>(
+                    <div key={tx.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderTop:"1px solid rgba(0,0,0,0.05)"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.name}</div>
+                        <div style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:13,fontWeight:600,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>{tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}</span>
+                        <button onClick={()=>{setTagging(tx.id);setTxFilter("all");navigateTab("Feed");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,fontSize:11,fontWeight:600,padding:"4px 10px",cursor:"pointer",color:"var(--text-2)",whiteSpace:"nowrap"}}>Tag →</button>
+                      </div>
+                    </div>
+                  ))}
+                  {untagged.length>0&&(
+                    <button onClick={async()=>{
+                      const toTag = untagged.slice(0,5);
+                      for(const tx of toTag){ await doTag(tx.id,"General LLC"); }
+                    }} style={{width:"100%",padding:"12px",background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.05)",fontSize:12,fontWeight:600,color:"var(--text-2)",cursor:"pointer",textAlign:"center"}}>
+                      Mark All as Reviewed ✓
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Month-by-month charts */}
             {M.months.length>0&&(<>
@@ -1713,7 +1794,7 @@ function App() {
         </div>
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
         {(()=>{
           const qs = M.quarters;
           if(qs.length===0) return <div style={{minHeight:"100%"}}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
@@ -1868,7 +1949,7 @@ function App() {
         </div>
 
         {/* ── FEED ───────────────────────────────────────────────── */}
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
@@ -1902,7 +1983,7 @@ function App() {
           </div>
         </div>
 
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
         {(()=>{
           const now = new Date();
           const thisYear = now.getFullYear();
@@ -2022,7 +2103,7 @@ function App() {
         })()}
         </div>
 
-        <div className="swipe-pane">
+        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
@@ -2133,25 +2214,7 @@ function App() {
         </div>{/* end .swipe-track */}
       </div>{/* end .page-outer */}
 
-      {/* BOTTOM TAB BAR */}
-      <div className="tab-bar">
-        {["Airbnb","Pierce","Portfolio","Quarterly","Projections","Feed"].map(t=>{
-          const isActive = TABS[tabIdx]===t;
-          const isCenter = t==="Portfolio";
-          return isCenter
-          ? <button key={t} className={`tab-item-center${isActive?" active":""}`} onClick={()=>navigateTab(t)}>
-              {TAB_ICONS[t]}
-              <span>Portfolio</span>
-            </button>
-          : <button key={t} className={`tab-item${isActive?" active":""}`} onClick={()=>navigateTab(t)} style={{position:"relative"}}>
-              {TAB_ICONS[t]}
-              <span>{t}</span>
-              {t==="Feed"&&untagged.length>0&&(
-                <div style={{position:"absolute",top:2,right:"calc(50% - 16px)",background:"#ff453a",borderRadius:"50%",width:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#fff"}}>{untagged.length>99?"99+":untagged.length}</div>
-              )}
-            </button>
-        })}
-      </div>
+
 
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
       {drillDown&&<MonthDrillDown mo={drillDown.mo} type={drillDown.type} txs={drillDown.txs}
