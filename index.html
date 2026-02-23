@@ -514,6 +514,14 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
 function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, marginMode=false }) {
   const [hov, setHov] = useState(null);
   const [tapped, setTapped] = useState(null);
+  const containerRef = useRef(null);
+  // Dismiss tapped tooltip when clicking outside the chart
+  useEffect(()=>{
+    if(tapped===null) return;
+    const handle = e => { if(!containerRef.current?.contains(e.target)) setTapped(null); };
+    const id = setTimeout(()=>document.addEventListener('click', handle), 50);
+    return ()=>{ clearTimeout(id); document.removeEventListener('click', handle); };
+  },[tapped]);
   const H = 72;
   const vals = months.map(([,v])=> {
     if(valueKey==="net") return v.rev-v.exp;
@@ -523,7 +531,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
   const max = Math.max(...vals.map(Math.abs), 1);
   if(months.length===0) return <div style={{height:H,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)",fontSize:11}}>No data yet</div>;
   return (
-    <div style={{position:"relative",paddingTop:32}}>
+    <div ref={containerRef} style={{position:"relative",paddingTop:32}}>
       <div style={{display:"flex",gap:2,alignItems:"flex-end",height:H}}>
         {months.map(([mo,v],i)=>{
           const val = vals[i];
@@ -535,6 +543,13 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
             : color || (val>=0?"#30d158":"#ff453a");
           const canClick = !!onBarClick && !isProj;
           const isActive = hov===i || tapped===i;
+          // Position tooltip so it never clips off screen edges
+          const frac = months.length > 1 ? i / (months.length - 1) : 0.5;
+          const tipAnchor = frac < 0.2
+            ? {left:0, transform:'none'}
+            : frac > 0.8
+            ? {left:'auto', right:0, transform:'none'}
+            : {left:'50%'};
           return (
             <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:canClick?"pointer":"default"}}
               onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
@@ -549,7 +564,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
                 backgroundImage:isProj?"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,0.4) 3px,rgba(255,255,255,0.4) 6px)":"none",
                 outline:canClick&&isActive?"2px solid "+c:"none",outlineOffset:1}}/>
               {isActive&&(
-                <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",left:"50%",fontSize:11}}>
+                <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",fontSize:11,...tipAnchor}}>
                   <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}{isProj?" · projected":""}</div>
                   <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
                   {canClick&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>{tapped===i?"tap again for transactions":"tap for details"}</div>}
@@ -992,7 +1007,8 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
-const TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections","Feed"];
+const TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections"];
+const FEED_IDX=5; // Feed pane lives at index 5 in the swipe track, accessed via "view all"
 
 
 // ── Rule Prompt Modal — Copilot-style "apply to all?" ────────────
@@ -1208,6 +1224,11 @@ function App() {
       setTrackPos(-ARCHIVE_IDX * window.innerWidth, true);
       return;
     }
+    if(t === "Feed"){
+      setTab("Feed"); setTabIdx(FEED_IDX);
+      setTrackPos(-FEED_IDX * window.innerWidth, true);
+      return;
+    }
     const idx = TABS.indexOf(t);
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
@@ -1300,7 +1321,7 @@ function App() {
     let next = tabIdx;
     if(dx < -vw*0.25 && tabIdx < TABS.length-1) next = tabIdx+1;
     if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
-    setTab(TABS[next]); setTabIdx(next);
+    setTab(TABS[next] !== undefined ? TABS[next] : tab); setTabIdx(next);
     setTrackPos(-next*vw, true);
     // Animate nav pill to final position with same timing as swipe track
     centerNavPill(next, true);
@@ -1822,59 +1843,70 @@ function App() {
               ))}
             </div>
 
-            {/* To Review — Copilot-style */}
+            {/* To Review — always visible, Copilot-style */}
             {(()=>{
               const toReview = untagged.slice(0, 8);
-              if(toReview.length===0) return null;
+              const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave",llc:"General LLC",transfer:"Transfer"};
+              const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2",llc:"#636366",transfer:"#636366"};
               return (
                 <div style={{marginBottom:16}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,paddingLeft:2}}>
-                    <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",textTransform:"uppercase"}}>To Review</div>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",textTransform:"uppercase"}}>
+                      To Review
+                      {toReview.length>0&&<span style={{marginLeft:6,background:"#007aff",color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:9,fontWeight:700,verticalAlign:"middle"}}>{untagged.length}</span>}
+                    </div>
                     <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"none",fontSize:12,color:"#007aff",cursor:"pointer",padding:0,fontWeight:500}}>View all ›</button>
                   </div>
                   <div className="card" style={{overflow:"hidden",borderRadius:16}}>
-                    {toReview.map((tx,i)=>{
-                      const sug = getSuggestion(tx);
-                      const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave",llc:"General LLC",transfer:"Transfer"};
-                      const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2",llc:"#636366",transfer:"#636366"};
-                      return (
-                        <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
-                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
-                            <div style={{flex:1,minWidth:0,marginRight:12}}>
-                              <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{tx.payee||tx.name}</div>
-                              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
-                                <span style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</span>
-                                {sug&&(
-                                  <button onClick={e=>{e.stopPropagation();doTag(tx.id,sug);}}
-                                    style={{background:`${PROP_COLOR[sug]||"#636366"}20`,border:"none",borderRadius:20,
-                                      fontSize:11,fontWeight:700,color:PROP_COLOR[sug]||"#636366",
-                                      padding:"2px 10px",cursor:"pointer",letterSpacing:"0.04em",textTransform:"uppercase"}}>
-                                    {PROP_LABEL[sug]||sug}
-                                  </button>
-                                )}
+                    {toReview.length===0?(
+                      <div style={{padding:"20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontSize:13,color:"var(--text-3)"}}>Nothing to review — all caught up</span>
+                        <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,fontSize:11,fontWeight:600,color:"var(--text-3)",padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap"}}>View all transactions</button>
+                      </div>
+                    ):(
+                      <>
+                        {toReview.map((tx,i)=>{
+                          const sug = getSuggestion(tx);
+                          return (
+                            <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
+                                <div style={{flex:1,minWidth:0,marginRight:12}}>
+                                  <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{tx.payee||tx.name}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+                                    <span style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</span>
+                                    {sug&&(
+                                      <button onClick={e=>{e.stopPropagation();doTag(tx.id,sug);}}
+                                        style={{background:`${PROP_COLOR[sug]||"#636366"}20`,border:"none",borderRadius:20,
+                                          fontSize:11,fontWeight:700,color:PROP_COLOR[sug]||"#636366",
+                                          padding:"2px 10px",cursor:"pointer",letterSpacing:"0.04em",textTransform:"uppercase"}}>
+                                        {PROP_LABEL[sug]||sug}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                                  <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>
+                                    {tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}
+                                  </span>
+                                  <div style={{width:8,height:8,borderRadius:"50%",background:"#007aff",flexShrink:0}}/>
+                                </div>
                               </div>
                             </div>
-                            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                              <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>
-                                {tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}
-                              </span>
-                              <div style={{width:8,height:8,borderRadius:"50%",background:"#007aff",flexShrink:0}}/>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <button onClick={async()=>{
-                      for(const tx of toReview){
-                        const sug=getSuggestion(tx);
-                        if(sug) await doTag(tx.id,sug);
-                        else await doTag(tx.id,"llc");
-                      }
-                    }} style={{width:"100%",padding:"14px",background:"none",border:"none",
-                      borderTop:"1px solid rgba(0,0,0,0.06)",fontSize:13,fontWeight:600,
-                      color:"var(--text-2)",cursor:"pointer",textAlign:"center",letterSpacing:"0.02em"}}>
-                      MARK AS REVIEWED
-                    </button>
+                          );
+                        })}
+                        <button onClick={async()=>{
+                          for(const tx of toReview){
+                            const sug=getSuggestion(tx);
+                            if(sug) await doTag(tx.id,sug);
+                            else await doTag(tx.id,"llc");
+                          }
+                        }} style={{width:"100%",padding:"14px",background:"none",border:"none",
+                          borderTop:"1px solid rgba(0,0,0,0.06)",fontSize:13,fontWeight:600,
+                          color:"var(--text-2)",cursor:"pointer",textAlign:"center",letterSpacing:"0.02em"}}>
+                          MARK AS REVIEWED
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
