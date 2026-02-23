@@ -171,6 +171,42 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+    /* Property sub-nav — appears under Portfolio pill */
+    .top-sub-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 16px 8px;
+      gap: 6px;
+      background: var(--header-bg);
+      backdrop-filter: blur(28px) saturate(1.6);
+      -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      border-bottom: 1px solid rgba(128,128,128,0.08);
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+    .sub-nav-pill {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-3);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 13px;
+      border-radius: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+      opacity: 0.6;
+    }
+    .sub-nav-pill.active {
+      background: rgba(128,128,128,0.11);
+      border-color: rgba(128,128,128,0.15);
+      color: var(--text);
+      font-weight: 600;
+      opacity: 1;
+    }
+
     /* Fade edges */
     .top-nav::before, .top-nav::after {
       content: "";
@@ -1274,40 +1310,38 @@ function App() {
   const [customProps, setCustomProps] = useState(()=>LS.get(CUSTOM_PROPS_KEY)||[]);
   const [showAddProp, setShowAddProp] = useState(false);
   const [lastSync, setLastSync]       = useState(()=>LS.get(LAST_SYNC_KEY)||null);
-  const [showHomesDD, setShowHomesDD] = useState(false);
-  const [homesDDPos, setHomesDDPos]   = useState({top:0,left:0});
-  const homesPillRef                  = useRef(null);
+  const subNavRef                     = useRef(null);
 
   // Dynamic tabs: base 5 + any non-Airbnb custom props
   const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
   const feedIdx    = tabs.length;
   const archiveIdx = tabs.length + 1;
 
-  // Home tabs: Airbnb, Pierce, and all custom non-Airbnb props
-  const homeTabSet = useMemo(()=>new Set(["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)]),[customProps]);
-  const isHomesActive = homeTabSet.has(tabs[tabIdx]);
-  // Map tab index → visual pill index (Portfolio=0, Homes=1, Quarterly=2, Projections=3)
+  // Portfolio group = Portfolio overview + all property sub-panes (not Quarterly/Projections/Feed/Archive)
+  const isPortfolioGroup = tabIdx < feedIdx && tabs[tabIdx] !== "Quarterly" && tabs[tabIdx] !== "Projections";
+  // Map tab index → visual pill index (Portfolio=0, Quarterly=1, Projections=2)
   const tabToPillIdx = t => {
-    if(t===0) return 0;
-    if(tabs[t]==="Quarterly") return 2;
-    if(tabs[t]==="Projections") return 3;
-    return 1;
+    if(tabs[t]==="Quarterly") return 1;
+    if(tabs[t]==="Projections") return 2;
+    return 0; // Portfolio overview + all property sub-panes
   };
 
   // Sync module-level mutable arrays so PropBadge/TagMenu child components see current properties
   PROPERTIES = [...BASE_PROPERTIES,...customProps.map(p=>({id:p.id,label:p.label,color:"var(--text)",group:p.isAirbnb?"airbnb":p.id}))];
   AIRBNB_IDS = [...BASE_AIRBNB_IDS,...customProps.filter(p=>p.isAirbnb).map(p=>p.id)];
-  // Center active pill in nav when tabIdx changes
-  // Set initial track position + page-outer top after mount
+  // Set initial track position
   useEffect(()=>{
     if(trackRef.current) trackRef.current.style.transform = "translateX(0px)";
-    const headerH = headerRef.current?.offsetHeight || 56;
-    const navH = document.querySelector(".top-nav")?.offsetHeight || 44;
-    const outer = document.querySelector(".page-outer");
-    if(outer) outer.style.top = (headerH + navH) + "px";
-    // Center the initial pill without animation
     centerNavPill(0, false);
   },[]);
+  // Update page-outer top whenever the sub-nav row appears or disappears
+  useEffect(()=>{
+    const headerH = headerRef.current?.offsetHeight || 56;
+    const mainNavH = navRef.current?.offsetHeight || 52;
+    const subNavH = subNavRef.current?.offsetHeight || 0;
+    const outer = document.querySelector(".page-outer");
+    if(outer) outer.style.top = (headerH + mainNavH + subNavH) + "px";
+  },[isPortfolioGroup]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
   const navRef                  = useRef(null);
@@ -1906,47 +1940,24 @@ function App() {
           {syncing&&<div style={{width:7,height:7,borderRadius:"50%",background:"var(--green)",opacity:0.7}}/>}
         </div>
       </div>
-      {/* TOP NAV */}
+      {/* TOP NAV — 3 main pills */}
       <div className="top-nav" ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
-          <button className={`top-nav-pill${tabIdx===0?" active":""}`} onClick={()=>navigateTab("Portfolio")}>Portfolio</button>
-          <button ref={homesPillRef} className={`top-nav-pill${isHomesActive?" active":""}`}
-            onClick={()=>{
-              if(!showHomesDD && homesPillRef.current){
-                const r=homesPillRef.current.getBoundingClientRect();
-                setHomesDDPos({top:r.bottom+4, left:r.left + r.width/2});
-              }
-              setShowHomesDD(v=>!v);
-            }}>
-            Homes
-          </button>
+          <button className={`top-nav-pill${isPortfolioGroup?" active":""}`} onClick={()=>navigateTab("Portfolio")}>Portfolio</button>
           <button className={`top-nav-pill${tabs[tabIdx]==="Quarterly"?" active":""}`} onClick={()=>navigateTab("Quarterly")}>Quarterly</button>
           <button className={`top-nav-pill${tabs[tabIdx]==="Projections"?" active":""}`} onClick={()=>navigateTab("Projections")}>Projections</button>
         </div>
       </div>
-      {/* Homes dropdown */}
-      {showHomesDD&&<>
-        <div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowHomesDD(false)}/>
-        <div style={{position:"fixed",top:homesDDPos.top,left:homesDDPos.left,transform:"translateX(-50%)",
-          zIndex:150,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",
-          borderRadius:12,border:"1px solid rgba(128,128,128,0.14)",
-          boxShadow:"0 8px 28px rgba(0,0,0,0.14)",overflow:"hidden",minWidth:148}}>
-          {["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)].map(t=>{
-            const active = tabs[tabIdx]===t;
-            return (
-              <button key={t} onClick={()=>{navigateTab(t);setShowHomesDD(false);}}
-                style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                  width:"100%",padding:"12px 16px",background:active?"rgba(128,128,128,0.10)":"transparent",
-                  border:"none",borderBottom:"1px solid rgba(128,128,128,0.08)",
-                  fontSize:14,fontWeight:active?600:400,color:active?"var(--text)":"var(--text-2)",
-                  cursor:"pointer",textAlign:"left",gap:10}}>
-                <span>{t}</span>
-                {active&&<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 6 4.5 10 11 2"/></svg>}
-              </button>
-            );
-          })}
+      {/* SUB NAV — property pills, visible while in Portfolio group */}
+      {isPortfolioGroup&&(
+        <div className="top-sub-nav" ref={subNavRef}>
+          {["Airbnb","Pierce",...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)].map(t=>(
+            <button key={t} className={`sub-nav-pill${tabs[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
+              {t}
+            </button>
+          ))}
         </div>
-      </>}
+      )}
 
       {/* CONTENT */}
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
