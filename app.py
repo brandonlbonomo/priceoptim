@@ -460,6 +460,30 @@ def balances():
             print(f"Balance error for {account.get('name')}: {e}")
     return jsonify({"accounts": all_accounts})
 
+@app.route("/api/rules", methods=["GET"])
+def get_rules():
+    store = load_store()
+    return jsonify({"rules": store.get("rules", {})})
+
+@app.route("/api/rules", methods=["POST"])
+def save_rules():
+    store = load_store()
+    store["rules"] = request.json.get("rules", {})
+    save_store(store)
+    return jsonify({"ok": True})
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    store = load_store()
+    return jsonify({"settings": store.get("settings", {})})
+
+@app.route("/api/settings", methods=["POST"])
+def save_settings():
+    store = load_store()
+    store["settings"] = request.json.get("settings", {})
+    save_store(store)
+    return jsonify({"ok": True})
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
