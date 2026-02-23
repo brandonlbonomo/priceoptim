@@ -16,10 +16,10 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
-      --bg: #f5f5f7;
+      --bg: #eef0f8;
       --bg2: #ffffff;
-      --glass: rgba(255,255,255,0.55);
-      --glass-border: rgba(255,255,255,0.75);
+      --glass: rgba(255,255,255,0.62);
+      --glass-border: rgba(255,255,255,0.80);
       --green: #30d158;
       --green-dim: rgba(48,209,88,0.15);
       --red: #ff453a;
@@ -28,23 +28,25 @@
       --blue-dim: rgba(10,132,255,0.15);
       --purple: #bf5af2;
       --yellow: #ffd60a;
-      --text: #1a1a2e;
-      --text-2: rgba(26,26,46,0.60);
-      --text-3: rgba(26,26,46,0.38);
-      --card-bg: #ffffff;
-      --header-bg: rgba(245,245,247,0.92);
-      --radius: 16px;
-      --radius-sm: 10px;
+      --text: #14142a;
+      --text-2: rgba(20,20,42,0.58);
+      --text-3: rgba(20,20,42,0.36);
+      --card-bg: rgba(255,255,255,0.68);
+      --header-bg: rgba(238,240,250,0.82);
+      --radius: 20px;
+      --radius-sm: 12px;
+      --specular: inset 0 1px 0 rgba(255,255,255,0.88);
+      --card-shadow: 0 2px 24px rgba(60,80,180,0.07), 0 1px 3px rgba(0,0,0,0.04);
     }
     [data-theme="dark"] {
-      --bg: #1c1c1e;
-      --bg2: #2c2c2e;
-      --glass: rgba(44,44,46,0.85);
-      --text: #f5f5f7;
-      --text-2: rgba(245,245,247,0.60);
-      --text-3: rgba(245,245,247,0.38);
-      --card-bg: #2c2c2e;
-      --header-bg: rgba(28,28,30,0.92);
+      --bg: #0e0e1a;
+      --bg2: #1c1c2e;
+      --glass: rgba(30,30,50,0.88);
+      --text: #f0f0ff;
+      --text-2: rgba(240,240,255,0.58);
+      --text-3: rgba(240,240,255,0.36);
+      --card-bg: rgba(30,30,50,0.80);
+      --header-bg: rgba(14,14,26,0.90);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -64,11 +66,12 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(ellipse 60% 50% at 10% 15%,  rgba(255,255,255,0.06) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 45% at 90% 10%,  rgba(200,240,255,0.07) 0%, transparent 55%),
-        radial-gradient(ellipse 55% 50% at 80% 85%,  rgba(180,255,200,0.05) 0%, transparent 55%),
-        radial-gradient(ellipse 45% 40% at 15% 85%,  rgba(220,200,255,0.05) 0%, transparent 50%),
-        linear-gradient(145deg, #f0f4f8 0%, #e8edf5 35%, #eef2f7 65%, #f2f0f8 100%);
+        radial-gradient(ellipse 75% 65% at 5% 8%,   rgba(140,100,255,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 60% at 95% 5%,   rgba(50,140,255,0.16) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 92%,  rgba(40,200,130,0.11) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 55% at 8% 92%,   rgba(255,100,180,0.10) 0%, transparent 52%),
+        radial-gradient(ellipse 50% 45% at 50% 50%,  rgba(180,160,255,0.06) 0%, transparent 60%),
+        linear-gradient(150deg, #e8ecff 0%, #e4eaff 30%, #eaeeff 60%, #ede8ff 100%);
       pointer-events: none;
     }
 
@@ -78,18 +81,20 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(circle 400px at 25% 55%, rgba(120,180,255,0.12) 0%, transparent 65%),
-        radial-gradient(circle 350px at 75% 35%, rgba(160,220,180,0.10) 0%, transparent 65%),
-        radial-gradient(circle 300px at 60% 80%, rgba(200,160,255,0.08) 0%, transparent 60%);
-      animation: driftOrbs 20s ease-in-out infinite alternate;
+        radial-gradient(circle 600px at 18% 48%, rgba(100,130,255,0.16) 0%, transparent 65%),
+        radial-gradient(circle 500px at 82% 28%, rgba(120,210,170,0.13) 0%, transparent 65%),
+        radial-gradient(circle 450px at 58% 82%, rgba(190,140,255,0.14) 0%, transparent 60%),
+        radial-gradient(circle 300px at 35% 15%, rgba(255,150,100,0.07) 0%, transparent 55%);
+      animation: driftOrbs 22s ease-in-out infinite alternate;
       pointer-events: none;
     }
 
     @keyframes driftOrbs {
       0%   { transform: translate(0, 0) scale(1); }
-      33%  { transform: translate(25px, -15px) scale(1.04); }
-      66%  { transform: translate(-15px, 25px) scale(0.97); }
-      100% { transform: translate(12px, -8px) scale(1.02); }
+      25%  { transform: translate(30px, -18px) scale(1.05); }
+      50%  { transform: translate(-12px, 28px) scale(0.96); }
+      75%  { transform: translate(22px, 10px) scale(1.03); }
+      100% { transform: translate(-8px, -14px) scale(1.01); }
     }
 
     #root { position: relative; z-index: 1; }
@@ -103,14 +108,17 @@
       background: var(--glass);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(48px) saturate(1.8) brightness(1.02);
+      -webkit-backdrop-filter: blur(48px) saturate(1.8) brightness(1.02);
+      box-shadow: var(--card-shadow), var(--specular);
     }
     .glass-sm {
       background: var(--glass);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-sm);
-      backdrop-filter: blur(16px);
+      backdrop-filter: blur(32px) saturate(1.6);
+      -webkit-backdrop-filter: blur(32px) saturate(1.6);
+      box-shadow: var(--card-shadow), var(--specular);
     }
 
     /* Top header */
@@ -118,9 +126,10 @@
       position: sticky; top: 0; z-index: 100;
       padding: 12px 16px 10px;
       background: var(--header-bg);
-      backdrop-filter: blur(28px) saturate(1.6);
-      -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      border-bottom: 1px solid rgba(128,128,128,0.12);
+      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      border-bottom: 0.5px solid rgba(255,255,255,0.55);
+      box-shadow: 0 1px 0 rgba(100,120,220,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
       display: flex; align-items: center; justify-content: space-between;
     }
     /* Top pill navigation — Copilot style, no scroll, active always centered */
@@ -131,10 +140,11 @@
       justify-content: center;
       padding: 6px 0 10px;
       background: var(--header-bg);
-      backdrop-filter: blur(28px) saturate(1.6);
-      -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
       overflow: hidden;
-      border-bottom: 1px solid rgba(128,128,128,0.10);
+      border-bottom: 0.5px solid rgba(255,255,255,0.45);
+      box-shadow: 0 1px 0 rgba(100,120,220,0.05);
       height: 52px;
     }
     /* When sub-nav is visible, remove bottom border from main nav so both rows merge */
@@ -156,26 +166,29 @@
       font-size: 15px;
       font-weight: 500;
       padding: 7px 22px;
-      border-radius: 20px;
+      border-radius: 22px;
       cursor: pointer;
       white-space: nowrap;
-      transition: opacity 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
-                  transform 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
-                  background 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
-                  color 0.26s cubic-bezier(0.25,0.46,0.45,0.94);
+      transition: opacity 0.3s cubic-bezier(0.34,1.3,0.64,1),
+                  transform 0.3s cubic-bezier(0.34,1.3,0.64,1),
+                  background 0.3s cubic-bezier(0.34,1.3,0.64,1),
+                  box-shadow 0.3s cubic-bezier(0.34,1.3,0.64,1),
+                  color 0.3s cubic-bezier(0.34,1.3,0.64,1);
       flex-shrink: 0;
-      opacity: 0.38;
+      opacity: 0.36;
       transform: scale(0.82);
     }
     .top-nav-pill.active {
-      background: rgba(128,128,128,0.13);
+      background: rgba(255,255,255,0.78);
       color: var(--text);
       font-weight: 700;
       font-size: 15px;
       opacity: 1;
       transform: scale(1);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(20px) saturate(1.6);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      border: 0.5px solid rgba(255,255,255,0.7);
+      box-shadow: 0 2px 14px rgba(60,80,180,0.12), inset 0 1px 0 rgba(255,255,255,0.95);
     }
     /* Property sub-nav — appears under Portfolio pill, shares parent bg/blur */
     .top-sub-nav {
@@ -185,9 +198,9 @@
       padding: 2px 16px 10px;
       gap: 8px;
       background: var(--header-bg);
-      backdrop-filter: blur(28px) saturate(1.6);
-      -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      border-bottom: 1px solid rgba(128,128,128,0.10);
+      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      border-bottom: 0.5px solid rgba(255,255,255,0.45);
       overflow-x: auto;
       flex-wrap: nowrap;
     }
@@ -198,18 +211,20 @@
       font-size: 13px;
       font-weight: 500;
       padding: 5px 16px;
-      border-radius: 16px;
+      border-radius: 18px;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
-      transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
-      opacity: 0.55;
+      transition: all 0.28s cubic-bezier(0.34,1.3,0.64,1);
+      opacity: 0.52;
     }
     .sub-nav-pill.active {
-      background: rgba(128,128,128,0.13);
+      background: rgba(255,255,255,0.75);
       color: var(--text);
       font-weight: 700;
       opacity: 1;
+      border: 0.5px solid rgba(255,255,255,0.65);
+      box-shadow: 0 1px 10px rgba(60,80,180,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
     }
 
     /* Fade edges */
@@ -263,17 +278,18 @@
     /* Chart tooltip */
     .chart-tooltip {
       position: absolute;
-      background: rgba(20,20,28,0.95);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 10px;
+      background: rgba(16,16,26,0.86);
+      border: 0.5px solid rgba(255,255,255,0.22);
+      border-radius: 14px;
       padding: 10px 14px;
       font-size: 12px;
       pointer-events: none;
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(48px) saturate(1.6);
+      -webkit-backdrop-filter: blur(48px) saturate(1.6);
       white-space: nowrap;
       z-index: 50;
       transform: translateX(-50%);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12);
     }
 
     /* Direction badge */
@@ -343,8 +359,9 @@
     /* Modal overlay */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 200;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
+      background: rgba(10,10,20,0.42);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
       display: flex; align-items: center; justify-content: center;
     }
 
@@ -438,10 +455,13 @@
       margin-bottom: 10px; margin-top: 22px;
     }
     .card {
-      background: rgba(255,255,255,0.72);
-      border: 1px solid rgba(0,0,0,0.07);
-      border-radius: 16px;
+      background: rgba(255,255,255,0.66);
+      border: 1px solid rgba(255,255,255,0.72);
+      border-radius: 20px;
       overflow: hidden;
+      backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
+      -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
+      box-shadow: var(--card-shadow), var(--specular);
     }
     .card-padded { padding: 16px 18px; }
     .stat-row { display: flex; align-items: baseline; gap: 8px; }
@@ -454,11 +474,13 @@
 
     /* Metric card */
     .metric-card {
-      background: rgba(255,255,255,0.55);
-      border: 1px solid rgba(255,255,255,0.75);
-      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(255,255,255,0.76);
+      border-radius: var(--radius);
       padding: 16px 18px;
-      backdrop-filter: blur(16px);
+      backdrop-filter: blur(40px) saturate(1.8);
+      -webkit-backdrop-filter: blur(40px) saturate(1.8);
+      box-shadow: var(--card-shadow), var(--specular);
     }
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -577,12 +599,13 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
   const [tapped, setTapped] = useState(null);
   const containerRef = useRef(null);
   const instanceId = useRef(Math.random().toString(36).slice(2));
-  // Dismiss tapped tooltip when clicking outside the chart
+  // Dismiss tapped tooltip on any touch/click outside the chart
+  // Uses pointerdown (not click) — click events don't fire reliably on non-interactive iOS elements
   useEffect(()=>{
     if(tapped===null) return;
     const handle = e => { if(!containerRef.current?.contains(e.target)) setTapped(null); };
-    const id = setTimeout(()=>document.addEventListener('click', handle), 50);
-    return ()=>{ clearTimeout(id); document.removeEventListener('click', handle); };
+    const id = setTimeout(()=>document.addEventListener('pointerdown', handle, {passive:true}), 80);
+    return ()=>{ clearTimeout(id); document.removeEventListener('pointerdown', handle); };
   },[tapped]);
   // Close this chart's tooltip when any OTHER chart bar is tapped
   useEffect(()=>{
@@ -678,7 +701,7 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"#f5f5f7",borderRadius:"20px 20px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -8px 40px rgba(0,0,0,0.25)"}}>
+      <div style={{background:"rgba(236,238,255,0.88)",backdropFilter:"blur(60px) saturate(1.8)",WebkitBackdropFilter:"blur(60px) saturate(1.8)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.6), 0 -12px 60px rgba(60,80,180,0.18)",border:"0.5px solid rgba(255,255,255,0.55)"}}>
         <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
         {/* Header */}
         <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
@@ -1424,11 +1447,39 @@ function App() {
   const drag                    = useRef({active:false,startX:0,startY:0,lastX:0,axis:null});
   const dragPillOffsets         = useRef(null); // pill center offsets cached at drag start
 
-  const setTrackPos = (px, animated, dur) => {
+  const springRef = useRef(null); // active rAF id
+  const setTrackPos = (px, animated, initVel = 0) => {
     const el = trackRef.current; if(!el) return;
-    // Spring overshoot curve: fast acceleration, slight overshoot, liquid settle
-    el.style.transition = animated ? `transform ${dur||'0.46s'} cubic-bezier(0.34, 1.4, 0.64, 1)` : "none";
-    el.style.transform  = `translate3d(${px}px, 0, 0)`;
+    // Cancel any in-flight spring
+    if(springRef.current){ cancelAnimationFrame(springRef.current); springRef.current = null; }
+    if(!animated){
+      el.style.transition = 'none';
+      el.style.transform  = `translate3d(${px}px, 0, 0)`;
+      return;
+    }
+    // Read current translate from computed style
+    el.style.transition = 'none';
+    const mat = new DOMMatrix(window.getComputedStyle(el).transform);
+    const curX = isNaN(mat.m41) ? px : mat.m41;
+    // Spring state: x = displacement from target (px), v = velocity (px/s)
+    let x = curX - px;
+    let v = initVel * 1000; // px/ms → px/s
+    // iOS 26-style spring: crisp, liquid, very slight overshoot
+    const k = 340, c = 34; // stiffness, damping
+    let last = performance.now();
+    function tick(now){
+      const dt = Math.min((now - last) / 1000, 1/30);
+      last = now;
+      v += (-k * x - c * v) * dt;
+      x += v * dt;
+      el.style.transform = `translate3d(${px + x}px, 0, 0)`;
+      if(Math.abs(x) < 0.25 && Math.abs(v) < 0.25){
+        el.style.transform = `translate3d(${px}px, 0, 0)`;
+        springRef.current = null; return;
+      }
+      springRef.current = requestAnimationFrame(tick);
+    }
+    springRef.current = requestAnimationFrame(tick);
   };
 
   // Nav pill centering is handled by static CSS (flex justify-content:center on .top-nav).
@@ -1536,14 +1587,12 @@ function App() {
     // A swipe "passes" if it crossed distance threshold OR was a fast flick
     const passLeft  = dx < -vw*0.18 || vel < -0.35;
     const passRight = dx >  vw*0.18 || vel >  0.35;
-    // Velocity-aware duration: fast flick → short snap; slow drag → longer liquid settle
-    const speed = Math.abs(vel);
-    const dur = speed > 0.6 ? "0.30s" : speed > 0.35 ? "0.38s" : "0.46s";
+    // vel is passed to setTrackPos for spring velocity handoff — physical continuation
 
     // ── Feed pane: right-swipe opens drawer ──
     if(tabIdx === feedIdx){
       if(passRight){ setShowDrawer(true); }
-      setTrackPos(-feedIdx*vw, true, dur);
+      setTrackPos(-feedIdx*vw, true, vel);
       return;
     }
 
@@ -1561,19 +1610,19 @@ function App() {
         centerNavPill(1, true);
         return;
       }
-      // didn't pass threshold — snap back
-      setTrackPos(0, true, dur); centerNavPill(0, true);
+      // didn't pass threshold — spring snap back with velocity handoff
+      setTrackPos(0, true, vel); centerNavPill(0, true);
       return;
     }
 
     // ── Sub-pane (Airbnb, Pierce, etc.) ──
     if(isSubPane){
       let next = tabIdx;
-      if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1; // deeper sub-pane
-      if(passRight && tabIdx > 1)              next = tabIdx-1; // shallower sub-pane
+      if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1;
+      if(passRight && tabIdx > 1)              next = tabIdx-1;
       setTab(tabs[next]); setTabIdx(next);
-      setTrackPos(-next*vw, true, dur);
-      centerNavPill(0, true); // Portfolio pill stays highlighted
+      setTrackPos(-next*vw, true, vel);
+      centerNavPill(0, true);
       return;
     }
 
@@ -1588,11 +1637,11 @@ function App() {
       if(passLeft && tabIdx < tabs.length-1){ // left → Projections
         const next = tabIdx+1;
         setTab(tabs[next]); setTabIdx(next);
-        setTrackPos(-next*vw, true, dur);
+        setTrackPos(-next*vw, true, vel);
         centerNavPill(tabToPillIdx(next), true);
         return;
       }
-      setTrackPos(-tabIdx*vw, true, dur); centerNavPill(1, true);
+      setTrackPos(-tabIdx*vw, true, vel); centerNavPill(1, true);
       return;
     }
 
@@ -1601,7 +1650,7 @@ function App() {
     if(passLeft  && tabIdx < tabs.length-1) next = tabIdx+1;
     if(passRight && tabIdx > 0)             next = tabIdx-1;
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
-    setTrackPos(-next*vw, true, dur);
+    setTrackPos(-next*vw, true, vel);
     centerNavPill(tabToPillIdx(next), true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
@@ -2874,7 +2923,7 @@ function App() {
 
       {/* SIDE DRAWER */}
       {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.42s cubic-bezier(0.34, 1.3, 0.64, 1)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:288,background:"rgba(235,238,255,0.88)",backdropFilter:"blur(60px) saturate(2.0) brightness(1.05)",WebkitBackdropFilter:"blur(60px) saturate(2.0) brightness(1.05)",borderRight:"0.5px solid rgba(255,255,255,0.55)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.44s cubic-bezier(0.34,1.28,0.64,1)",boxShadow:showDrawer?"6px 0 48px rgba(60,80,200,0.15), inset -1px 0 0 rgba(255,255,255,0.4)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
         {/* Drawer header */}
         <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
