@@ -137,35 +137,37 @@
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
       overflow: hidden;
       border-bottom: 1px solid rgba(128,128,128,0.10);
-      height: 46px;
+      height: 52px;
     }
     .top-nav-track {
       display: flex;
       align-items: center;
       gap: 0;
-      transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
       will-change: transform;
     }
     .top-nav-pill {
       background: transparent;
       border: none;
       color: var(--text-3);
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 500;
-      padding: 6px 18px;
+      padding: 7px 22px;
       border-radius: 20px;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.28s cubic-bezier(0.25,0.46,0.45,0.94);
+      transition: opacity 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
+                  transform 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
+                  background 0.26s cubic-bezier(0.25,0.46,0.45,0.94),
+                  color 0.26s cubic-bezier(0.25,0.46,0.45,0.94);
       flex-shrink: 0;
-      opacity: 0.45;
-      transform: scale(0.88);
+      opacity: 0.38;
+      transform: scale(0.82);
     }
     .top-nav-pill.active {
       background: rgba(128,128,128,0.13);
       color: var(--text);
       font-weight: 700;
-      font-size: 16px;
+      font-size: 15px;
       opacity: 1;
       transform: scale(1);
       backdrop-filter: blur(8px);
@@ -511,6 +513,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
 // ── MiniBar — compact sparkline bar chart (clickable) ─────────
 function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, marginMode=false }) {
   const [hov, setHov] = useState(null);
+  const [tapped, setTapped] = useState(null);
   const H = 72;
   const vals = months.map(([,v])=> {
     if(valueKey==="net") return v.rev-v.exp;
@@ -531,20 +534,25 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
             ? (val >= 30 ? "#30d158" : val >= 0 ? "#aaaaaa" : "#ff453a")
             : color || (val>=0?"#30d158":"#ff453a");
           const canClick = !!onBarClick && !isProj;
+          const isActive = hov===i || tapped===i;
           return (
             <div key={mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",height:H,justifyContent:"flex-end",position:"relative",cursor:canClick?"pointer":"default"}}
               onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
-              onClick={()=>canClick&&onBarClick(mo,valueKey)}>
+              onClick={()=>{
+                if(!canClick) return;
+                if(tapped===i){ onBarClick(mo,valueKey); setTapped(null); }
+                else { setTapped(i); }
+              }}>
               <div style={{width:"100%",borderRadius:"2px 2px 0 0",height:px,transition:"height 0.3s ease",
-                background:isProj?(hov===i?"#aaaaaa":"#cccccc"):(hov===i?c:`${c}bb`),
+                background:isProj?(isActive?"#aaaaaa":"#cccccc"):(isActive?c:`${c}bb`),
                 opacity:isProj?0.5:1,
                 backgroundImage:isProj?"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,0.4) 3px,rgba(255,255,255,0.4) 6px)":"none",
-                outline:canClick&&hov===i?"2px solid "+c:"none",outlineOffset:1}}/>
-              {hov===i&&(
+                outline:canClick&&isActive?"2px solid "+c:"none",outlineOffset:1}}/>
+              {isActive&&(
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 6px)",left:"50%",fontSize:11}}>
                   <div style={{color:"rgba(255,255,255,0.55)",fontSize:9,marginBottom:2}}>{moLabel(mo)}{isProj?" · projected":""}</div>
                   <div style={{color:"#fff",fontWeight:700}}>{fmt ? fmt(val) : fmt$(val)}</div>
-                  {canClick&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>tap to drill in</div>}
+                  {canClick&&<div style={{color:"rgba(255,255,255,0.4)",fontSize:8,marginTop:2}}>{tapped===i?"tap again for transactions":"tap for details"}</div>}
                 </div>
               )}
             </div>
@@ -1156,41 +1164,41 @@ function App() {
   const [tab, setTab]           = useState("Portfolio");
   const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
   // Center active pill in nav when tabIdx changes
-  useEffect(()=>{
-    const nav = navRef.current;
-    const track = navTrackRef.current;
-    if(!nav || !track) return;
-    const pills = track.querySelectorAll(".top-nav-pill");
-    const activePill = pills[tabIdx];
-    if(!activePill) return;
-    // Translate track so active pill is centered in nav
-    const navW = nav.offsetWidth;
-    const pillLeft = activePill.offsetLeft;
-    const pillW = activePill.offsetWidth;
-    const offset = navW/2 - pillLeft - pillW/2;
-    track.style.transform = `translateX(${offset}px)`;
-  },[tabIdx]);
-
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
-    // Portfolio is index 0 — start at translateX(0)
     if(trackRef.current) trackRef.current.style.transform = "translateX(0px)";
-    // Measure actual header + top-nav height for page-outer
     const headerH = headerRef.current?.offsetHeight || 56;
     const navH = document.querySelector(".top-nav")?.offsetHeight || 44;
     const outer = document.querySelector(".page-outer");
     if(outer) outer.style.top = (headerH + navH) + "px";
+    // Center the initial pill without animation
+    centerNavPill(0, false);
   },[]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
   const navRef                  = useRef(null);
   const navTrackRef             = useRef(null);
   const drag                    = useRef({active:false,startX:0,startY:0,lastX:0,axis:null});
+  const dragPillOffsets         = useRef(null); // pill center offsets cached at drag start
 
   const setTrackPos = (px, animated) => {
     const el = trackRef.current; if(!el) return;
     el.style.transition = animated ? "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)" : "none";
     el.style.transform  = `translateX(${px}px)`;
+  };
+
+  // Center the active nav pill. Called explicitly so timing is deterministic.
+  const centerNavPill = (idx, animated) => {
+    const nav = navRef.current;
+    const track = navTrackRef.current;
+    if(!nav || !track) return;
+    const pills = track.querySelectorAll(".top-nav-pill");
+    const pill = pills[idx];
+    if(!pill) return;
+    const navW = nav.offsetWidth;
+    const offset = navW/2 - pill.offsetLeft - pill.offsetWidth/2;
+    track.style.transition = animated ? "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)" : "none";
+    track.style.transform = `translateX(${offset}px)`;
   };
 
   const ARCHIVE_IDX = 6; // Archive is always last pane, outside TABS
@@ -1204,6 +1212,7 @@ function App() {
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
     setTrackPos(-idx * window.innerWidth, true);
+    centerNavPill(idx, true);
   };
 
   // Pull-to-refresh state
@@ -1237,6 +1246,15 @@ function App() {
     d.startX = d.lastX = e.touches[0].clientX;
     d.startY = e.touches[0].clientY;
     const el = trackRef.current; if(el) el.style.transition = "none";
+    // Cache pill center offsets at drag start — avoids layout reads during move
+    if(navTrackRef.current && navRef.current) {
+      navTrackRef.current.style.transition = "none";
+      const pills = navTrackRef.current.querySelectorAll(".top-nav-pill");
+      const navW = navRef.current.offsetWidth;
+      dragPillOffsets.current = Array.from(pills).map(p =>
+        navW/2 - p.offsetLeft - p.offsetWidth/2
+      );
+    }
   };
 
   const onTouchMove = (e) => {
@@ -1257,18 +1275,15 @@ function App() {
     const clampedDx = atStart ? Math.min(dx*0.06,16) : atEnd ? Math.max(dx*0.06,-16) : dx;
     setTrackPos(base + clampedDx, false);
     // Slide nav track so active pill stays centered proportionally during drag
-    if(navTrackRef.current && navRef.current && !atStart && !atEnd){
+    // Uses cached offsets from onTouchStart — no layout reads here
+    if(navTrackRef.current && dragPillOffsets.current && !atStart && !atEnd){
       const frac = clampedDx / window.innerWidth;
-      const pills = navTrackRef.current.querySelectorAll(".top-nav-pill");
+      const offsets = dragPillOffsets.current;
       const toPillIdx = dx < 0 ? tabIdx+1 : tabIdx-1;
-      const fromPill = pills[tabIdx];
-      const toPill   = pills[toPillIdx];
-      if(fromPill && toPill){
-        const navW = navRef.current.offsetWidth;
-        const fromOff = navW/2 - fromPill.offsetLeft - fromPill.offsetWidth/2;
-        const toOff   = navW/2 - toPill.offsetLeft   - toPill.offsetWidth/2;
+      const fromOff = offsets[tabIdx];
+      const toOff   = offsets[toPillIdx];
+      if(fromOff !== undefined && toOff !== undefined){
         const lerp = fromOff + (toOff - fromOff) * Math.min(1, Math.abs(frac));
-        navTrackRef.current.style.transition = "none";
         navTrackRef.current.style.transform = `translateX(${lerp}px)`;
       }
     }
@@ -1278,7 +1293,8 @@ function App() {
     const d = drag.current;
     if(!d.active) return;
     d.active = false;
-    if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); return; }
+    dragPillOffsets.current = null;
+    if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); centerNavPill(tabIdx, true); return; }
     const dx = d.lastX - d.startX;
     const vw = window.innerWidth;
     let next = tabIdx;
@@ -1286,8 +1302,8 @@ function App() {
     if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
     setTab(TABS[next]); setTabIdx(next);
     setTrackPos(-next*vw, true);
-    // Restore nav track transition
-    if(navTrackRef.current) navTrackRef.current.style.transition = "";
+    // Animate nav pill to final position with same timing as swipe track
+    centerNavPill(next, true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
