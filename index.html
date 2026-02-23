@@ -576,6 +576,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
   const [hov, setHov] = useState(null);
   const [tapped, setTapped] = useState(null);
   const containerRef = useRef(null);
+  const instanceId = useRef(Math.random().toString(36).slice(2));
   // Dismiss tapped tooltip when clicking outside the chart
   useEffect(()=>{
     if(tapped===null) return;
@@ -583,6 +584,12 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
     const id = setTimeout(()=>document.addEventListener('click', handle), 50);
     return ()=>{ clearTimeout(id); document.removeEventListener('click', handle); };
   },[tapped]);
+  // Close this chart's tooltip when any OTHER chart bar is tapped
+  useEffect(()=>{
+    const handle = e => { if(e.detail.id !== instanceId.current) setTapped(null); };
+    document.addEventListener('minibar-tap', handle);
+    return ()=>document.removeEventListener('minibar-tap', handle);
+  },[]);
   const H = 72;
   const vals = months.map(([,v])=> {
     if(valueKey==="net") return v.rev-v.exp;
@@ -622,6 +629,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
               onClick={()=>{
                 if(!canClick) return;
                 if(navigator.vibrate) navigator.vibrate([6]);
+                document.dispatchEvent(new CustomEvent('minibar-tap',{detail:{id:instanceId.current}}));
                 if(tapped===i){ onBarClick(mo,valueKey); setTapped(null); }
                 else { setTapped(i); }
               }}>
@@ -658,11 +666,11 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
 }
 
 // ── MonthDrillDown — modal showing transactions for a clicked bar ──
-function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, doBulkDelete, getSuggestion }) {
+function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, doBulkDelete, getSuggestion, title=null }) {
   const [tagging, setTagging] = useState(null);
   const [txFilter, setTxFilter] = useState(type==="rev"?"in":type==="exp"?"out":"all");
-  // All txs for this month — let TxList filter handle in/out toggle
-  const moTxs = txs.filter(t => t.date?.slice(0,7) === mo);
+  // title is set for quarterly drill-downs — txs are pre-filtered at call site
+  const moTxs = title ? txs : txs.filter(t => t.date?.slice(0,7) === mo);
   const total = moTxs.filter(t=>txFilter==="all"||(txFilter==="in"&&t.type==="in")||(txFilter==="out"&&t.type==="out"))
     .reduce((s,t)=> t.type==="in" ? s+Math.abs(t.amount) : s-Math.abs(t.amount), 0);
   const typeLabel = type==="rev"?"Revenue":type==="exp"?"Expenses":"Net";
@@ -675,7 +683,7 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
         {/* Header */}
         <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div>
-            <div style={{fontSize:12,color:"var(--text-3)",marginBottom:2}}>{moLabel(mo)} · {typeLabel}</div>
+            <div style={{fontSize:12,color:"var(--text-3)",marginBottom:2}}>{title||moLabel(mo)} · {typeLabel}</div>
             <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:total>=0?"#30d158":"#ff453a"}}>{fmt$(Math.abs(total))}</div>
           </div>
           <button onClick={onClose} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
@@ -1416,10 +1424,10 @@ function App() {
   const drag                    = useRef({active:false,startX:0,startY:0,lastX:0,axis:null});
   const dragPillOffsets         = useRef(null); // pill center offsets cached at drag start
 
-  const setTrackPos = (px, animated) => {
+  const setTrackPos = (px, animated, dur) => {
     const el = trackRef.current; if(!el) return;
-    // ease-out-cubic — fast start, gentle finish (matches native iOS feel)
-    el.style.transition = animated ? "transform 0.38s cubic-bezier(0.33, 1, 0.68, 1)" : "none";
+    // Spring overshoot curve: fast acceleration, slight overshoot, liquid settle
+    el.style.transition = animated ? `transform ${dur||'0.46s'} cubic-bezier(0.34, 1.4, 0.64, 1)` : "none";
     el.style.transform  = `translate3d(${px}px, 0, 0)`;
   };
 
@@ -1471,7 +1479,7 @@ function App() {
   };
 
   const onTouchStart = (e) => {
-    if(tabIdx >= feedIdx) return; // block swipe navigation from Feed or Archive panes
+    if(tabIdx > feedIdx) return; // block swipe navigation from Archive pane and beyond
     const d = drag.current;
     d.active = true; d.axis = null;
     d.startX = d.lastX = e.touches[0].clientX;
@@ -1498,17 +1506,20 @@ function App() {
     d.lastTime = now; d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
     // Right-swipe on Portfolio → drawer gesture (slight pull feel)
-    const atStart = tabIdx===0 && dx>0;
+    const atStart = (tabIdx===0 || tabIdx===feedIdx) && dx>0;  // Portfolio or Feed: right → drawer
     const atEnd   = tabIdx===tabs.length-1 && dx<0;
     // Truly blocked: sub-pane boundary exits — no navigation possible
     const trulyBlocked = (isSubPane && tabIdx===1 && dx>0)
                       || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0);
     // Skip-nav: Portfolio↔Quarterly jumps — allow visible drag feedback
     const skipNav = (tabIdx===0 && dx<0) || (tabs[tabIdx]==="Quarterly" && dx>0);
-    const clampedDx = atStart      ? Math.min(dx * 0.35, 55)               // drawer pull
-                    : atEnd        ? Math.max(dx * 0.06, -16)
-                    : trulyBlocked ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
-                    : skipNav      ? (dx > 0 ? Math.min(dx*0.35,70) : Math.max(dx*0.35,-70))
+    // Feed pane: block left swipe (nothing to the right)
+    const feedLeftBlock = tabIdx===feedIdx && dx<0;
+    const clampedDx = atStart        ? Math.min(dx * 0.35, 55)             // drawer pull
+                    : atEnd          ? Math.max(dx * 0.06, -16)
+                    : feedLeftBlock  ? Math.max(dx * 0.08, -12)
+                    : trulyBlocked   ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
+                    : skipNav        ? (dx > 0 ? Math.min(dx*0.35,70) : Math.max(dx*0.35,-70))
                     : dx;
     setTrackPos(base + clampedDx, false);
   };
@@ -1525,6 +1536,16 @@ function App() {
     // A swipe "passes" if it crossed distance threshold OR was a fast flick
     const passLeft  = dx < -vw*0.18 || vel < -0.35;
     const passRight = dx >  vw*0.18 || vel >  0.35;
+    // Velocity-aware duration: fast flick → short snap; slow drag → longer liquid settle
+    const speed = Math.abs(vel);
+    const dur = speed > 0.6 ? "0.30s" : speed > 0.35 ? "0.38s" : "0.46s";
+
+    // ── Feed pane: right-swipe opens drawer ──
+    if(tabIdx === feedIdx){
+      if(passRight){ setShowDrawer(true); }
+      setTrackPos(-feedIdx*vw, true, dur);
+      return;
+    }
 
     // ── Portfolio overview (tab 0) ──
     if(tabIdx === 0){
@@ -1541,7 +1562,7 @@ function App() {
         return;
       }
       // didn't pass threshold — snap back
-      setTrackPos(0, true); centerNavPill(0, true);
+      setTrackPos(0, true, dur); centerNavPill(0, true);
       return;
     }
 
@@ -1551,7 +1572,7 @@ function App() {
       if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1; // deeper sub-pane
       if(passRight && tabIdx > 1)              next = tabIdx-1; // shallower sub-pane
       setTab(tabs[next]); setTabIdx(next);
-      setTrackPos(-next*vw, true);
+      setTrackPos(-next*vw, true, dur);
       centerNavPill(0, true); // Portfolio pill stays highlighted
       return;
     }
@@ -1567,11 +1588,11 @@ function App() {
       if(passLeft && tabIdx < tabs.length-1){ // left → Projections
         const next = tabIdx+1;
         setTab(tabs[next]); setTabIdx(next);
-        setTrackPos(-next*vw, true);
+        setTrackPos(-next*vw, true, dur);
         centerNavPill(tabToPillIdx(next), true);
         return;
       }
-      setTrackPos(-tabIdx*vw, true); centerNavPill(1, true);
+      setTrackPos(-tabIdx*vw, true, dur); centerNavPill(1, true);
       return;
     }
 
@@ -1580,7 +1601,7 @@ function App() {
     if(passLeft  && tabIdx < tabs.length-1) next = tabIdx+1;
     if(passRight && tabIdx > 0)             next = tabIdx-1;
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
-    setTrackPos(-next*vw, true);
+    setTrackPos(-next*vw, true, dur);
     centerNavPill(tabToPillIdx(next), true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
@@ -2476,17 +2497,25 @@ function App() {
 
             <div className="section-title">Revenue · Quarter by Quarter <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
             <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-              <MiniBar months={qMths} valueKey="rev" color="#30d158" onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
+              <MiniBar months={qMths} valueKey="rev" color="#30d158" labelFn={qAxisLabel} onBarClick={(qKey)=>{
+                const [yr,q]=qKey.split("-Q");
+                const qMs=[...Array(3)].map((_,i)=>`${yr}-${String((+q-1)*3+i+1).padStart(2,'0')}`);
+                setDrillDown({mo:qKey,type:"rev",title:`Q${q} '${yr.slice(2)}`,txs:enriched.filter(t=>qMs.includes(t.date?.slice(0,7))&&t.propId!=="transfer"&&t.type==="in")});
+              }}/>
             </div>
 
             <div className="section-title">Expenses · Quarter by Quarter</div>
             <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-              <MiniBar months={qMths} valueKey="exp" color="#ff453a" onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
+              <MiniBar months={qMths} valueKey="exp" color="#ff453a" labelFn={qAxisLabel} onBarClick={(qKey)=>{
+                const [yr,q]=qKey.split("-Q");
+                const qMs=[...Array(3)].map((_,i)=>`${yr}-${String((+q-1)*3+i+1).padStart(2,'0')}`);
+                setDrillDown({mo:qKey,type:"exp",title:`Q${q} '${yr.slice(2)}`,txs:enriched.filter(t=>qMs.includes(t.date?.slice(0,7))&&t.propId!=="transfer"&&t.type==="out")});
+              }}/>
             </div>
 
             <div className="section-title">Net Income · Quarter by Quarter</div>
             <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
-              <MiniBar months={qMths} valueKey="net" color={null} onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
+              <MiniBar months={qMths} valueKey="net" color={null} labelFn={qAxisLabel}/>
             </div>
 
             <div className="section-title">Net Margin % · Quarter by Quarter <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=ok · red=negative</span></div>
@@ -2845,7 +2874,7 @@ function App() {
 
       {/* SIDE DRAWER */}
       {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:280,background:"var(--header-bg)",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.42s cubic-bezier(0.34, 1.3, 0.64, 1)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.18)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
         {/* Drawer header */}
         <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2973,6 +3002,7 @@ function App() {
       {showAddProp&&<AddPropertyModal onSave={saveCustomProp} onClose={()=>setShowAddProp(false)}/>}
       {showInvest&&<InvestModal invest={invest} onSave={saveInvest} onClose={()=>setShowInvest(false)}/>}
       {drillDown&&<MonthDrillDown mo={drillDown.mo} type={drillDown.type} txs={drillDown.txs}
+        title={drillDown.title||null}
         onClose={()=>setDrillDown(null)}
         doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
         getSuggestion={getSuggestion}
