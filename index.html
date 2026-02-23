@@ -1450,7 +1450,8 @@ function App() {
   const pillRefs                = useRef([]);    // [Portfolio, Quarterly, Projections]
   const subPillRefs             = useRef({});    // {0:Airbnb, 1:Pierce, ...}
 
-  const springRef = useRef(null); // active rAF id
+  const springRef       = useRef(null); // active rAF id for track spring
+  const pillSnapTimerRef = useRef(null); // timeout id for snapPillsToTab cleanup
   const setTrackPos = (px, animated, initVel = 0) => {
     const el = trackRef.current; if(!el) return;
     // Cancel any in-flight spring
@@ -1467,8 +1468,8 @@ function App() {
     // Spring state: x = displacement from target (px), v = velocity (px/s)
     let x = curX - px;
     let v = initVel * 1000; // px/ms → px/s
-    // iOS 26-style spring: crisp, liquid, very slight overshoot
-    const k = 340, c = 34; // stiffness, damping
+    // Critically-damped spring: fastest settle with zero oscillation/wobble
+    const k = 380, c = 42; // ζ = c/(2√k) ≈ 1.08 — slightly overdamped, no bounce
     let last = performance.now();
     function tick(now){
       const dt = Math.min((now - last) / 1000, 1/30);
@@ -1476,7 +1477,7 @@ function App() {
       v += (-k * x - c * v) * dt;
       x += v * dt;
       el.style.transform = `translate3d(${px + x}px, 0, 0)`;
-      if(Math.abs(x) < 0.25 && Math.abs(v) < 0.25){
+      if(Math.abs(x) < 0.5 && Math.abs(v) < 0.5){
         el.style.transform = `translate3d(${px}px, 0, 0)`;
         springRef.current = null; return;
       }
@@ -1540,7 +1541,9 @@ function App() {
 
   // Called on touchEnd: spring pills to their final state, then let CSS class take over
   const snapPillsToTab = (newTabIdx) => {
-    const SPRING = '0.44s cubic-bezier(0.34,1.4,0.64,1)';
+    // Cancel any previous cleanup timer so it doesn't fire mid-animation
+    if(pillSnapTimerRef.current){ clearTimeout(pillSnapTimerRef.current); pillSnapTimerRef.current = null; }
+    const SPRING = '0.32s cubic-bezier(0.34,1.3,0.64,1)';
     const newPill = newTabIdx === 0 ? 0
       : tabs[newTabIdx]==="Quarterly" ? 1
       : tabs[newTabIdx]==="Projections" ? 2 : 0;
@@ -1576,7 +1579,8 @@ function App() {
       }
     });
     // After spring settles, clear inline styles so CSS class is sole authority
-    setTimeout(() => {
+    pillSnapTimerRef.current = setTimeout(() => {
+      pillSnapTimerRef.current = null;
       [...pillRefs.current, ...Object.values(subPillRefs.current)].forEach(el => {
         if(!el) return;
         el.style.transition = '';
@@ -1585,24 +1589,26 @@ function App() {
         el.style.background = '';
         el.style.boxShadow  = '';
       });
-    }, 550);
+    }, 420);
   };
 
   const navigateTab = (t) => {
+    // Pill taps: page content jumps INSTANTLY (no spring slide).
+    // Only swipe gestures spring-animate the track. Pills still spring via snapPillsToTab.
     if(t === "Archive"){
       setTab("Archive"); setTabIdx(archiveIdx);
-      setTrackPos(-archiveIdx * window.innerWidth, true);
+      setTrackPos(-archiveIdx * window.innerWidth, false);
       return;
     }
     if(t === "Feed"){
       setTab("Feed"); setTabIdx(feedIdx);
-      setTrackPos(-feedIdx * window.innerWidth, true);
+      setTrackPos(-feedIdx * window.innerWidth, false);
       return;
     }
     const idx = tabs.indexOf(t);
     if(idx < 0) return;
     setTab(t); setTabIdx(idx);
-    setTrackPos(-idx * window.innerWidth, true);
+    setTrackPos(-idx * window.innerWidth, false);
     snapPillsToTab(idx);
   };
 
@@ -1633,6 +1639,8 @@ function App() {
 
   const onTouchStart = (e) => {
     if(tabIdx > feedIdx) return; // block swipe navigation from Archive pane and beyond
+    // Kill any running spring immediately so it doesn't fight with touch tracking
+    if(springRef.current){ cancelAnimationFrame(springRef.current); springRef.current = null; }
     const d = drag.current;
     d.active = true; d.axis = null;
     d.startX = d.lastX = e.touches[0].clientX;
