@@ -1183,6 +1183,8 @@ function App() {
   },[]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
+  const navRef                  = useRef(null);
+  const navTrackRef             = useRef(null);
   const drag                    = useRef({active:false,startX:0,startY:0,lastX:0,axis:null});
 
   const setTrackPos = (px, animated) => {
