@@ -402,10 +402,8 @@
       width: 100%;
       height: 100%;
       will-change: transform;
+      transform: translate3d(0, 0, 0); /* init GPU compositor layer */
       transition: none;
-    }
-    .swipe-track.settling {
-      transition: transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94);
     }
     .swipe-pane {
       flex: 0 0 100%;
@@ -512,6 +510,7 @@ const INVEST_KEY  = "pg_invest";
 const MANUAL_KEY  = "pg_manual_income"; // { "2025-10": 12550.70, "2025-11": 13972.97, ... }
 const CUSTOM_PROPS_KEY = "pg_custom_props";
 const LAST_SYNC_KEY   = "pg_last_sync";
+const LAST_PULL_KEY   = "pg_last_pull";
 const DEFAULT_AUTO = { "AIRBNB PAYMENTS":"lockwood","AIRBNB":"lockwood","HOUSING AUTHORITY":"pierce" };
 const DEFAULT_INVEST = { lockwood:0, everton:0, bstreet:0, pierce:0 };
 
@@ -1124,7 +1123,7 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
 // ── Settings Page ─────────────────────────────────────────────────
 function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSaveSettings,
   archived, doRestore, doTag, linked, onRemoveAccount, onClearAll, customProps=[], onDeleteProp,
-  onSync, syncing=false, lastSync=null }) {
+  onSync, onPullHistory, syncing=false, lastSync=null, lastPull=null }) {
   const [section, setSection] = React.useState("main");
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
@@ -1189,6 +1188,22 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
               style={{background:syncing?"rgba(0,0,0,0.05)":"#1a1a2e",border:"none",borderRadius:8,
                 padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"#636366":"#fff",cursor:syncing?"default":"pointer"}}>
               {syncing?"Syncing…":"Sync Now"}
+            </button>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+            <div>
+              <span style={{fontSize:15,color:"#1c1c1e"}}>Pull Full History</span>
+              <div style={{fontSize:11,color:"#636366",marginTop:2}}>
+                {lastPull
+                  ? `Last pulled ${new Date(lastPull).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
+                  : "Backfills up to 2 years of transactions"}
+              </div>
+            </div>
+            <button onClick={onPullHistory} disabled={syncing}
+              style={{background:syncing?"rgba(0,0,0,0.05)":"rgba(0,0,0,0.06)",border:"none",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"#aaa":"#1c1c1e",cursor:syncing?"default":"pointer"}}>
+              {syncing?"Pulling…":"Pull History"}
             </button>
           </div>
           {row("Tag Rules",`${Object.keys(rules).length} rules ›`,()=>setSection("tags"))}
@@ -1265,8 +1280,8 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
                 <div style={{fontSize:12,color:"#636366"}}>{tx.date}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:13,fontWeight:600,color:tx.amount>0?"#30d158":"#ff453a",
-                  fontFamily:"monospace"}}>{tx.amount>0?"+":""}{Math.abs(tx.amount).toFixed(0)}</span>
+                <span style={{fontSize:13,fontWeight:600,color:tx.type==="in"?"#30d158":"#ff453a",
+                  fontFamily:"monospace"}}>{tx.type==="in"?"+":"-"}{Math.abs(tx.amount).toFixed(0)}</span>
                 <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,122,255,0.1)",
                   border:"none",borderRadius:8,fontSize:12,fontWeight:600,color:"#007aff",
                   padding:"4px 10px",cursor:"pointer"}}>Restore</button>
@@ -1343,9 +1358,11 @@ function App() {
   const [customProps, setCustomProps] = useState(()=>LS.get(CUSTOM_PROPS_KEY)||[]);
   const [showAddProp, setShowAddProp] = useState(false);
   const [lastSync, setLastSync]       = useState(()=>LS.get(LAST_SYNC_KEY)||null);
+  const [lastPull, setLastPull]       = useState(()=>LS.get(LAST_PULL_KEY)||null);
   const [drawerHomesExpanded, setDrawerHomesExpanded] = useState(false);
   const subNavRef  = useRef(null);
   const pullRef    = useRef({active:false, startY:0, triggered:false});
+  const isFirstLayout = useRef(true);
   const [pullY, setPullY] = useState(0);
   const PULL_THRESHOLD = 72;
 
@@ -1382,7 +1399,14 @@ function App() {
       const mainNavH = navRef.current?.offsetHeight || 52;
       const subNavH = isPortfolioGroup && subNavRef.current ? subNavRef.current.offsetHeight : 0;
       const outer = document.querySelector(".page-outer");
-      if(outer) outer.style.top = (headerH + mainNavH + subNavH) + "px";
+      if(!outer) return;
+      if(isFirstLayout.current){
+        outer.style.transition = "none"; // no transition on first paint
+        isFirstLayout.current = false;
+      } else {
+        outer.style.transition = "top 0.32s cubic-bezier(0.33, 1, 0.68, 1)";
+      }
+      outer.style.top = (headerH + mainNavH + subNavH) + "px";
     });
   },[isPortfolioGroup]);
   const trackRef                = useRef(null);
@@ -1394,8 +1418,9 @@ function App() {
 
   const setTrackPos = (px, animated) => {
     const el = trackRef.current; if(!el) return;
-    el.style.transition = animated ? "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)" : "none";
-    el.style.transform  = `translateX(${px}px)`;
+    // ease-out-cubic — fast start, gentle finish (matches native iOS feel)
+    el.style.transition = animated ? "transform 0.38s cubic-bezier(0.33, 1, 0.68, 1)" : "none";
+    el.style.transform  = `translate3d(${px}px, 0, 0)`;
   };
 
   // Nav pill centering is handled by static CSS (flex justify-content:center on .top-nav).
@@ -1700,6 +1725,7 @@ function App() {
       const data=await res.json();
       if(data.errors&&data.errors.length) setStatus(`Done with errors: ${data.errors[0]}`);
       await loadAll(true);
+      const ts = new Date().toISOString(); setLastPull(ts); LS.set(LAST_PULL_KEY,ts);
       setStatus(`✓ ${data.total_stored} transactions loaded (${data.pulled} pulled from history)`);
     } catch(e){setStatus("History pull failed: "+e.message);}
     finally{setSyncing(false);}
@@ -2124,46 +2150,45 @@ function App() {
                       </div>
                     ):(
                       <>
+                      <>
                         {toReview.map((tx,i)=>{
                           const sug = getSuggestion(tx);
+                          const sugColor = PROP_COLOR[sug] || "#636366";
                           return (
                             <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
-                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px"}}>
-                                <div style={{flex:1,minWidth:0,marginRight:12}}>
+                              <div onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
+                                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px",cursor:"pointer"}}>
+                                <div style={{flex:1,minWidth:0,marginRight:10}}>
                                   <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{tx.payee||tx.name}</div>
-                                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
                                     <span style={{fontSize:11,color:"var(--text-3)"}}>{tx.date}</span>
-                                    {sug&&(
-                                      <button onClick={e=>{e.stopPropagation();doTag(tx.id,sug);}}
-                                        style={{background:`${PROP_COLOR[sug]||"#636366"}20`,border:"none",borderRadius:20,
-                                          fontSize:11,fontWeight:700,color:PROP_COLOR[sug]||"#636366",
-                                          padding:"2px 10px",cursor:"pointer",letterSpacing:"0.04em",textTransform:"uppercase"}}>
-                                        {PROP_LABEL[sug]||sug}
-                                      </button>
-                                    )}
+                                    {sug
+                                      ? <span style={{fontSize:11,fontWeight:700,color:sugColor,background:`${sugColor}18`,padding:"1px 8px",borderRadius:20,textTransform:"uppercase",letterSpacing:"0.04em"}}>{PROP_LABEL[sug]||sug}</span>
+                                      : <span style={{fontSize:11,color:"#ff9f0a",fontWeight:600}}>needs tag</span>
+                                    }
                                   </div>
                                 </div>
-                                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                                  <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>
-                                    {tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}
+                                <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
+                                  <span style={{fontSize:14,fontWeight:700,color:tx.type==="in"?"#30d158":"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>
+                                    {tx.type==="in"?"+":"-"}{fmt$(Math.abs(tx.amount))}
                                   </span>
-                                  <div style={{width:8,height:8,borderRadius:"50%",background:"#007aff",flexShrink:0}}/>
+                                  {sug ? (
+                                    <button onClick={e=>{e.stopPropagation();if(navigator.vibrate)navigator.vibrate([6]);doTag(tx.id,sug);}}
+                                      style={{background:"rgba(52,199,89,0.12)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#30d158",cursor:"pointer",flexShrink:0,lineHeight:1}}>✓</button>
+                                  ) : (
+                                    <button onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}
+                                      style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:600,color:"var(--text-3)",cursor:"pointer",flexShrink:0}}>Tag</button>
+                                  )}
                                 </div>
                               </div>
+                              {tagging===tx.id&&(
+                                <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(0,0,0,0.04)"}}>
+                                  <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
-                        <button onClick={async()=>{
-                          for(const tx of toReview){
-                            const sug=getSuggestion(tx);
-                            if(sug) await doTag(tx.id,sug);
-                            else await doTag(tx.id,"llc");
-                          }
-                        }} style={{width:"100%",padding:"14px",background:"none",border:"none",
-                          borderTop:"1px solid rgba(0,0,0,0.06)",fontSize:13,fontWeight:600,
-                          color:"var(--text-2)",cursor:"pointer",textAlign:"center",letterSpacing:"0.02em"}}>
-                          MARK AS REVIEWED
-                        </button>
                       </>
                     )}
                   </div>
@@ -2955,7 +2980,7 @@ function App() {
       {showSettings&&<SettingsPage
         onClose={()=>setShowSettings(false)}
         customProps={customProps} onDeleteProp={deleteCustomProp}
-        onSync={sync} syncing={syncing} lastSync={lastSync}
+        onSync={sync} onPullHistory={pullHistory} syncing={syncing} lastSync={lastSync} lastPull={lastPull}
         autoTags={autoTags} rules={rules}
         onDeleteRule={payee=>{
           const nr={...rules}; delete nr[payee];
