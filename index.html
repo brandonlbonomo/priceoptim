@@ -369,7 +369,34 @@
       left: 0; right: 0; bottom: 0;
       overflow: hidden;
       background: var(--bg);
+      touch-action: pan-y; /* let browser own vertical scroll; we own horizontal */
     }
+    /* Sync spinner — centered fixed below header */
+    .sync-spinner-wrap {
+      position: fixed;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 50%;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    }
+    .sync-spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(0,0,0,0.08);
+      border-top-color: #1a1a2e;
+      border-radius: 50%;
+      animation: spinClear 0.65s linear infinite;
+    }
+    @keyframes spinClear { to { transform: rotate(360deg); } }
     .swipe-track {
       display: flex;
       width: 100%;
@@ -595,6 +622,7 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
               onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
               onClick={()=>{
                 if(!canClick) return;
+                if(navigator.vibrate) navigator.vibrate([6]);
                 if(tapped===i){ onBarClick(mo,valueKey); setTapped(null); }
                 else { setTapped(i); }
               }}>
@@ -1193,7 +1221,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           padding:"8px 20px 6px"}}>Account</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           {linked.map(a=>row(`${a.name} ···${a.mask||""}`, "Remove",
-            ()=>{if(window.confirm(`Remove ${a.name}?`))onRemoveAccount(a.access_token||a.id);}))}
+            ()=>{if(window.confirm(`Remove ${a.name}?`))onRemoveAccount(a.item_id);}))}
           {row("Clear all data","›",()=>{if(window.confirm("Delete all transactions and tags?"))onClearAll();})}
         </div>
       </>}
@@ -1316,7 +1344,10 @@ function App() {
   const [showAddProp, setShowAddProp] = useState(false);
   const [lastSync, setLastSync]       = useState(()=>LS.get(LAST_SYNC_KEY)||null);
   const [drawerHomesExpanded, setDrawerHomesExpanded] = useState(false);
-  const subNavRef                     = useRef(null);
+  const subNavRef  = useRef(null);
+  const pullRef    = useRef({active:false, startY:0, triggered:false});
+  const [pullY, setPullY] = useState(0);
+  const PULL_THRESHOLD = 72;
 
   // Dynamic tabs: base 5 + any non-Airbnb custom props
   const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
@@ -1367,19 +1398,9 @@ function App() {
     el.style.transform  = `translateX(${px}px)`;
   };
 
-  // Center the active nav pill. Called explicitly so timing is deterministic.
-  const centerNavPill = (idx, animated) => {
-    const nav = navRef.current;
-    const track = navTrackRef.current;
-    if(!nav || !track) return;
-    const pills = track.querySelectorAll(".top-nav-pill");
-    const pill = pills[idx];
-    if(!pill) return;
-    const navW = nav.offsetWidth;
-    const offset = navW/2 - pill.offsetLeft - pill.offsetWidth/2;
-    track.style.transition = animated ? "transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94)" : "none";
-    track.style.transform = `translateX(${offset}px)`;
-  };
+  // Nav pill centering is handled by static CSS (flex justify-content:center on .top-nav).
+  // This function is a no-op — kept for call-site compatibility.
+  const centerNavPill = (_idx, _animated) => {};
 
   const navigateTab = (t) => {
     if(t === "Archive"){
@@ -1400,6 +1421,30 @@ function App() {
   };
 
 
+  // ── Pull-to-refresh (logo area) ──────────────────────────────
+  const onLogoPullStart = (e) => {
+    if(syncing) return;
+    pullRef.current = {active:true, startY:e.touches[0].clientY, triggered:false};
+  };
+  const onLogoPullMove = (e) => {
+    const p = pullRef.current;
+    if(!p.active) return;
+    const dy = e.touches[0].clientY - p.startY;
+    if(dy <= 0){ setPullY(0); return; }
+    setPullY(Math.min(dy * 0.45, 50));
+    if(dy > PULL_THRESHOLD && !p.triggered){
+      p.triggered = true;
+      if(navigator.vibrate) navigator.vibrate([8, 40, 12]); // haptic "pop"
+    }
+  };
+  const onLogoPullEnd = () => {
+    const p = pullRef.current;
+    if(!p.active) return;
+    p.active = false;
+    if(p.triggered) sync();
+    setPullY(0);
+  };
+
   const onTouchStart = (e) => {
     if(tabIdx >= feedIdx) return; // block swipe navigation from Feed or Archive panes
     const d = drag.current;
@@ -1407,15 +1452,6 @@ function App() {
     d.startX = d.lastX = e.touches[0].clientX;
     d.startY = e.touches[0].clientY;
     const el = trackRef.current; if(el) el.style.transition = "none";
-    // Cache pill center offsets at drag start — avoids layout reads during move
-    if(navTrackRef.current && navRef.current) {
-      navTrackRef.current.style.transition = "none";
-      const pills = navTrackRef.current.querySelectorAll(".top-nav-pill");
-      const navW = navRef.current.offsetWidth;
-      dragPillOffsets.current = Array.from(pills).map(p =>
-        navW/2 - p.offsetLeft - p.offsetWidth/2
-      );
-    }
   };
 
   const onTouchMove = (e) => {
@@ -1424,17 +1460,19 @@ function App() {
     const dx = e.touches[0].clientX - d.startX;
     const dy = e.touches[0].clientY - d.startY;
     if(!d.axis){
-      if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      // Lock axis quickly — first 4px of clear directional movement wins
+      if(Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      d.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
     }
     if(d.axis !== "x") return;
+    // touch-action:pan-y handles preventing browser scroll; this is kept for older browsers
     e.preventDefault();
     d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
     // Right-swipe on Portfolio → drawer gesture (slight pull feel)
     const atStart = tabIdx===0 && dx>0;
     const atEnd   = tabIdx===tabs.length-1 && dx<0;
-    // Blocked directions (rubber-band)
+    // Blocked directions (rubber-band resistance)
     const blocked = (tabIdx===0 && dx<0)                                    // left from Portfolio → Quarterly
                  || (isSubPane && tabIdx===1 && dx>0)                       // right from first sub-pane → block exit
                  || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0)          // left from last sub-pane → block exit
@@ -1444,20 +1482,6 @@ function App() {
                     : blocked  ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
                     : dx;
     setTrackPos(base + clampedDx, false);
-    // Slide nav track for pill centering — skip when blocked or in sub-pane
-    if(navTrackRef.current && dragPillOffsets.current && !atStart && !atEnd && !blocked && !isSubPane){
-      const frac = clampedDx / window.innerWidth;
-      const offsets = dragPillOffsets.current;
-      const fromPill = tabToPillIdx(tabIdx);
-      const nextTab  = dx < 0 ? tabIdx+1 : tabIdx-1;
-      const toPill   = (nextTab>=0 && nextTab<tabs.length) ? tabToPillIdx(nextTab) : fromPill;
-      const fromOff = offsets[fromPill];
-      const toOff   = offsets[toPill];
-      if(fromOff !== undefined && toOff !== undefined){
-        const lerp = fromOff + (toOff - fromOff) * Math.min(1, Math.abs(frac));
-        navTrackRef.current.style.transform = `translateX(${lerp}px)`;
-      }
-    }
   };
 
   const onTouchEnd = () => {
@@ -1473,7 +1497,7 @@ function App() {
     if(tabIdx === 0){
       if(dx > 55){ // right-swipe → open drawer
         setShowDrawer(true);
-        setTrackPos(0, true); centerNavPill(0, true);
+        setTrackPos(0, false); // instant — only the drawer animates
         return;
       }
       if(dx < -vw*0.25){ // left-swipe → jump to Quarterly (skip sub-panes)
@@ -2002,16 +2026,20 @@ function App() {
       <div className="top-header" ref={headerRef} style={{position:"relative",justifyContent:"space-between"}}>
         {/* Left: hamburger */}
         <button onClick={()=>setShowDrawer(true)} style={{background:"transparent",border:"none",color:"var(--text-2)",padding:"6px 8px",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",fontSize:22,lineHeight:1,zIndex:1,flexShrink:0}}>☰</button>
-        {/* Center: logo + name (absolutely centered) */}
-        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:7,pointerEvents:"none"}}>
+        {/* Center: logo — pull-to-refresh target */}
+        <div
+          onTouchStart={onLogoPullStart}
+          onTouchMove={onLogoPullMove}
+          onTouchEnd={onLogoPullEnd}
+          style={{position:"absolute",left:"50%",transform:`translateX(-50%) translateY(${pullY * 0.4}px)`,display:"flex",alignItems:"center",gap:7,cursor:"default",userSelect:"none",transition:pullRef.current.active?"none":"transform 0.3s ease"}}>
           <svg width="22" height="22" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
           <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
         </div>
-        {/* Right: subtle sync dot when syncing, otherwise spacer */}
-        <div style={{width:40,display:"flex",alignItems:"center",justifyContent:"flex-end",flexShrink:0}}>
-          {syncing&&<div style={{width:7,height:7,borderRadius:"50%",background:"var(--green)",opacity:0.7}}/>}
-        </div>
+        {/* Right: spacer */}
+        <div style={{width:40,flexShrink:0}}/>
       </div>
+      {/* Sync spinner — floats below header when active */}
+      {syncing&&<div className="sync-spinner-wrap" style={{top:(headerRef.current?.offsetHeight||56)+8}}><div className="sync-spinner"/></div>}
       {/* TOP NAV — 3 main pills */}
       <div className={`top-nav${isPortfolioGroup?" has-subnav":""}`} ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
@@ -2951,7 +2979,7 @@ function App() {
         linked={linked}
         onRemoveAccount={async(id)=>{
           await fetch(`${BACKEND}/api/remove-account`,{method:"POST",
-            headers:{"Content-Type":"application/json"},body:JSON.stringify({account_id:id})});
+            headers:{"Content-Type":"application/json"},body:JSON.stringify({item_id:id})});
           loadAll();
         }}
         onClearAll={()=>{
