@@ -17,10 +17,10 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
-      --bg: #0a0a0f;
+      --bg: #f5f5f7;
+      --bg2: #ffffff;
       --glass: rgba(255,255,255,0.55);
       --glass-border: rgba(255,255,255,0.75);
-      --glass-hover: rgba(255,255,255,0.70);
       --green: #30d158;
       --green-dim: rgba(48,209,88,0.15);
       --red: #ff453a;
@@ -32,13 +32,25 @@
       --text: #1a1a2e;
       --text-2: rgba(26,26,46,0.60);
       --text-3: rgba(26,26,46,0.38);
+      --card-bg: #ffffff;
+      --header-bg: rgba(245,245,247,0.92);
       --radius: 16px;
       --radius-sm: 10px;
+    }
+    [data-theme="dark"] {
+      --bg: #1c1c1e;
+      --bg2: #2c2c2e;
+      --glass: rgba(44,44,46,0.85);
+      --text: #f5f5f7;
+      --text-2: rgba(245,245,247,0.60);
+      --text-3: rgba(245,245,247,0.38);
+      --card-bg: #2c2c2e;
+      --header-bg: rgba(28,28,30,0.92);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #f5f5f7;
+      background: var(--bg);
       color: var(--text);
       font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
@@ -107,52 +119,69 @@
     .top-header {
       position: sticky; top: 0; z-index: 100;
       padding: 12px 16px 10px;
-      background: rgba(245,245,247,0.88);
+      background: var(--header-bg);
       backdrop-filter: blur(28px) saturate(1.6);
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      border-bottom: 1px solid rgba(0,0,0,0.06);
+      border-bottom: 1px solid rgba(128,128,128,0.12);
       display: flex; align-items: center; justify-content: space-between;
     }
-    /* Top pill navigation */
+    /* Top pill navigation — Copilot style, no scroll, active always centered */
     .top-nav {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 8px 16px 4px;
-      background: rgba(245,245,247,0.88);
+      padding: 6px 0 10px;
+      background: var(--header-bg);
       backdrop-filter: blur(28px) saturate(1.6);
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      overflow-x: auto;
-      scrollbar-width: none;
-      gap: 4px;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      overflow: hidden;
+      border-bottom: 1px solid rgba(128,128,128,0.10);
+      height: 46px;
     }
-    .top-nav::-webkit-scrollbar { display: none; }
+    .top-nav-track {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+      will-change: transform;
+    }
     .top-nav-pill {
       background: transparent;
       border: none;
       color: var(--text-3);
       font-size: 13px;
       font-weight: 500;
-      padding: 6px 14px;
+      padding: 6px 18px;
       border-radius: 20px;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+      transition: all 0.28s cubic-bezier(0.25,0.46,0.45,0.94);
       flex-shrink: 0;
-      transform: scale(0.9);
-      opacity: 0.6;
+      opacity: 0.45;
+      transform: scale(0.88);
     }
     .top-nav-pill.active {
-      background: rgba(0,0,0,0.09);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(128,128,128,0.13);
       color: var(--text);
       font-weight: 700;
-      font-size: 15px;
-      transform: scale(1.0);
+      font-size: 16px;
       opacity: 1;
+      transform: scale(1);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
+    /* Fade edges */
+    .top-nav::before, .top-nav::after {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 48px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .top-nav::before { left: 0; background: linear-gradient(to right, var(--header-bg), transparent); }
+    .top-nav::after  { right: 0; background: linear-gradient(to left, var(--header-bg), transparent); }
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
       padding: 7px 16px; border-radius: 20px; font-size: 13px;
@@ -298,6 +327,7 @@
       top: 100px; /* header + top-nav */
       left: 0; right: 0; bottom: 0;
       overflow: hidden;
+      background: var(--bg);
     }
     .swipe-track {
       display: flex;
@@ -317,20 +347,22 @@
       -webkit-overflow-scrolling: touch;
       padding: 0 16px 40px;
       box-sizing: border-box;
+      background: var(--bg);
     }
-    .pull-label {
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-3);
-      padding: 8px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity 0.2s;
+    .pull-spinner {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 24px;
+      border: 2.5px solid rgba(128,128,128,0.2);
+      border-top-color: var(--text-3);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      z-index: 50;
     }
-    .pull-label.visible { opacity: 1; }
+    @keyframes spin { to { transform: translateX(-50%) rotate(360deg); } }
     .page { padding: 0; }
     .page-header { padding: 20px 0 16px; }
     .section-title {
@@ -1123,6 +1155,22 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
 function App() {
   const [tab, setTab]           = useState("Portfolio");
   const [tabIdx, setTabIdx]     = useState(TABS.indexOf("Portfolio"));
+  // Center active pill in nav when tabIdx changes
+  useEffect(()=>{
+    const nav = navRef.current;
+    const track = navTrackRef.current;
+    if(!nav || !track) return;
+    const pills = track.querySelectorAll(".top-nav-pill");
+    const activePill = pills[tabIdx];
+    if(!activePill) return;
+    // Translate track so active pill is centered in nav
+    const navW = nav.offsetWidth;
+    const pillLeft = activePill.offsetLeft;
+    const pillW = activePill.offsetWidth;
+    const offset = navW/2 - pillLeft - pillW/2;
+    track.style.transform = `translateX(${offset}px)`;
+  },[tabIdx]);
+
   // Set initial track position + page-outer top after mount
   useEffect(()=>{
     // Portfolio is index 0 — start at translateX(0)
@@ -1202,8 +1250,26 @@ function App() {
     e.preventDefault();
     d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
-    const resist = (tabIdx===0 && dx>0)||(tabIdx===TABS.length-1 && dx<0);
-    setTrackPos(base + (resist ? dx*0.15 : dx), false);
+    const atStart = tabIdx===0 && dx>0;
+    const atEnd   = tabIdx===TABS.length-1 && dx<0;
+    const clampedDx = atStart ? Math.min(dx*0.06,16) : atEnd ? Math.max(dx*0.06,-16) : dx;
+    setTrackPos(base + clampedDx, false);
+    // Slide nav track so active pill stays centered proportionally during drag
+    if(navTrackRef.current && navRef.current && !atStart && !atEnd){
+      const frac = clampedDx / window.innerWidth;
+      const pills = navTrackRef.current.querySelectorAll(".top-nav-pill");
+      const toPillIdx = dx < 0 ? tabIdx+1 : tabIdx-1;
+      const fromPill = pills[tabIdx];
+      const toPill   = pills[toPillIdx];
+      if(fromPill && toPill){
+        const navW = navRef.current.offsetWidth;
+        const fromOff = navW/2 - fromPill.offsetLeft - fromPill.offsetWidth/2;
+        const toOff   = navW/2 - toPill.offsetLeft   - toPill.offsetWidth/2;
+        const lerp = fromOff + (toOff - fromOff) * Math.min(1, Math.abs(frac));
+        navTrackRef.current.style.transition = "none";
+        navTrackRef.current.style.transform = `translateX(${lerp}px)`;
+      }
+    }
   };
 
   const onTouchEnd = () => {
@@ -1218,6 +1284,8 @@ function App() {
     if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
     setTab(TABS[next]); setTabIdx(next);
     setTrackPos(-next*vw, true);
+    // Restore nav track transition
+    if(navTrackRef.current) navTrackRef.current.style.transition = "";
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
   const [tags, setTags]         = useState(()=>LS.get(TAGS_KEY)||{});
@@ -1682,17 +1750,19 @@ function App() {
         </div>
       </div>
       {/* TOP NAV */}
-      <div className="top-nav">
-        {TABS.map(t=>(
-          <button key={t} className={`top-nav-pill${TABS[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
-            {t}
-          </button>
-        ))}
+      <div className="top-nav" ref={navRef}>
+        <div className="top-nav-track" ref={navTrackRef}>
+          {TABS.map(t=>(
+            <button key={t} className={`top-nav-pill${TABS[tabIdx]===t?" active":""}`} onClick={()=>navigateTab(t)}>
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* CONTENT */}
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        {pullLabel&&<div className="pull-label visible" style={{position:"absolute",top:0,left:0,right:0,zIndex:50}}>{pullLabel}</div>}
+        {pullLabel&&<div className="pull-spinner"/>}
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
         <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
@@ -2484,8 +2554,8 @@ function App() {
           setSettings(s);
           fetch(`${BACKEND}/api/settings`,{method:"POST",headers:{"Content-Type":"application/json"},
             body:JSON.stringify({settings:s})}).catch(()=>{});
-          if(s.darkMode) document.documentElement.style.setProperty("--bg","#1c1c1e");
-          else document.documentElement.style.setProperty("--bg","#f5f5f7");
+          if(s.darkMode) document.documentElement.setAttribute("data-theme","dark");
+          else document.documentElement.removeAttribute("data-theme");
         }}
         archived={enriched.filter(t=>tags[t.id]==="deleted")}
         doRestore={doRestore}
