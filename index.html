@@ -1476,6 +1476,7 @@ function App() {
     d.active = true; d.axis = null;
     d.startX = d.lastX = e.touches[0].clientX;
     d.startY = e.touches[0].clientY;
+    d.velocityX = 0; d.lastTime = Date.now();
     const el = trackRef.current; if(el) el.style.transition = "none";
   };
 
@@ -1492,19 +1493,22 @@ function App() {
     if(d.axis !== "x") return;
     // touch-action:pan-y handles preventing browser scroll; this is kept for older browsers
     e.preventDefault();
-    d.lastX = e.touches[0].clientX;
+    const now = Date.now(); const dt = now - d.lastTime;
+    if(dt > 0) d.velocityX = (e.touches[0].clientX - d.lastX) / dt; // px/ms
+    d.lastTime = now; d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
     // Right-swipe on Portfolio → drawer gesture (slight pull feel)
     const atStart = tabIdx===0 && dx>0;
     const atEnd   = tabIdx===tabs.length-1 && dx<0;
-    // Blocked directions (rubber-band resistance)
-    const blocked = (tabIdx===0 && dx<0)                                    // left from Portfolio → Quarterly
-                 || (isSubPane && tabIdx===1 && dx>0)                       // right from first sub-pane → block exit
-                 || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0)          // left from last sub-pane → block exit
-                 || (tabs[tabIdx]==="Quarterly" && dx>0);                   // right from Quarterly → Portfolio
-    const clampedDx = atStart  ? Math.min(dx * 0.35, 55)                   // drawer pull
-                    : atEnd    ? Math.max(dx * 0.06, -16)
-                    : blocked  ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
+    // Truly blocked: sub-pane boundary exits — no navigation possible
+    const trulyBlocked = (isSubPane && tabIdx===1 && dx>0)
+                      || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0);
+    // Skip-nav: Portfolio↔Quarterly jumps — allow visible drag feedback
+    const skipNav = (tabIdx===0 && dx<0) || (tabs[tabIdx]==="Quarterly" && dx>0);
+    const clampedDx = atStart      ? Math.min(dx * 0.35, 55)               // drawer pull
+                    : atEnd        ? Math.max(dx * 0.06, -16)
+                    : trulyBlocked ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
+                    : skipNav      ? (dx > 0 ? Math.min(dx*0.35,70) : Math.max(dx*0.35,-70))
                     : dx;
     setTrackPos(base + clampedDx, false);
   };
@@ -1516,16 +1520,20 @@ function App() {
     dragPillOffsets.current = null;
     if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); centerNavPill(tabToPillIdx(tabIdx), true); return; }
     const dx = d.lastX - d.startX;
+    const vel = d.velocityX || 0; // px/ms — positive = moving right
     const vw = window.innerWidth;
+    // A swipe "passes" if it crossed distance threshold OR was a fast flick
+    const passLeft  = dx < -vw*0.18 || vel < -0.35;
+    const passRight = dx >  vw*0.18 || vel >  0.35;
 
     // ── Portfolio overview (tab 0) ──
     if(tabIdx === 0){
-      if(dx > 55){ // right-swipe → open drawer
+      if(dx > 55 || (vel > 0.35 && dx > 10)){ // right-swipe → open drawer
         setShowDrawer(true);
         setTrackPos(0, false); // instant — only the drawer animates
         return;
       }
-      if(dx < -vw*0.25){ // left-swipe → jump to Quarterly (skip sub-panes)
+      if(passLeft){ // left-swipe → jump to Quarterly (skip sub-panes)
         const qIdx = tabs.indexOf("Quarterly");
         setTab("Quarterly"); setTabIdx(qIdx);
         setTrackPos(-qIdx * vw, false); // instant to avoid flying through Airbnb/Pierce
@@ -1540,8 +1548,8 @@ function App() {
     // ── Sub-pane (Airbnb, Pierce, etc.) ──
     if(isSubPane){
       let next = tabIdx;
-      if(dx < -vw*0.25 && tabIdx < quarterlyIdx-1) next = tabIdx+1; // deeper sub-pane
-      if(dx >  vw*0.25 && tabIdx > 1)              next = tabIdx-1; // shallower sub-pane
+      if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1; // deeper sub-pane
+      if(passRight && tabIdx > 1)              next = tabIdx-1; // shallower sub-pane
       setTab(tabs[next]); setTabIdx(next);
       setTrackPos(-next*vw, true);
       centerNavPill(0, true); // Portfolio pill stays highlighted
@@ -1550,13 +1558,13 @@ function App() {
 
     // ── Quarterly ──
     if(tabs[tabIdx]==="Quarterly"){
-      if(dx > vw*0.25){ // right-swipe → back to Portfolio overview (skip sub-panes)
+      if(passRight){ // right-swipe → back to Portfolio overview (skip sub-panes)
         setTab("Portfolio"); setTabIdx(0);
         setTrackPos(0, false); // instant
         centerNavPill(0, true);
         return;
       }
-      if(dx < -vw*0.25 && tabIdx < tabs.length-1){ // left → Projections
+      if(passLeft && tabIdx < tabs.length-1){ // left → Projections
         const next = tabIdx+1;
         setTab(tabs[next]); setTabIdx(next);
         setTrackPos(-next*vw, true);
@@ -1569,8 +1577,8 @@ function App() {
 
     // ── All other tabs (Projections, custom props after Projections) ──
     let next = tabIdx;
-    if(dx < -vw*0.25 && tabIdx < tabs.length-1) next = tabIdx+1;
-    if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
+    if(passLeft  && tabIdx < tabs.length-1) next = tabIdx+1;
+    if(passRight && tabIdx > 0)             next = tabIdx-1;
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
     setTrackPos(-next*vw, true);
     centerNavPill(tabToPillIdx(next), true);
