@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Property Pigeon</title>
-  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
   <link rel="manifest" href="/manifest.json"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -52,7 +51,7 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
       min-height: 100vh;
       position: relative;
       overflow-x: hidden;
@@ -96,9 +95,8 @@
     #root { position: relative; z-index: 1; }
 
     button { cursor: pointer; font-family: inherit; }
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    * { -ms-overflow-style: none; scrollbar-width: none; }
+    ::-webkit-scrollbar { display: none; }
 
     /* Glass card */
     .glass {
@@ -199,7 +197,7 @@
       border-radius: 20px;
       padding: 4px 12px;
       font-size: 11px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
       font-weight: 500;
     }
     .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
@@ -218,7 +216,7 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--text-3);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
     }
 
     /* Chart tooltip */
@@ -247,7 +245,7 @@
       border-radius: 6px;
       padding: 2px 8px;
       font-size: 10px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
       font-weight: 700;
       letter-spacing: 0.05em;
     }
@@ -370,7 +368,7 @@
     .section-title {
       font-size: 10px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--text-3);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
       margin-bottom: 10px; margin-top: 22px;
     }
     .card {
@@ -417,7 +415,7 @@ const fmt$ = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"
 const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(Math.abs(n||0));
 const fmtPct = n => (n==null||isNaN(n)||!isFinite(n))?"—":`${n.toFixed(1)}%`;
 const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d||""; } };
-const moLabel = s => { try { const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
+const moLabel = s => { try { if(s&&/^\d{4}-Q\d$/.test(s)){const[y,q]=s.split("-");return `${q} '${y.slice(2)}`;} const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
 
 // ── Properties ────────────────────────────────────────────────
 const PROPERTIES = [
@@ -480,7 +478,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
   ];
   const opts = isIn ? inOptions : outOptions;
 
-  const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(0,0,0,0.1)",background:"rgba(255,255,255,0.7)",color:"var(--text)",transition:"all 0.12s"};
+  const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(0,0,0,0.1)",background:"rgba(255,255,255,0.7)",color:"var(--text)",transition:"all 0.12s"};
 
   return (
     <div style={{padding:"10px 0 6px"}}>
@@ -511,7 +509,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
 }
 
 // ── MiniBar — compact sparkline bar chart (clickable) ─────────
-function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, marginMode=false }) {
+function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, marginMode=false, labelFn=null }) {
   const [hov, setHov] = useState(null);
   const [tapped, setTapped] = useState(null);
   const containerRef = useRef(null);
@@ -576,9 +574,9 @@ function MiniBar({ months, valueKey, color, label, fmt=null, onBarClick=null, ma
       </div>
       <div style={{display:"flex",marginTop:4}}>
         {months.map(([mo],i)=>(
-          <div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",
+          <div key={mo} style={{flex:1,textAlign:"center",fontSize:8,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",
             opacity: months.length>12 ? (i%3===0?1:0) : 1
-          }}>{moLabel(mo).split(" ")[0]}</div>
+          }}>{labelFn ? labelFn(mo,i,months) : moLabel(mo).split(" ")[0]}</div>
         ))}
       </div>
     </div>
@@ -658,7 +656,7 @@ function BarChart({ months, colorKey="green", label="Revenue" }) {
               }}/>
               {hov===i&&(
                 <div className="chart-tooltip" style={{bottom:"calc(100% + 8px)",left:"50%"}}>
-                  <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>{moLabel(mo)}</div>
+                  <div style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",marginBottom:3}}>{moLabel(mo)}</div>
                   <div style={{fontSize:14,fontWeight:700,color:color}}>{fmt$(val)}</div>
                   <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>{label}</div>
                 </div>
@@ -669,7 +667,7 @@ function BarChart({ months, colorKey="green", label="Revenue" }) {
       </div>
       <div style={{display:"flex",marginTop:6,padding:"0 4px"}}>
         {months.map(([mo])=>(
-          <div key={mo} style={{flex:1,textAlign:"center",fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{moLabel(mo).slice(0,3)}</div>
+          <div key={mo} style={{flex:1,textAlign:"center",fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{moLabel(mo).slice(0,3)}</div>
         ))}
       </div>
     </div>
@@ -758,7 +756,7 @@ function ProjectionChart({ data }) {
           return (
             <g key={f}>
               <line x1={PL} y1={y} x2={W-PR} y2={y} stroke="rgba(0,0,0,0.07)" strokeWidth="1" strokeDasharray="3,4"/>
-              <text x={PL-6} y={y+4} textAnchor="end" style={{fontSize:8,fill:"rgba(26,26,46,0.35)",fontFamily:"'JetBrains Mono',monospace"}}>{fmt$(val).replace("$","")}</text>
+              <text x={PL-6} y={y+4} textAnchor="end" style={{fontSize:8,fill:"rgba(26,26,46,0.35)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmt$(val).replace("$","")}</text>
             </g>
           );
         })}
@@ -791,7 +789,7 @@ function ProjectionChart({ data }) {
         {/* X axis labels */}
         {data.map((d,i)=>(
           <text key={i} x={scaleX(i)} y={H-4} textAnchor="middle"
-            style={{fontSize:9,fill:activeIdx===i?"rgba(26,26,46,0.8)":"rgba(26,26,46,0.35)",fontFamily:"'JetBrains Mono',monospace",fontWeight:activeIdx===i?"700":"400"}}>
+            style={{fontSize:9,fill:activeIdx===i?"rgba(26,26,46,0.8)":"rgba(26,26,46,0.35)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:activeIdx===i?"700":"400"}}>
             {d.year}
           </text>
         ))}
@@ -810,8 +808,8 @@ function ProjectionChart({ data }) {
               {l:"Net Income",v:fmt$(d.net), c:d.net>=0?"#30d158":"#ff453a"},
             ].map(item=>(
               <div key={item.l} style={{background:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.7)",borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all 0.1s"}}>
-                <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{item.l}</div>
-                <div style={{fontSize:16,fontWeight:800,color:item.c,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"-0.02em",transition:"all 0.08s"}}>{item.v}</div>
+                <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{item.l}</div>
+                <div style={{fontSize:16,fontWeight:800,color:item.c,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",letterSpacing:"-0.02em",transition:"all 0.08s"}}>{item.v}</div>
               </div>
             ))}
           </div>
@@ -822,7 +820,7 @@ function ProjectionChart({ data }) {
         {lines.map(l=>(
           <div key={l.key} style={{display:"flex",alignItems:"center",gap:5}}>
             <div style={{width:20,height:2.5,background:l.color,borderRadius:2}}/>
-            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{l.label}</span>
+            <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{l.label}</span>
           </div>
         ))}
       </div>
@@ -850,13 +848,13 @@ function ManualIncomeModal({ manual, onSave, onClose }) {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {MONTHS.map(mo=>(
             <div key={mo}>
-              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",marginBottom:3}}>{moLabel(mo)}</div>
+              <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",marginBottom:3}}>{moLabel(mo)}</div>
               <input
                 type="number"
                 placeholder="0"
                 value={vals[mo]||""}
                 onChange={e=>setVals(v=>({...v,[mo]:parseFloat(e.target.value)||0}))}
-                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",fontSize:13,fontFamily:"'JetBrains Mono',monospace",background:"rgba(255,255,255,0.6)",boxSizing:"border-box"}}
+                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",fontSize:13,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",background:"rgba(255,255,255,0.6)",boxSizing:"border-box"}}
               />
             </div>
           ))}
@@ -881,12 +879,12 @@ function InvestModal({ invest, onSave, onClose }) {
         <div style={{fontSize:12,color:"var(--text-3)",marginBottom:22}}>Enter the initial down payment for each property. Cash-on-cash return is calculated automatically from your Plaid expense data.</div>
         {props.map(p=>(
           <div key={p.id} style={{marginBottom:16}}>
-            <div style={{fontSize:11,color:p.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>{p.label}</div>
+            <div style={{fontSize:11,color:p.color,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>{p.label}</div>
             <div style={{position:"relative"}}>
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
               <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
                 placeholder="0"
-                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",outline:"none"}}/>
+                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",outline:"none"}}/>
             </div>
           </div>
         ))}
@@ -931,19 +929,19 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             <button key={k} className={`seg-btn${filter===k?" active":""}`} onClick={()=>{setFilter(k);clearSel();}}>{l}</button>
           ))}
         </div>
-        <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{sorted.length} transactions</span>
+        <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{sorted.length} transactions</span>
 
         {selCount>0&&(
           <div style={{display:"flex",gap:5,alignItems:"center",marginLeft:"auto",flexWrap:"wrap"}}>
-            <span style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)",marginRight:2}}>{selCount} selected —</span>
+            <span style={{fontSize:11,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)",marginRight:2}}>{selCount} selected —</span>
             {PROPERTIES.filter(p=>p.id!=="transfer").map(p=>(
               <button key={p.id} onClick={()=>handleBulkTag(p.id)}
-                style={{background:"rgba(0,0,0,0.06)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,cursor:"pointer"}}>
+                style={{background:"rgba(0,0,0,0.06)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer"}}>
                 {p.label}
               </button>
             ))}
             <button onClick={handleBulkDel}
-              style={{background:"rgba(255,69,58,0.1)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,cursor:"pointer"}}>
+              style={{background:"rgba(255,69,58,0.1)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,cursor:"pointer"}}>
               Delete {selCount}
             </button>
             <button onClick={clearSel} style={{background:"rgba(0,0,0,0.05)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
@@ -958,7 +956,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
           <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8,alignItems:"center"}}>
             <Checkbox id="__all__" checked={allSel} onToggle={toggleAll}/>
             {["DATE","","PAYEE","AMOUNT","PROPERTY"].map(h=>(
-              <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
+              <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
             ))}
           </div>
           {sorted.map(tx=>{
@@ -970,13 +968,13 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                   onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(0,0,0,0.025)";}}
                   onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                   <div onClick={e=>toggle(tx.id,e)}><Checkbox id={tx.id} checked={isSel}/></div>
-                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                  <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmtDate(tx.date)}</span>
                   <span className={tx.type==="in"?"dir-in":"dir-out"}>{tx.type==="in"?"↓":"↑"}</span>
                   <div style={{overflow:"hidden"}}>
                     <div style={{fontSize:13,fontWeight:500,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
                     {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
                   </div>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                  <span style={{fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
                     {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                   </span>
                   <div onClick={e=>e.stopPropagation()} style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
@@ -984,7 +982,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                       <PropBadge id={tx.propId} small/>
                     </span>
                     {!tx.propId&&getSuggestion&&getSuggestion(tx)&&(
-                      <span style={{fontSize:8,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",cursor:"pointer"}}
+                      <span style={{fontSize:8,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer"}}
                         onClick={e=>{e.stopPropagation();doTag(tx.id,getSuggestion(tx));}}
                         title="Click to apply auto-tag suggestion">
                         💡 {getSuggestion(tx)}
@@ -1236,30 +1234,6 @@ function App() {
     centerNavPill(idx, true);
   };
 
-  // Pull-to-refresh state
-  const pullRef = useRef({startY:0,pulling:false});
-  const [pullLabel, setPullLabel] = useState(null);
-
-  const onPullStart = (e) => {
-    const el = e.currentTarget;
-    if(el.scrollTop === 0) {
-      pullRef.current = {startY: e.touches[0].clientY, pulling:true};
-    }
-  };
-  const onPullMove = (e) => {
-    if(!pullRef.current.pulling) return;
-    const dy = e.touches[0].clientY - pullRef.current.startY;
-    if(dy > 60) setPullLabel("Release to refresh");
-    else if(dy > 20) setPullLabel("Pull to refresh");
-    else setPullLabel(null);
-  };
-  const onPullEnd = async (e) => {
-    if(!pullRef.current.pulling) return;
-    const dy = e.changedTouches[0].clientY - pullRef.current.startY;
-    pullRef.current.pulling = false;
-    setPullLabel(null);
-    if(dy > 60 && hasBank) await sync();
-  };
 
   const onTouchStart = (e) => {
     const d = drag.current;
@@ -1402,11 +1376,11 @@ function App() {
       const now = new Date();
       const lastSync = parseInt(localStorage.getItem(LAST_SYNC_KEY)||"0");
       const lastSyncDate = new Date(lastSync);
-      // Check if we haven't synced today at 7am yet
-      const todayAt7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
+      // Check if we haven't synced today at 6am yet
+      const todayAt7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0);
       const shouldSync = now >= todayAt7 && lastSyncDate < todayAt7;
       if(shouldSync){
-        console.log("Auto-sync: running daily 7am sync");
+        console.log("Auto-sync: running daily 6am sync");
         localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
         fetch(`${BACKEND}/api/transactions/sync`).then(r=>r.json()).then(data=>{
           if(!data.error){
@@ -1734,7 +1708,27 @@ function App() {
       return {year:yr,rev,exp,net:rev-exp,margin:rev>0?((rev-exp)/rev)*100:0};
     });
 
-    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,monthsWithProjections,moCount,projections,annualRev,annualExp,quarters};
+    // Quarterly projections — seasonal index by quarter
+    const Q_SEASONAL = {"1":0.79,"2":1.09,"3":1.16,"4":1.02};
+    const curQtr = Math.ceil((today.getMonth()+1)/3);
+    const curQKey = `${today.getFullYear()}-Q${curQtr}`;
+    const actualQtrs = quarters.filter(q=>q.key<=curQKey);
+    const avgQRev = actualQtrs.length>0 ? actualQtrs.reduce((s,q)=>s+q.rev,0)/actualQtrs.length : 0;
+    const avgQExp = actualQtrs.length>0 ? actualQtrs.reduce((s,q)=>s+q.exp,0)/actualQtrs.length : 0;
+    const projQuarters = [];
+    for(let yr=today.getFullYear();yr<=today.getFullYear()+1;yr++){
+      for(let q=1;q<=4;q++){
+        const key=`${yr}-Q${q}`;
+        if(key<=curQKey||quarters.find(x=>x.key===key)) continue;
+        const si=Q_SEASONAL[q.toString()]||1;
+        const growth=Math.pow(1.03,yr-today.getFullYear());
+        const rev=avgQRev*si*growth, exp=avgQExp*si*Math.pow(1.02,yr-today.getFullYear());
+        projQuarters.push({key,label:`Q${q} '${yr.toString().slice(2)}`,year:yr,q,rev,exp,net:rev-exp,margin:rev>0?((rev-exp)/rev)*100:0,projected:true});
+      }
+    }
+    const quartersWithProjections=[...quarters,...projQuarters];
+
+    return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,monthsWithProjections,moCount,projections,annualRev,annualExp,quarters,quartersWithProjections};
   },[tagged,enriched,invest,manualIncome]);
 
   const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
@@ -1801,10 +1795,9 @@ function App() {
 
       {/* CONTENT */}
       <div className="page-outer" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        {pullLabel&&<div className="pull-spinner"/>}
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
@@ -1836,7 +1829,7 @@ function App() {
                 {l:"Net Income",      v:fmt$(M.totalCF),   sub:fmtPct(M.netMargin)+" margin", green:M.totalCF>=0},
               ].map(c=>(
                 <div key={c.l} className="card card-padded">
-                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
                   <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
                   <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>{c.sub}</div>
                 </div>
@@ -1885,7 +1878,7 @@ function App() {
                                   </div>
                                 </div>
                                 <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                                  <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"'JetBrains Mono',monospace"}}>
+                                  <span style={{fontSize:14,fontWeight:700,color:tx.amount>0?"#30d158":"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>
                                     {tx.amount>0?"+":""}{fmt$(Math.abs(tx.amount))}
                                   </span>
                                   <div style={{width:8,height:8,borderRadius:"50%",background:"#007aff",flexShrink:0}}/>
@@ -1948,7 +1941,7 @@ function App() {
                       {l:"Net Margin",  v:fmtPct(M.netMargin), sub:"total revenue"},
                     ].map(c=>(
                       <div key={c.l}>
-                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                        <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
                         <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{c.v}</div>
                         <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
                       </div>
@@ -1969,7 +1962,7 @@ function App() {
         </div>
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
@@ -1990,7 +1983,7 @@ function App() {
                 {l:"Net Margin",     v:M.airbnbRev>0?fmtPct((M.airbnbCF/M.airbnbRev)*100):"—", green:M.airbnbCF>=0},
               ].map(c=>(
                 <div key={c.l} className="card card-padded">
-                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
                   <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
                 </div>
               ))}
@@ -2046,8 +2039,8 @@ function App() {
             <div className="section-title">Expenses by Property</div>
             <div className="card" style={{marginBottom:8,overflow:"hidden"}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
-                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>Property</span>
-                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:"right"}}>Expenses</span>
+                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>Property</span>
+                <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:"right"}}>Expenses</span>
               </div>
               {["lockwood","everton","bstreet"].map((id,i)=>{
                 const pm=M.propM[id]; const p=PROPERTIES.find(x=>x.id===id);
@@ -2056,7 +2049,7 @@ function App() {
                   <div key={id} style={{padding:"12px 16px",borderBottom:i<2?"1px solid rgba(0,0,0,0.05)":"none"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                       <span style={{fontSize:13,fontWeight:600}}>{p.label}</span>
-                      <span style={{fontSize:13,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{fmt$(pm.exp)}</span>
+                      <span style={{fontSize:13,color:"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600}}>{fmt$(pm.exp)}</span>
                     </div>
                     <div style={{height:3,background:"rgba(0,0,0,0.06)",borderRadius:2,overflow:"hidden"}}>
                       <div style={{height:"100%",width:`${pct}%`,background:"#ff453a",borderRadius:2}}/>
@@ -2079,7 +2072,7 @@ function App() {
         </div>
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
@@ -2100,7 +2093,7 @@ function App() {
                 {l:"Net Margin",   v:M.pierceRev>0?fmtPct((M.pierceCF/M.pierceRev)*100):"—", green:M.pierceCF>=0},
               ].map(c=>(
                 <div key={c.l} className="card card-padded">
-                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
+                  <div style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{c.l}</div>
                   <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
                 </div>
               ))}
@@ -2153,35 +2146,28 @@ function App() {
         </div>
 
         {/* ── ARCHIVE ─────────────────────────────────────────────── */}
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
         {(()=>{
+          const qData = M.quartersWithProjections;
           const qs = M.quarters;
-          if(qs.length===0) return <div style={{minHeight:"100%"}}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
+          if(qData.length===0) return <div style={{minHeight:"100%"}}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
 
-          // Helper — delta badge: up=green, down=red. Always. User knows context.
+          // Convert quarter objects to [key, data] pairs for MiniBar
+          const qMths = qData.map(q=>[q.key,{rev:q.rev,exp:q.exp,net:q.net,margin:q.margin,projected:q.projected}]);
+          // X-axis label: just the quarter number (Q1, Q2…)
+          const qAxisLabel = k => { const q=qData.find(x=>x.key===k); return q?`Q${q.q}`:k; };
+
+          // Delta badge for summary table
           const Delta = ({cur, prev}) => {
             if(prev==null||prev===0) return null;
             const pct = ((cur-prev)/Math.abs(prev))*100;
             const up = pct >= 0;
-            const sign = up?"+":"";
             return (
-              <span style={{fontSize:10,fontWeight:700,color:up?"#30d158":"#ff453a",background:up?"rgba(48,209,88,0.1)":"rgba(255,69,58,0.1)",borderRadius:6,padding:"2px 6px",marginLeft:6,fontFamily:"'JetBrains Mono',monospace"}}>
-                {sign}{pct.toFixed(1)}%
+              <span style={{fontSize:10,fontWeight:700,color:up?"#30d158":"#ff453a",background:up?"rgba(48,209,88,0.1)":"rgba(255,69,58,0.1)",borderRadius:6,padding:"2px 6px",marginLeft:6,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>
+                {up?"+":""}{pct.toFixed(1)}%
               </span>
             );
           };
-
-          // MoM — last two months with data
-          const mos = M.months.filter(([,v])=>!v.projected);
-          const curMo  = mos[mos.length-1];
-          const prevMo = mos[mos.length-2];
-
-          // QoQ — last two quarters
-          const curQ  = qs[qs.length-1];
-          const prevQ = qs[qs.length-2];
-
-          // YoY — same quarter last year
-          const yoyQ  = qs.find(q=>q.q===curQ?.q && q.year===curQ?.year-1) || null;
 
           return (
           <div style={{minHeight:"100%"}}>
@@ -2190,124 +2176,66 @@ function App() {
               <div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div>
             </div>
 
-            {/* MoM Section */}
-            {curMo&&prevMo&&(
-              <>
-                <div className="section-title">Month over Month · {moLabel(curMo[0])} vs {moLabel(prevMo[0])}</div>
-                <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-                  {[
-                    {l:"Revenue",  cur:curMo[1].rev,  prev:prevMo[1].rev,  red:false},
-                    {l:"Expenses", cur:curMo[1].exp,   prev:prevMo[1].exp,   red:true},
-                    {l:"Net Income",cur:curMo[1].rev-curMo[1].exp, prev:prevMo[1].rev-prevMo[1].exp, red:false},
-                    {l:"Net Margin",cur:curMo[1].rev>0?((curMo[1].rev-curMo[1].exp)/curMo[1].rev)*100:0,
-                                    prev:prevMo[1].rev>0?((prevMo[1].rev-prevMo[1].exp)/prevMo[1].rev)*100:0,
-                                    red:false,pct:true},
-                  ].map((r,i)=>(
-                    <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:i<3?"1px solid rgba(0,0,0,0.05)":"none"}}>
-                      <div style={{fontSize:13,color:"var(--text-2)",fontWeight:500}}>{r.l}</div>
-                      <div style={{display:"flex",alignItems:"center"}}>
-                        <span style={{fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
-                          color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
-                          {r.pct?`${r.cur.toFixed(1)}%`:fmt$(r.cur)}
-                        </span>
-                        <Delta cur={r.cur} prev={r.prev}/>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* QoQ Section */}
-            {curQ&&prevQ&&(
-              <>
-                <div className="section-title">Quarter over Quarter · {curQ.label} vs {prevQ.label}</div>
-                <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-                  {[
-                    {l:"Revenue",   cur:curQ.rev,    prev:prevQ.rev,    red:false},
-                    {l:"Expenses",  cur:curQ.exp,    prev:prevQ.exp,    red:true},
-                    {l:"Net Income",cur:curQ.net,    prev:prevQ.net,    red:false},
-                    {l:"Net Margin",cur:curQ.margin, prev:prevQ.margin, red:false, pct:true},
-                  ].map((r,i)=>(
-                    <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:i<4?"1px solid rgba(0,0,0,0.05)":"none"}}>
-                      <div style={{fontSize:13,color:"var(--text-2)",fontWeight:500}}>{r.l}</div>
-                      <div style={{display:"flex",alignItems:"center"}}>
-                        <span style={{fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
-                          color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
-                          {r.pct?`${r.cur.toFixed(1)}%`:r.raw?r.cur:fmt$(r.cur)}
-                        </span>
-                        <Delta cur={r.cur} prev={r.prev}/>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* YoY Section */}
-            <div className="section-title">Year over Year · {curQ?.label}{yoyQ?` vs ${yoyQ.label}`:""}</div>
-            {yoyQ?(
-              <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-                {[
-                  {l:"Revenue",   cur:curQ.rev,    prev:yoyQ.rev,    red:false},
-                  {l:"Expenses",  cur:curQ.exp,    prev:yoyQ.exp,    red:true},
-                  {l:"Net Income",cur:curQ.net,    prev:yoyQ.net,    red:false},
-                  {l:"Net Margin",cur:curQ.margin, prev:yoyQ.margin, red:false, pct:true},
-                ].map((r,i)=>(
-                  <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:i<3?"1px solid rgba(0,0,0,0.05)":"none"}}>
-                    <div style={{fontSize:13,color:"var(--text-2)",fontWeight:500}}>{r.l}</div>
-                    <div style={{display:"flex",alignItems:"center"}}>
-                      <span style={{fontSize:14,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",
-                        color:r.red?"#ff453a":r.cur>=0?"#30d158":"#ff453a"}}>
-                        {r.pct?`${r.cur.toFixed(1)}%`:fmt$(r.cur)}
-                      </span>
-                      <Delta cur={r.cur} prev={r.prev}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ):(
-              <div className="card card-padded" style={{marginBottom:8,color:"var(--text-3)",fontSize:13}}>
-                Not enough history yet — YoY data appears once you have the same quarter from a prior year.
-              </div>
-            )}
-
-            {/* Full quarter history table */}
-            <div className="section-title">All Quarters</div>
-            <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-              <div style={{display:"grid",gridTemplateColumns:"72px 1fr 1fr 1fr 60px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
-                {["Quarter","Revenue","Expenses","Net","Margin"].map(h=>(
-                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.07em",textAlign:h==="Quarter"?"left":"right"}}>{h}</span>
-                ))}
-              </div>
-              {[...qs].reverse().map((q,i,arr)=>{
-                const prev = arr[i+1];
-                return (
-                  <div key={q.key} style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr 1fr 52px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:6,alignItems:"start",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
-                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:i===0?"#30d158":"var(--text)",paddingTop:3}}>{q.label}</span>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:11,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#30d158"}}>{fmt$(q.rev)}</div>
-                      {prev&&<div style={{marginTop:3}}><Delta cur={q.rev} prev={prev.rev}/></div>}
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:"#ff453a"}}>{fmt$(q.exp)}</div>
-                      {prev&&<div style={{marginTop:3}}><Delta cur={q.exp} prev={prev.exp}/></div>}
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:11,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:q.net>=0?"#30d158":"#ff453a"}}>{fmt$(q.net)}</div>
-                      {prev&&<div style={{marginTop:3}}><Delta cur={q.net} prev={prev.net}/></div>}
-                    </div>
-                    <div style={{textAlign:"right",fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:q.margin>=30?"#30d158":q.margin>=0?"var(--text-3)":"#ff453a",paddingTop:3}}>{q.margin.toFixed(1)}%</div>
-                  </div>
-                );
-              })}
+            <div className="section-title">Revenue · Quarter by Quarter <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>hatched = projected</span></div>
+            <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+              <MiniBar months={qMths} valueKey="rev" color="#30d158" onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
             </div>
+
+            <div className="section-title">Expenses · Quarter by Quarter</div>
+            <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+              <MiniBar months={qMths} valueKey="exp" color="#ff453a" onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
+            </div>
+
+            <div className="section-title">Net Income · Quarter by Quarter</div>
+            <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+              <MiniBar months={qMths} valueKey="net" color={null} onBarClick={()=>navigateTab("Feed")} labelFn={qAxisLabel}/>
+            </div>
+
+            <div className="section-title">Net Margin % · Quarter by Quarter <span style={{fontWeight:400,fontSize:9,color:"var(--text-3)"}}>≥30% healthy · grey=ok · red=negative</span></div>
+            <div className="card card-padded" style={{marginBottom:8,overflow:"visible"}}>
+              <MiniBar months={qMths} valueKey="margin" color={null} marginMode labelFn={qAxisLabel} fmt={v=>`${v.toFixed(1)}%`}/>
+            </div>
+
+            {/* Actual quarter history table */}
+            {qs.length>0&&(
+              <>
+                <div className="section-title">All Quarters</div>
+                <div className="card" style={{overflow:"hidden",marginBottom:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"72px 1fr 1fr 1fr 60px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+                    {["Quarter","Revenue","Expenses","Net","Margin"].map(h=>(
+                      <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.07em",textAlign:h==="Quarter"?"left":"right"}}>{h}</span>
+                    ))}
+                  </div>
+                  {[...qs].reverse().map((q,i,arr)=>{
+                    const prev = arr[i+1];
+                    return (
+                      <div key={q.key} style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr 1fr 52px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:6,alignItems:"start",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
+                        <span style={{fontSize:12,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:i===0?"#30d158":"var(--text)",paddingTop:3}}>{q.label}</span>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:11,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"#30d158"}}>{fmt$(q.rev)}</div>
+                          {prev&&<div style={{marginTop:3}}><Delta cur={q.rev} prev={prev.rev}/></div>}
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:11,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"#ff453a"}}>{fmt$(q.exp)}</div>
+                          {prev&&<div style={{marginTop:3}}><Delta cur={q.exp} prev={prev.exp}/></div>}
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:11,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:q.net>=0?"#30d158":"#ff453a"}}>{fmt$(q.net)}</div>
+                          {prev&&<div style={{marginTop:3}}><Delta cur={q.net} prev={prev.net}/></div>}
+                        </div>
+                        <div style={{textAlign:"right",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:q.margin>=30?"#30d158":q.margin>=0?"var(--text-3)":"#ff453a",paddingTop:3}}>{q.margin.toFixed(1)}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
           );
         })()}
         </div>
 
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
         {(()=>{
           const now = new Date();
           const thisYear = now.getFullYear();
@@ -2335,7 +2263,7 @@ function App() {
                   {l:"YTD Margin",    v:M.netMargin!=null?fmtPct(M.netMargin):"—", sub:"net margin", green:M.netMargin>=30},
                 ].map(c=>(
                   <div key={c.l}>
-                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
+                    <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{c.l}</div>
                     <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em",color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
                     <div style={{fontSize:10,color:"var(--text-3)"}}>{c.sub}</div>
                   </div>
@@ -2375,16 +2303,16 @@ function App() {
             <div className="card" style={{overflow:"hidden",marginBottom:8}}>
               <div style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 14px",gap:8}}>
                 {["Year","Revenue","Expenses","Net","Margin"].map(h=>(
-                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>
+                  <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>
                 ))}
               </div>
               {M.projections.map((d,i)=>(
                 <div key={d.year} style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",padding:"13px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
-                  <span style={{fontSize:13,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:i===0?"#30d158":"var(--text)"}}>{d.year}{i===0?" ←":""}</span>
-                  <span style={{fontSize:12,color:"#30d158",fontFamily:"'JetBrains Mono',monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
-                  <span style={{fontSize:12,color:"#ff453a",fontFamily:"'JetBrains Mono',monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
-                  <span style={{fontSize:12,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
-                  <span style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"right",color:d.margin>=30?"#30d158":d.margin>=0?"var(--text-3)":"#ff453a"}}>{fmtPct(d.margin)}</span>
+                  <span style={{fontSize:13,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:i===0?"#30d158":"var(--text)"}}>{d.year}{i===0?" ←":""}</span>
+                  <span style={{fontSize:12,color:"#30d158",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
+                  <span style={{fontSize:12,color:"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
+                  <span style={{fontSize:12,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right",color:d.net>=0?"#30d158":"#ff453a"}}>{fmt$(d.net)}</span>
+                  <span style={{fontSize:11,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right",color:d.margin>=30?"#30d158":d.margin>=0?"var(--text-3)":"#ff453a"}}>{fmtPct(d.margin)}</span>
                 </div>
               ))}
             </div>
@@ -2404,7 +2332,7 @@ function App() {
                     <div style={{fontSize:13,fontWeight:500}}>{a.l}</div>
                     <div style={{fontSize:11,color:"var(--text-3)",marginTop:1}}>{a.sub}</div>
                   </div>
-                  <span style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-2)"}}>{a.v}</span>
+                  <span style={{fontSize:13,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)"}}>{a.v}</span>
                 </div>
               ))}
               {M.annualCoc&&(
@@ -2413,7 +2341,7 @@ function App() {
                     <div style={{fontSize:13,fontWeight:500}}>Cash-on-Cash Return</div>
                     <div style={{fontSize:11,color:"var(--text-3)",marginTop:1}}>annualized · based on down payments</div>
                   </div>
-                  <span style={{fontSize:13,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#30d158"}}>{fmtPct(M.annualCoc)}</span>
+                  <span style={{fontSize:13,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"#30d158"}}>{fmtPct(M.annualCoc)}</span>
                 </div>
               )}
               {!M.annualCoc&&(
@@ -2428,7 +2356,7 @@ function App() {
         </div>
 
         {/* ── FEED ───────────────────────────────────────────────── */}
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
@@ -2462,7 +2390,7 @@ function App() {
           </div>
         </div>
 
-        <div className="swipe-pane" onTouchStart={onPullStart} onTouchMove={onPullMove} onTouchEnd={onPullEnd}>
+        <div className="swipe-pane">
           <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
@@ -2481,26 +2409,26 @@ function App() {
                 {[...archived].sort((a,b)=>b.date.localeCompare(a.date)).map((tx,i)=>(
                   <div key={tx.id} style={{borderBottom:i<archived.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
                     <div style={{display:"grid",gridTemplateColumns:"64px 1fr auto auto",padding:"11px 14px",gap:8,alignItems:"center"}}>
-                      <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(tx.date)}</span>
+                      <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmtDate(tx.date)}</span>
                       <div>
                         <div style={{fontSize:12,fontWeight:500,lineHeight:1.3}}>{tx.payee}</div>
                         <div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>
                           {tx.propId==="deleted"?"🗑 Deleted":"↔ Transfer"} · {tx.account||""}
                         </div>
                       </div>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:12,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                      <span style={{fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,fontSize:12,color:tx.type==="in"?"#30d158":"#ff453a"}}>
                         {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                       </span>
                       <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
+                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
                           Restore
                         </button>
                         {tx.type==="in"?(
-                          <button onClick={()=>{const p=PROPERTIES.find(x=>x.id!=="transfer"&&x.id!=="deleted"&&x.id!=="llc"&&x.group!=="airbnb"||x.id==="airbnb");doTag(tx.id,"airbnb");}} style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"#30d158",fontWeight:600}}>
+                          <button onClick={()=>{const p=PROPERTIES.find(x=>x.id!=="transfer"&&x.id!=="deleted"&&x.id!=="llc"&&x.group!=="airbnb"||x.id==="airbnb");doTag(tx.id,"airbnb");}} style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"#30d158",fontWeight:600}}>
                             → Airbnb
                           </button>
                         ):(
-                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"'JetBrains Mono',monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
+                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
                             Re-tag
                           </button>
                         )}
@@ -2557,7 +2485,7 @@ function App() {
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {Object.entries(autoTags).map(([payee,pid])=>(
                       <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:8,padding:"4px 10px"}}>
-                        <span style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:"var(--text-3)"}}>{payee}</span>
+                        <span style={{fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-3)"}}>{payee}</span>
                         <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
                         <PropBadge id={pid} small/>
                         <button onClick={()=>{const n={...autoTags};delete n[payee];setAutoTags(n);LS.set(AUTO_KEY,n);}} style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:12,lineHeight:1,padding:"0 2px"}}>×</button>
