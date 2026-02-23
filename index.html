@@ -137,6 +137,12 @@
       border-bottom: 1px solid rgba(128,128,128,0.10);
       height: 52px;
     }
+    /* When sub-nav is visible, remove bottom border from main nav so both rows merge */
+    .top-nav.has-subnav {
+      border-bottom: none;
+      height: auto;
+      padding-bottom: 2px;
+    }
     .top-nav-track {
       display: flex;
       align-items: center;
@@ -171,39 +177,38 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
-    /* Property sub-nav — appears under Portfolio pill */
+    /* Property sub-nav — appears under Portfolio pill, shares parent bg/blur */
     .top-sub-nav {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 4px 16px 8px;
-      gap: 6px;
+      padding: 2px 16px 10px;
+      gap: 8px;
       background: var(--header-bg);
       backdrop-filter: blur(28px) saturate(1.6);
       -webkit-backdrop-filter: blur(28px) saturate(1.6);
-      border-bottom: 1px solid rgba(128,128,128,0.08);
+      border-bottom: 1px solid rgba(128,128,128,0.10);
       overflow-x: auto;
       flex-wrap: nowrap;
     }
     .sub-nav-pill {
       background: transparent;
-      border: 1px solid transparent;
+      border: none;
       color: var(--text-3);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
-      padding: 4px 13px;
-      border-radius: 14px;
+      padding: 5px 16px;
+      border-radius: 16px;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
       transition: all 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
-      opacity: 0.6;
+      opacity: 0.55;
     }
     .sub-nav-pill.active {
-      background: rgba(128,128,128,0.11);
-      border-color: rgba(128,128,128,0.15);
+      background: rgba(128,128,128,0.13);
       color: var(--text);
-      font-weight: 600;
+      font-weight: 700;
       opacity: 1;
     }
 
@@ -1320,6 +1325,10 @@ function App() {
 
   // Portfolio group = Portfolio overview + all property sub-panes (not Quarterly/Projections/Feed/Archive)
   const isPortfolioGroup = tabIdx < feedIdx && tabs[tabIdx] !== "Quarterly" && tabs[tabIdx] !== "Projections";
+  // Index of Quarterly tab — sub-panes are all indices between 1 and this (exclusive)
+  const quarterlyIdx = tabs.indexOf("Quarterly");
+  // isSubPane: inside a property pane (not Portfolio overview, not Quarterly/Projections/Feed/Archive)
+  const isSubPane = tabIdx >= 1 && tabIdx < quarterlyIdx;
   // Map tab index → visual pill index (Portfolio=0, Quarterly=1, Projections=2)
   const tabToPillIdx = t => {
     if(tabs[t]==="Quarterly") return 1;
@@ -1337,11 +1346,13 @@ function App() {
   },[]);
   // Update page-outer top whenever the sub-nav row appears or disappears
   useEffect(()=>{
-    const headerH = headerRef.current?.offsetHeight || 56;
-    const mainNavH = navRef.current?.offsetHeight || 52;
-    const subNavH = subNavRef.current?.offsetHeight || 0;
-    const outer = document.querySelector(".page-outer");
-    if(outer) outer.style.top = (headerH + mainNavH + subNavH) + "px";
+    requestAnimationFrame(()=>{
+      const headerH = headerRef.current?.offsetHeight || 56;
+      const mainNavH = navRef.current?.offsetHeight || 52;
+      const subNavH = isPortfolioGroup && subNavRef.current ? subNavRef.current.offsetHeight : 0;
+      const outer = document.querySelector(".page-outer");
+      if(outer) outer.style.top = (headerH + mainNavH + subNavH) + "px";
+    });
   },[isPortfolioGroup]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
@@ -1420,13 +1431,21 @@ function App() {
     e.preventDefault();
     d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
+    // Right-swipe on Portfolio → drawer gesture (slight pull feel)
     const atStart = tabIdx===0 && dx>0;
     const atEnd   = tabIdx===tabs.length-1 && dx<0;
-    const clampedDx = atStart ? Math.min(dx*0.06,16) : atEnd ? Math.max(dx*0.06,-16) : dx;
+    // Blocked directions (rubber-band)
+    const blocked = (tabIdx===0 && dx<0)                                    // left from Portfolio → Quarterly
+                 || (isSubPane && tabIdx===1 && dx>0)                       // right from first sub-pane → block exit
+                 || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0)          // left from last sub-pane → block exit
+                 || (tabs[tabIdx]==="Quarterly" && dx>0);                   // right from Quarterly → Portfolio
+    const clampedDx = atStart  ? Math.min(dx * 0.35, 55)                   // drawer pull
+                    : atEnd    ? Math.max(dx * 0.06, -16)
+                    : blocked  ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
+                    : dx;
     setTrackPos(base + clampedDx, false);
-    // Slide nav track so active pill stays centered proportionally during drag
-    // Uses cached offsets from onTouchStart — no layout reads here
-    if(navTrackRef.current && dragPillOffsets.current && !atStart && !atEnd){
+    // Slide nav track for pill centering — skip when blocked or in sub-pane
+    if(navTrackRef.current && dragPillOffsets.current && !atStart && !atEnd && !blocked && !isSubPane){
       const frac = clampedDx / window.innerWidth;
       const offsets = dragPillOffsets.current;
       const fromPill = tabToPillIdx(tabIdx);
@@ -1449,12 +1468,62 @@ function App() {
     if(d.axis !== "x"){ setTrackPos(-tabIdx*window.innerWidth, true); centerNavPill(tabToPillIdx(tabIdx), true); return; }
     const dx = d.lastX - d.startX;
     const vw = window.innerWidth;
+
+    // ── Portfolio overview (tab 0) ──
+    if(tabIdx === 0){
+      if(dx > 55){ // right-swipe → open drawer
+        setShowDrawer(true);
+        setTrackPos(0, true); centerNavPill(0, true);
+        return;
+      }
+      if(dx < -vw*0.25){ // left-swipe → jump to Quarterly (skip sub-panes)
+        const qIdx = tabs.indexOf("Quarterly");
+        setTab("Quarterly"); setTabIdx(qIdx);
+        setTrackPos(-qIdx * vw, false); // instant to avoid flying through Airbnb/Pierce
+        centerNavPill(1, true);
+        return;
+      }
+      // didn't pass threshold — snap back
+      setTrackPos(0, true); centerNavPill(0, true);
+      return;
+    }
+
+    // ── Sub-pane (Airbnb, Pierce, etc.) ──
+    if(isSubPane){
+      let next = tabIdx;
+      if(dx < -vw*0.25 && tabIdx < quarterlyIdx-1) next = tabIdx+1; // deeper sub-pane
+      if(dx >  vw*0.25 && tabIdx > 1)              next = tabIdx-1; // shallower sub-pane
+      setTab(tabs[next]); setTabIdx(next);
+      setTrackPos(-next*vw, true);
+      centerNavPill(0, true); // Portfolio pill stays highlighted
+      return;
+    }
+
+    // ── Quarterly ──
+    if(tabs[tabIdx]==="Quarterly"){
+      if(dx > vw*0.25){ // right-swipe → back to Portfolio overview (skip sub-panes)
+        setTab("Portfolio"); setTabIdx(0);
+        setTrackPos(0, false); // instant
+        centerNavPill(0, true);
+        return;
+      }
+      if(dx < -vw*0.25 && tabIdx < tabs.length-1){ // left → Projections
+        const next = tabIdx+1;
+        setTab(tabs[next]); setTabIdx(next);
+        setTrackPos(-next*vw, true);
+        centerNavPill(tabToPillIdx(next), true);
+        return;
+      }
+      setTrackPos(-tabIdx*vw, true); centerNavPill(1, true);
+      return;
+    }
+
+    // ── All other tabs (Projections, custom props after Projections) ──
     let next = tabIdx;
     if(dx < -vw*0.25 && tabIdx < tabs.length-1) next = tabIdx+1;
     if(dx >  vw*0.25 && tabIdx > 0)             next = tabIdx-1;
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
     setTrackPos(-next*vw, true);
-    // Animate nav pill to final position with same timing as swipe track
     centerNavPill(tabToPillIdx(next), true);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
@@ -1944,7 +2013,7 @@ function App() {
         </div>
       </div>
       {/* TOP NAV — 3 main pills */}
-      <div className="top-nav" ref={navRef}>
+      <div className={`top-nav${isPortfolioGroup?" has-subnav":""}`} ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
           <button className={`top-nav-pill${isPortfolioGroup?" active":""}`} onClick={()=>navigateTab("Portfolio")}>Portfolio</button>
           <button className={`top-nav-pill${tabs[tabIdx]==="Quarterly"?" active":""}`} onClick={()=>navigateTab("Quarterly")}>Quarterly</button>
