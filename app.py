@@ -2,6 +2,8 @@ import os
 import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 import plaid
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
@@ -228,16 +230,16 @@ def remove_account():
     save_store(store)
     return jsonify({"ok": True})
 
-# ── Sync all accounts ─────────────────────────────────────────
-@app.route("/api/transactions/sync")
-def sync_transactions():
+# ── Sync core logic (used by route + scheduler) ───────────────
+def run_sync():
+    """Pull latest transactions from Plaid for all connected accounts.
+    Returns a summary dict; raises no exceptions (errors are logged per-account)."""
     store = load_store()
     if not store["accounts"]:
-        return jsonify({"error": "No bank account linked yet"}), 400
+        print("Scheduled sync: no accounts linked, skipping.")
+        return {"total_stored": 0, "total": 0}
 
-    # Server-side transaction store — keyed by transaction_id, survives code updates
     tx_store = store.get("transactions", {})
-
     all_added, all_modified, all_removed_ids = [], [], []
 
     for account in store["accounts"]:
@@ -275,7 +277,7 @@ def sync_transactions():
             for tx in added:
                 n = normalize(tx)
                 if n["id"] and not n["pending"]:
-                    tx_store[n["id"]] = n  # upsert — ID is the key, no duplication possible
+                    tx_store[n["id"]] = n
             for tx in modified:
                 n = normalize(tx)
                 if n["id"]:
@@ -296,13 +298,22 @@ def sync_transactions():
     store["transactions"] = tx_store
     save_store(store)
 
-    return jsonify({
+    return {
         "added":        all_added,
         "modified":     all_modified,
         "removed":      all_removed_ids,
         "total":        len(all_added),
         "total_stored": len(tx_store),
-    })
+    }
+
+# ── Sync all accounts ─────────────────────────────────────────
+@app.route("/api/transactions/sync")
+def sync_transactions():
+    store = load_store()
+    if not store["accounts"]:
+        return jsonify({"error": "No bank account linked yet"}), 400
+    result = run_sync()
+    return jsonify(result)
 
 # ── Historical pull — fetches up to 2 years back via transactions/get ────
 # Call this once after linking a new account to backfill history.
@@ -483,6 +494,20 @@ def save_settings():
     store["settings"] = request.json.get("settings", {})
     save_store(store)
     return jsonify({"ok": True})
+
+# ── Daily sync scheduler ──────────────────────────────────────
+def scheduled_sync():
+    print("⏰ Scheduled daily sync starting...")
+    try:
+        result = run_sync()
+        print(f"✅ Scheduled sync complete — {result.get('total_stored', 0)} transactions stored")
+    except Exception as e:
+        print(f"❌ Scheduled sync failed: {e}")
+
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.add_job(scheduled_sync, CronTrigger(hour=7, minute=0), id="daily_sync", replace_existing=True)
+scheduler.start()
+print("⏰ Daily sync scheduler started (runs at 07:00 server time)")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
