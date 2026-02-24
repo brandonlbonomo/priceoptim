@@ -15,9 +15,7 @@ from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
 from plaid.model.item_webhook_update_request import ItemWebhookUpdateRequest
-# TransactionsRefreshRequest requires "transactions_refresh" product to be
-# enabled in the Plaid dashboard before it can be imported/used.
-# from plaid.model.transactions_refresh_request import TransactionsRefreshRequest
+from plaid.model.transactions_refresh_request import TransactionsRefreshRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from dotenv import load_dotenv
@@ -365,15 +363,32 @@ def sync_transactions():
 
 # ── Force Plaid to re-poll the bank ───────────────────────────
 # Requires "transactions_refresh" product enabled in Plaid dashboard.
-# Enable it at: dashboard.plaid.com → Team Settings → Products
+# Tells Plaid to immediately fetch fresh data from the bank, then Plaid
+# fires a SYNC_UPDATES_AVAILABLE webhook which triggers run_sync().
 @app.route("/api/transactions/refresh", methods=["POST"])
 def refresh_transactions():
+    store = load_store()
+    if not store["accounts"]:
+        return jsonify({"error": "No bank account linked yet"}), 400
+    results, errors = [], []
+    for account in store["accounts"]:
+        try:
+            plaid_client.transactions_refresh(TransactionsRefreshRequest(
+                access_token=account["access_token"]
+            ))
+            results.append(account.get("name"))
+            print(f"🔄 Transactions refresh triggered for {account.get('name')}")
+        except Exception as e:
+            err = f"{account.get('name')}: {str(e)}"
+            print(f"❌ Transactions refresh error: {err}")
+            errors.append(err)
     return jsonify({
-        "ok":   False,
-        "error": "transactions_refresh product not enabled on this Plaid account. "
-                 "Enable it at dashboard.plaid.com → Team Settings → Products, "
-                 "then re-deploy.",
-    }), 400
+        "ok":        len(errors) == 0,
+        "refreshed": results,
+        "errors":    errors,
+        "note":      "Plaid will fire SYNC_UPDATES_AVAILABLE webhook within minutes, "
+                     "which auto-syncs new transactions.",
+    })
 
 # ── Plaid webhook receiver ────────────────────────────────────────────────
 # Plaid calls this URL when new transaction data is available.
