@@ -15,7 +15,7 @@ from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
 from plaid.model.item_webhook_update_request import ItemWebhookUpdateRequest
-from plaid.model.item_refresh_request import ItemRefreshRequest
+from plaid.model.transactions_refresh_request import TransactionsRefreshRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from dotenv import load_dotenv
@@ -350,7 +350,7 @@ def refresh_transactions():
     results, errors = [], []
     for account in store["accounts"]:
         try:
-            plaid_client.item_refresh(ItemRefreshRequest(
+            plaid_client.transactions_refresh(TransactionsRefreshRequest(
                 access_token=account["access_token"]
             ))
             results.append(account.get("name"))
