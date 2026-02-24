@@ -384,7 +384,7 @@ def plaid_webhook():
 @app.route("/api/update-webhook", methods=["POST"])
 def update_webhook():
     store       = load_store()
-    webhook_url = (request.json or {}).get("webhook_url") or PLAID_WEBHOOK_URL
+    webhook_url = (request.get_json(silent=True) or {}).get("webhook_url") or PLAID_WEBHOOK_URL
     if not webhook_url:
         return jsonify({"error": "webhook_url required (or set PLAID_WEBHOOK_URL env var)"}), 400
 
