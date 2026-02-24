@@ -180,6 +180,31 @@ def health():
         "accounts":         [a.get("name") for a in store["accounts"]],
     })
 
+# ── Store diagnostics ─────────────────────────────────────────
+@app.route("/api/debug")
+def debug():
+    store = load_store()
+    txs = list(store.get("transactions", {}).values())
+    dates = sorted([t["date"] for t in txs if t.get("date")])
+    # Per-account breakdown
+    by_account = {}
+    for t in txs:
+        acc = t.get("account", "unknown")
+        if acc not in by_account:
+            by_account[acc] = {"count": 0, "newest": "", "oldest": "9999"}
+        by_account[acc]["count"] += 1
+        d = t.get("date", "")
+        if d > by_account[acc]["newest"]: by_account[acc]["newest"] = d
+        if d < by_account[acc]["oldest"]: by_account[acc]["oldest"] = d
+    return jsonify({
+        "total_transactions": len(txs),
+        "oldest_date":        dates[0]  if dates else None,
+        "newest_date":        dates[-1] if dates else None,
+        "by_account":         by_account,
+        "cursors":            {a["name"]: (a.get("cursor") or "")[:40] + "..." if a.get("cursor") else None
+                               for a in store["accounts"]},
+    })
+
 # ── Link status ───────────────────────────────────────────────
 @app.route("/api/link-status")
 def link_status():
