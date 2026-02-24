@@ -13,6 +13,7 @@ from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
+from plaid.model.item_webhook_update_request import ItemWebhookUpdateRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from dotenv import load_dotenv
@@ -22,9 +23,10 @@ load_dotenv()
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app, origins="*")
 
-PLAID_ENV       = os.getenv("PLAID_ENV", "development")
-PLAID_CLIENT_ID = os.getenv("PLAID_CLIENT_ID")
-PLAID_SECRET    = os.getenv("PLAID_SECRET")
+PLAID_ENV         = os.getenv("PLAID_ENV", "development")
+PLAID_CLIENT_ID   = os.getenv("PLAID_CLIENT_ID")
+PLAID_SECRET      = os.getenv("PLAID_SECRET")
+PLAID_WEBHOOK_URL = os.getenv("PLAID_WEBHOOK_URL", "")  # e.g. https://your-app.onrender.com/api/webhook
 
 env_map = {
     "sandbox":     "https://sandbox.plaid.com",
@@ -176,13 +178,16 @@ def link_status():
 def create_link_token():
     store = load_store()
     try:
-        req = LinkTokenCreateRequest(
+        kwargs = dict(
             user=LinkTokenCreateRequestUser(client_user_id="pigeon-user"),
             client_name="Property Pigeon",
             products=[Products("transactions")],
             country_codes=[CountryCode("US")],
             language="en",
         )
+        if PLAID_WEBHOOK_URL:
+            kwargs["webhook"] = PLAID_WEBHOOK_URL
+        req = LinkTokenCreateRequest(**kwargs)
         response = plaid_client.link_token_create(req)
         return jsonify({"link_token": response["link_token"]})
     except Exception as e:
@@ -318,6 +323,88 @@ def sync_transactions():
         return jsonify({"error": "No bank account linked yet"}), 400
     result = run_sync()
     return jsonify(result)
+
+# ── Plaid webhook receiver ────────────────────────────────────────────────
+# Plaid calls this URL when new transaction data is available.
+# Set PLAID_WEBHOOK_URL=https://<your-host>/api/webhook and then call
+# /api/update-webhook once to register it on all existing linked items.
+#
+# Security note: Plaid signs webhooks with a JWT in the Plaid-Verification
+# header. Full JWT verification is omitted here; instead we validate that
+# the item_id is one we actually own before acting on the payload.
+@app.route("/api/webhook", methods=["POST"])
+def plaid_webhook():
+    data         = request.get_json(silent=True) or {}
+    webhook_type = data.get("webhook_type", "")
+    webhook_code = data.get("webhook_code", "")
+    item_id      = data.get("item_id", "")
+
+    print(f"📩 Plaid webhook: {webhook_type}/{webhook_code}  item={item_id}")
+
+    # Only act on transaction webhooks
+    if webhook_type != "TRANSACTIONS":
+        return jsonify({"ok": True, "action": "ignored"})
+
+    SYNC_CODES = {
+        "SYNC_UPDATES_AVAILABLE",  # primary code for transactions/sync flow
+        "INITIAL_UPDATE",          # fired after a new item is linked
+        "HISTORICAL_UPDATE",       # fired when 2-year history is ready
+        "DEFAULT_UPDATE",          # new transactions (legacy code, still fired)
+        "TRANSACTIONS_REMOVED",    # transactions deleted from Plaid
+    }
+    if webhook_code not in SYNC_CODES:
+        return jsonify({"ok": True, "action": "ignored"})
+
+    # Verify this item_id belongs to an account we actually own
+    store = load_store()
+    if item_id and not any(a["item_id"] == item_id for a in store["accounts"]):
+        print(f"⚠️  Webhook item_id {item_id} not found in store — ignoring")
+        return jsonify({"ok": True, "action": "unknown_item"})
+
+    # Paginate through ALL available updates (run_sync loops has_more automatically)
+    try:
+        result = run_sync()
+        print(f"✅ Webhook sync done: {result.get('total', 0)} new, "
+              f"{result.get('total_stored', 0)} total stored")
+        return jsonify({
+            "ok":          True,
+            "action":      "synced",
+            "new":         result.get("total", 0),
+            "total_stored": result.get("total_stored", 0),
+        })
+    except Exception as e:
+        print(f"❌ Webhook sync error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Register webhook on existing Plaid items ──────────────────────────────
+# Call this once after setting PLAID_WEBHOOK_URL to push the URL to every
+# already-linked item. New links pick it up automatically via create_link_token.
+@app.route("/api/update-webhook", methods=["POST"])
+def update_webhook():
+    store       = load_store()
+    webhook_url = (request.json or {}).get("webhook_url") or PLAID_WEBHOOK_URL
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required (or set PLAID_WEBHOOK_URL env var)"}), 400
+
+    updated, errors = [], []
+    for account in store["accounts"]:
+        try:
+            plaid_client.item_webhook_update(
+                ItemWebhookUpdateRequest(
+                    access_token=account["access_token"],
+                    webhook=webhook_url,
+                )
+            )
+            updated.append(account.get("name", account["item_id"]))
+            print(f"✅ Webhook registered for {account.get('name')}: {webhook_url}")
+        except Exception as e:
+            err = f"{account.get('name')}: {str(e)}"
+            print(f"❌ update-webhook error: {err}")
+            errors.append(err)
+
+    return jsonify({"ok": True, "webhook_url": webhook_url, "updated": updated, "errors": errors})
+
 
 # ── Historical pull — fetches up to 2 years back via transactions/get ────
 # Call this once after linking a new account to backfill history.
