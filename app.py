@@ -296,8 +296,8 @@ def run_sync():
 
             for tx in added:
                 n = normalize(tx)
-                if n["id"] and not n["pending"]:
-                    tx_store[n["id"]] = n
+                if n["id"]:
+                    tx_store[n["id"]] = n   # store pending AND posted
             for tx in modified:
                 n = normalize(tx)
                 if n["id"]:
@@ -308,7 +308,7 @@ def run_sync():
                     del tx_store[rid]
                     all_removed_ids.append(rid)
 
-            all_added    += [normalize(t) for t in added if not t.get("pending")]
+            all_added    += [normalize(t) for t in added]
             all_modified += [normalize(t) for t in modified]
 
         except Exception as e:
@@ -461,8 +461,6 @@ def historical_pull():
                 total_txs = data.get("total_transactions", 0)
 
                 for tx in txs:
-                    if tx.get("pending"):
-                        continue
                     tid    = tx.get("transaction_id")
                     amount = tx.get("amount", 0)
                     if not tid:
@@ -473,7 +471,7 @@ def historical_pull():
                         "payee":   tx.get("merchant_name") or tx.get("name", ""),
                         "amount":  amount,
                         "type":    "out" if amount > 0 else "in",
-                        "pending": False,
+                        "pending": tx.get("pending", False),
                         "account": account.get("name", "Bank Account"),
                     }
                     total_added += 1
