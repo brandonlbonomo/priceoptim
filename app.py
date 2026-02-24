@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 import plaid
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
@@ -416,8 +417,10 @@ def historical_pull():
     if not store["accounts"]:
         return jsonify({"error": "No accounts linked"}), 400
 
-    from datetime import date, timedelta
-    start_date = date.today() - timedelta(days=730)  # 2 years
+    from datetime import date
+    # Request all available history — Plaid will return whatever it has
+    # (typically up to 24 months in production; sandbox may vary).
+    start_date = date(2000, 1, 1)
     end_date   = date.today()
 
     tx_store = store.get("transactions", {})
@@ -596,9 +599,10 @@ def scheduled_sync():
         print(f"❌ Scheduled sync failed: {e}")
 
 scheduler = BackgroundScheduler(daemon=True)
-scheduler.add_job(scheduled_sync, CronTrigger(hour=7, minute=0), id="daily_sync", replace_existing=True)
+# Fallback sync every 6 hours — catches any transactions that Plaid webhooks miss
+scheduler.add_job(scheduled_sync, IntervalTrigger(hours=6), id="periodic_sync", replace_existing=True)
 scheduler.start()
-print("⏰ Daily sync scheduler started (runs at 07:00 server time)")
+print("⏰ Fallback sync scheduler started (runs every 6 hours)")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
