@@ -42,6 +42,12 @@ configuration = plaid.Configuration(
 api_client   = plaid.ApiClient(configuration)
 plaid_client = plaid_api.PlaidApi(api_client)
 
+PLAID_HOST = env_map.get(PLAID_ENV, "https://development.plaid.com")
+print(f"🏦 Plaid env  : {PLAID_ENV}")
+print(f"🌐 Plaid host : {PLAID_HOST}")
+print(f"🔑 Client ID  : {PLAID_CLIENT_ID[:6]}..." if PLAID_CLIENT_ID else "⚠️  PLAID_CLIENT_ID not set")
+print(f"🪝 Webhook URL: {PLAID_WEBHOOK_URL or '(not set — webhooks disabled)'}")
+
 # ── Persistent store ─────────────────────────────────────────
 # store = {
 #   "accounts": [ { "access_token": "...", "item_id": "...", "cursor": "...", "name": "..." } ]
@@ -161,10 +167,14 @@ def icon512():
 def health():
     store = load_store()
     return jsonify({
-        "ok": True,
-        "account_count": len(store["accounts"]),
+        "ok":               True,
+        "plaid_env":        PLAID_ENV,
+        "plaid_host":       PLAID_HOST,
+        "webhook_url":      PLAID_WEBHOOK_URL or None,
+        "webhooks_enabled": bool(PLAID_WEBHOOK_URL),
+        "account_count":    len(store["accounts"]),
         "transaction_count": len(store.get("transactions", {})),
-        "accounts": [a.get("name") for a in store["accounts"]]
+        "accounts":         [a.get("name") for a in store["accounts"]],
     })
 
 # ── Link status ───────────────────────────────────────────────
