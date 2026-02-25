@@ -1605,8 +1605,14 @@ function App() {
   const subNavRef  = useRef(null);
   const pullRef    = useRef({active:false, startY:0, triggered:false});
   const isFirstLayout = useRef(true);
-  const [pullY, setPullY] = useState(0);
   const PULL_THRESHOLD = 72;
+  const pullIndicatorRef = useRef(null);
+  const _setPullIndicator = (progress) => {
+    const el = pullIndicatorRef.current;
+    if(!el) return;
+    el.style.opacity = String(progress > 0 ? 0.25 + progress * 0.75 : 0);
+    el.style.transform = `translateX(-50%) scale(${0.55 + progress * 0.45})`;
+  };
 
   // ── Toast system ──────────────────────────────────────────────
   const [toasts, setToasts]   = useState([]);
@@ -1846,8 +1852,8 @@ function App() {
     const p = pullRef.current;
     if(!p.active) return;
     const dy = e.touches[0].clientY - p.startY;
-    if(dy <= 0){ setPullY(0); return; }
-    setPullY(Math.min(dy * 0.45, 50));
+    if(dy <= 0){ _setPullIndicator(0); return; }
+    _setPullIndicator(Math.min(1, dy / PULL_THRESHOLD));
     if(dy > PULL_THRESHOLD && !p.triggered){
       p.triggered = true;
       if(navigator.vibrate) navigator.vibrate([8, 40, 12]); // haptic "pop"
@@ -1857,12 +1863,11 @@ function App() {
     const p = pullRef.current;
     if(!p.active) return;
     p.active = false;
+    _setPullIndicator(0);
     if(p.triggered) sync();
-    setPullY(0);
   };
 
   const onTouchStart = (e) => {
-    if(tabIdx > feedIdx) return; // block swipe navigation from Archive pane and beyond
     // Kill any running spring immediately so it doesn't fight with touch tracking
     if(springRef.current){ cancelAnimationFrame(springRef.current); springRef.current = null; }
     const d = drag.current;
@@ -1871,6 +1876,10 @@ function App() {
     d.startY = e.touches[0].clientY;
     d.velocityX = 0; d.lastTime = Date.now();
     const el = trackRef.current; if(el) el.style.transition = "none";
+    // Disable pill CSS transitions immediately — prevents 0.3s flutter on first drag frame
+    [...pillRefs.current, ...Object.values(subPillRefs.current)].forEach(p => {
+      if(p) p.style.transition = 'none';
+    });
   };
 
   const onTouchMove = (e) => {
@@ -1890,22 +1899,15 @@ function App() {
     if(dt > 0) d.velocityX = (e.touches[0].clientX - d.lastX) / dt; // px/ms
     d.lastTime = now; d.lastX = e.touches[0].clientX;
     const base = -tabIdx * window.innerWidth;
-    // Right-swipe on Portfolio → drawer gesture (slight pull feel)
-    const atStart = (tabIdx===0 || tabIdx===feedIdx) && dx>0;  // Portfolio or Feed: right → drawer
-    const atEnd   = tabIdx===tabs.length-1 && dx<0;
-    // Truly blocked: sub-pane boundary exits — no navigation possible
-    const trulyBlocked = (isSubPane && tabIdx===1 && dx>0)
-                      || (isSubPane && tabIdx===quarterlyIdx-1 && dx<0);
-    // Skip-nav: Portfolio↔Quarterly jumps — allow visible drag feedback
+    // Right-swipe on Portfolio/Feed → drawer pull feel; Archive left → hard edge
+    const atStart = (tabIdx===0 || tabIdx===feedIdx) && dx>0;
+    const atEnd   = tabIdx===archiveIdx && dx<0;  // Archive is the rightmost pane
+    // Skip-nav: Portfolio↔Quarterly — damped because they're not adjacent in the track
     const skipNav = (tabIdx===0 && dx<0) || (tabs[tabIdx]==="Quarterly" && dx>0);
-    // Feed pane: block left swipe (nothing to the right)
-    const feedLeftBlock = tabIdx===feedIdx && dx<0;
-    const clampedDx = atStart        ? Math.min(dx * 0.35, 55)             // drawer pull
-                    : atEnd          ? Math.max(dx * 0.06, -16)
-                    : feedLeftBlock  ? Math.max(dx * 0.08, -12)
-                    : trulyBlocked   ? (dx > 0 ? Math.min(dx*0.1,18) : Math.max(dx*0.1,-18))
-                    : skipNav        ? (dx > 0 ? Math.min(dx*0.35,70) : Math.max(dx*0.35,-70))
-                    : dx;
+    const clampedDx = atStart ? Math.min(dx * 0.35, 55)                         // drawer pull
+                    : atEnd   ? Math.max(dx * 0.06, -16)                         // hard edge
+                    : skipNav ? (dx > 0 ? Math.min(dx*0.35,70) : Math.max(dx*0.35,-70))
+                    : dx;                                                          // all other: full 1:1
     setTrackPos(base + clampedDx, false);
     animatePillsDrag(dx, clampedDx);
   };
@@ -1924,50 +1926,62 @@ function App() {
     const passLeft  = dx < -vw*0.18 || vel < -0.35;
     const passRight = dx >  vw*0.18 || vel >  0.35;
 
-    // ── Feed pane: right-swipe opens drawer ──
-    if(tabIdx === feedIdx){
-      if(passRight){ setShowDrawer(true); }
-      setTrackPos(-feedIdx*vw, true, vel);
-      snapPillsToTab(feedIdx);
+    // Navigate to index — spring or instant based on isFlick; bounce if staying
+    const goTo = (idx) => {
+      setTabIdx(idx);
+      setTrackPos(-idx*vw, idx===tabIdx || !isFlick, vel);
+      snapPillsToTab(idx);
+    };
+
+    // ── Archive (rightmost pane) ──────────────────────────────
+    if(tabIdx === archiveIdx){
+      if(passRight) goTo(feedIdx); else goTo(archiveIdx);
       return;
     }
 
-    // ── Portfolio overview (tab 0) ──
+    // ── Feed ──────────────────────────────────────────────────
+    if(tabIdx === feedIdx){
+      if(passRight){ setShowDrawer(true); goTo(feedIdx); return; }
+      if(passLeft) { goTo(archiveIdx); return; }
+      goTo(feedIdx);
+      return;
+    }
+
+    // ── Portfolio overview (tab 0) ────────────────────────────
     if(tabIdx === 0){
       if(dx > 55 || (vel > 0.35 && dx > 10)){ // right-swipe → open drawer
-        setShowDrawer(true);
-        setTrackPos(0, false);
-        snapPillsToTab(0);
-        return;
+        setShowDrawer(true); goTo(0); return;
       }
-      if(passLeft){ // left-swipe → jump to Quarterly (skip sub-panes)
+      if(passLeft){ // left-swipe → jump to Quarterly (skip sub-panes, instant)
         const qIdx = tabs.indexOf("Quarterly");
         setTab("Quarterly"); setTabIdx(qIdx);
-        setTrackPos(-qIdx * vw, false); // instant skip
+        setTrackPos(-qIdx * vw, false);
         snapPillsToTab(qIdx);
         return;
       }
-      setTrackPos(0, true, vel); snapPillsToTab(0);
+      goTo(0);
       return;
     }
 
-    // ── Sub-pane (Airbnb, Pierce, etc.) ──
+    // ── Sub-panes (Airbnb, Pierce, custom) ───────────────────
     if(isSubPane){
       let next = tabIdx;
-      if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1;
-      if(passRight && tabIdx > 1)              next = tabIdx-1;
-      setTab(tabs[next]); setTabIdx(next);
-      setTrackPos(-next*vw, next===tabIdx||!isFlick, vel);
+      if(passLeft  && tabIdx < quarterlyIdx) next = tabIdx+1; // incl. last sub-pane → Quarterly
+      if(passRight && tabIdx >= 1)           next = tabIdx-1; // incl. Airbnb → Portfolio
+      if(next !== tabIdx) setTab(tabs[next] ?? tab);
+      setTabIdx(next);
+      setTrackPos(-next*vw, next===tabIdx || !isFlick, vel);
       snapPillsToTab(next);
       return;
     }
 
-    // ── Quarterly ──
+    // ── Quarterly ────────────────────────────────────────────
     if(tabs[tabIdx]==="Quarterly"){
-      if(passRight){ // right-swipe → back to Portfolio overview (skip sub-panes)
-        setTab("Portfolio"); setTabIdx(0);
-        setTrackPos(0, false); // instant
-        snapPillsToTab(0);
+      if(passRight){ // right → last sub-pane (Pierce) — adjacent in track
+        const prev = quarterlyIdx-1;
+        setTab(tabs[prev]); setTabIdx(prev);
+        setTrackPos(-prev*vw, !isFlick, vel);
+        snapPillsToTab(prev);
         return;
       }
       if(passLeft && tabIdx < tabs.length-1){ // left → Projections
@@ -1977,16 +1991,17 @@ function App() {
         snapPillsToTab(next);
         return;
       }
-      setTrackPos(-tabIdx*vw, true, vel); snapPillsToTab(tabIdx);
+      goTo(tabIdx);
       return;
     }
 
-    // ── All other tabs (Projections, custom props after Projections) ──
+    // ── Projections + any post-Quarterly tabs ────────────────
     let next = tabIdx;
-    if(passLeft  && tabIdx < tabs.length-1) next = tabIdx+1;
-    if(passRight && tabIdx > 0)             next = tabIdx-1;
-    setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
-    setTrackPos(-next*vw, next===tabIdx||!isFlick, vel);
+    if(passLeft  && tabIdx < feedIdx) next = tabIdx+1; // Projections → Feed ✓
+    if(passRight && tabIdx > 0)       next = tabIdx-1;
+    if(next !== tabIdx) setTab(tabs[next] ?? tab);
+    setTabIdx(next);
+    setTrackPos(-next*vw, next===tabIdx || !isFlick, vel);
     snapPillsToTab(next);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
@@ -2476,24 +2491,27 @@ function App() {
           onTouchStart={onLogoPullStart}
           onTouchMove={onLogoPullMove}
           onTouchEnd={onLogoPullEnd}
-          style={{position:"absolute",left:"50%",transform:`translateX(-50%) translateY(${pullY * 0.4}px)`,display:"flex",alignItems:"center",gap:7,cursor:"default",userSelect:"none",transition:pullRef.current.active?"none":"transform 0.3s ease"}}>
+          style={{position:"absolute",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:7,cursor:"default",userSelect:"none"}}>
           <svg width="22" height="22" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="rgba(255,255,255,0.92)"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#06091a"/><circle cx="16" cy="13" r="2" fill="rgba(255,255,255,0.92)"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="rgba(255,255,255,0.92)"/></svg>
           <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
         </div>
         {/* Right: spacer */}
         <div style={{width:40,flexShrink:0}}/>
       </div>
-      {/* Sync spinner — floats below header when active */}
-      {(syncing||syncDone)&&(
-        <div className="sync-spinner-wrap" style={{top:(headerRef.current?.offsetHeight||56)+8}}>
-          {syncDone
-            ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-                stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3,10 8.5,15.5 17,5" className="check-path"/>
-              </svg>
-            : <div className="sync-spinner"/>}
-        </div>
-      )}
+      {/* Pull indicator + Sync spinner — always rendered; pull updates via DOM ref, sync via React */}
+      <div ref={pullIndicatorRef} className="sync-spinner-wrap"
+        style={{top:(headerRef.current?.offsetHeight||56)+8,
+                opacity:(syncing||syncDone)?1:0,
+                transform:"translateX(-50%)",
+                transition:"opacity 0.22s ease",
+                pointerEvents:"none"}}>
+        {syncDone
+          ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+              stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3,10 8.5,15.5 17,5" className="check-path"/>
+            </svg>
+          : <div className="sync-spinner"/>}
+      </div>
       {/* TOP NAV — 3 main pills */}
       <div className={`top-nav${isPortfolioGroup?" has-subnav":""}`} ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
