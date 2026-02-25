@@ -6,7 +6,7 @@
   <title>Property Pigeon</title>
   <link rel="manifest" href="/manifest.json"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Pigeon"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="theme-color" content="#1a1a2e"/>
@@ -16,38 +16,30 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
-      --bg: #dce4ff;
-      --bg2: #ffffff;
-      --glass: rgba(255,255,255,0.62);
-      --glass-border: rgba(255,255,255,0.80);
-      --green: #30d158;
-      --green-dim: rgba(48,209,88,0.15);
+      /* ── Dark-first palette ── */
+      --bg: #06091a;
+      --bg2: #0d1124;
+      --glass: rgba(255,255,255,0.09);
+      --glass-border: rgba(255,255,255,0.13);
+      --green: #32d74b;
+      --green-dim: rgba(50,215,75,0.18);
       --red: #ff453a;
-      --red-dim: rgba(255,69,58,0.15);
+      --red-dim: rgba(255,69,58,0.18);
       --blue: #0a84ff;
-      --blue-dim: rgba(10,132,255,0.15);
+      --blue-dim: rgba(10,132,255,0.18);
       --purple: #bf5af2;
       --yellow: #ffd60a;
-      --text: #14142a;
-      --text-2: rgba(20,20,42,0.58);
-      --text-3: rgba(20,20,42,0.36);
-      --card-bg: rgba(255,255,255,0.68);
-      --header-bg: rgba(220,228,255,0.78);
+      --text: #f2f4ff;
+      --text-2: rgba(242,244,255,0.58);
+      --text-3: rgba(242,244,255,0.34);
+      --card-bg: rgba(255,255,255,0.09);
+      --header-bg: rgba(6,9,26,0.72);
       --radius: 20px;
       --radius-sm: 12px;
-      --specular: inset 0 1px 0 rgba(255,255,255,0.88);
-      --card-shadow: 0 2px 24px rgba(60,80,180,0.07), 0 1px 3px rgba(0,0,0,0.04);
+      --specular: inset 0 1px 0 rgba(255,255,255,0.16);
+      --card-shadow: 0 4px 40px rgba(0,0,0,0.55), 0 1px 6px rgba(0,0,0,0.30);
     }
-    [data-theme="dark"] {
-      --bg: #0e0e1a;
-      --bg2: #1c1c2e;
-      --glass: rgba(30,30,50,0.88);
-      --text: #f0f0ff;
-      --text-2: rgba(240,240,255,0.58);
-      --text-3: rgba(240,240,255,0.36);
-      --card-bg: rgba(30,30,50,0.80);
-      --header-bg: rgba(14,14,26,0.90);
-    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -60,18 +52,19 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    /* ── Deep dark background with vivid color orbs ── */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(ellipse 80% 70% at 2% 4%,    rgba(130,80,255,0.52) 0%, transparent 48%),
-        radial-gradient(ellipse 70% 65% at 98% 3%,   rgba(40,110,255,0.46) 0%, transparent 48%),
-        radial-gradient(ellipse 75% 65% at 92% 96%,  rgba(30,190,120,0.38) 0%, transparent 48%),
-        radial-gradient(ellipse 60% 60% at 4% 97%,   rgba(255,70,160,0.34) 0%, transparent 48%),
-        radial-gradient(ellipse 55% 50% at 50% 50%,  rgba(160,140,255,0.18) 0%, transparent 55%),
-        linear-gradient(155deg, #dce4ff 0%, #d8dcff 28%, #dce8ff 58%, #e0d8ff 100%);
+        radial-gradient(ellipse 72% 65% at 6% 8%,    rgba(108,55,240,0.45) 0%, transparent 52%),
+        radial-gradient(ellipse 65% 58% at 96% 6%,   rgba(20,90,255,0.38) 0%, transparent 52%),
+        radial-gradient(ellipse 68% 60% at 90% 94%,  rgba(20,180,110,0.30) 0%, transparent 52%),
+        radial-gradient(ellipse 55% 55% at 6% 95%,   rgba(210,40,150,0.28) 0%, transparent 52%),
+        radial-gradient(ellipse 50% 46% at 50% 50%,  rgba(80,60,180,0.14) 0%, transparent 58%),
+        linear-gradient(168deg, #06091a 0%, #080c22 35%, #060917 65%, #09061c 100%);
       pointer-events: none;
     }
 
@@ -81,20 +74,20 @@
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(circle 700px at 16% 45%, rgba(100,120,255,0.30) 0%, transparent 62%),
-        radial-gradient(circle 580px at 84% 25%, rgba(110,200,160,0.24) 0%, transparent 62%),
-        radial-gradient(circle 520px at 55% 85%, rgba(190,120,255,0.26) 0%, transparent 58%),
-        radial-gradient(circle 360px at 38% 12%, rgba(255,140,90,0.14) 0%, transparent 52%);
-      animation: driftOrbs 22s ease-in-out infinite alternate;
+        radial-gradient(circle 680px at 18% 48%, rgba(80,100,255,0.22) 0%, transparent 62%),
+        radial-gradient(circle 560px at 82% 22%, rgba(30,180,130,0.18) 0%, transparent 62%),
+        radial-gradient(circle 500px at 58% 88%, rgba(160,80,255,0.20) 0%, transparent 58%),
+        radial-gradient(circle 340px at 40% 14%, rgba(255,110,60,0.10) 0%, transparent 52%);
+      animation: driftOrbs 26s ease-in-out infinite alternate;
       pointer-events: none;
     }
 
     @keyframes driftOrbs {
       0%   { transform: translate(0, 0) scale(1); }
-      25%  { transform: translate(30px, -18px) scale(1.05); }
-      50%  { transform: translate(-12px, 28px) scale(0.96); }
-      75%  { transform: translate(22px, 10px) scale(1.03); }
-      100% { transform: translate(-8px, -14px) scale(1.01); }
+      25%  { transform: translate(28px, -16px) scale(1.04); }
+      50%  { transform: translate(-10px, 26px) scale(0.97); }
+      75%  { transform: translate(20px, 8px) scale(1.02); }
+      100% { transform: translate(-6px, -12px) scale(1.01); }
     }
 
     #root { position: relative; z-index: 1; }
@@ -103,51 +96,51 @@
     * { -ms-overflow-style: none; scrollbar-width: none; }
     ::-webkit-scrollbar { display: none; }
 
-    /* Glass card */
+    /* ── Glass card base classes ── */
     .glass {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
       border-radius: var(--radius);
-      backdrop-filter: blur(48px) saturate(1.8) brightness(1.02);
-      -webkit-backdrop-filter: blur(48px) saturate(1.8) brightness(1.02);
+      backdrop-filter: blur(48px) saturate(1.8);
+      -webkit-backdrop-filter: blur(48px) saturate(1.8);
       box-shadow: var(--card-shadow), var(--specular);
     }
     .glass-sm {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
       border-radius: var(--radius-sm);
       backdrop-filter: blur(32px) saturate(1.6);
       -webkit-backdrop-filter: blur(32px) saturate(1.6);
       box-shadow: var(--card-shadow), var(--specular);
     }
 
-    /* Top header */
+    /* ── Top header ── */
     .top-header {
       position: sticky; top: 0; z-index: 100;
       padding: 12px 16px 10px;
-      background: var(--header-bg);
-      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
-      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
-      border-bottom: 0.5px solid rgba(255,255,255,0.55);
-      box-shadow: 0 1px 0 rgba(100,120,220,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+      background: rgba(6,9,26,0.68);
+      backdrop-filter: blur(56px) saturate(1.9);
+      -webkit-backdrop-filter: blur(56px) saturate(1.9);
+      border-bottom: 0.5px solid rgba(255,255,255,0.10);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.07);
       display: flex; align-items: center; justify-content: space-between;
     }
-    /* Top pill navigation — Copilot style, no scroll, active always centered */
+
+    /* ── Top pill navigation ── */
     .top-nav {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 6px 0 10px;
-      background: var(--header-bg);
-      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
-      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
+      background: rgba(6,9,26,0.68);
+      backdrop-filter: blur(56px) saturate(1.9);
+      -webkit-backdrop-filter: blur(56px) saturate(1.9);
       overflow: hidden;
-      border-bottom: 0.5px solid rgba(255,255,255,0.45);
-      box-shadow: 0 1px 0 rgba(100,120,220,0.05);
+      border-bottom: 0.5px solid rgba(255,255,255,0.09);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.24);
       height: 52px;
     }
-    /* When sub-nav is visible, remove bottom border from main nav so both rows merge */
     .top-nav.has-subnav {
       border-bottom: none;
       height: auto;
@@ -162,7 +155,7 @@
     .top-nav-pill {
       background: transparent;
       border: none;
-      color: var(--text-3);
+      color: var(--text-2);
       font-size: 15px;
       font-weight: 500;
       padding: 7px 22px;
@@ -175,39 +168,40 @@
                   box-shadow 0.3s cubic-bezier(0.34,1.3,0.64,1),
                   color 0.3s cubic-bezier(0.34,1.3,0.64,1);
       flex-shrink: 0;
-      opacity: 0.36;
+      opacity: 0.38;
       transform: scale(0.82);
     }
     .top-nav-pill.active {
-      background: rgba(255,255,255,0.78);
-      color: var(--text);
+      background: rgba(255,255,255,0.18);
+      color: #ffffff;
       font-weight: 700;
       font-size: 15px;
       opacity: 1;
       transform: scale(1);
-      backdrop-filter: blur(20px) saturate(1.6);
-      -webkit-backdrop-filter: blur(20px) saturate(1.6);
-      border: 0.5px solid rgba(255,255,255,0.7);
-      box-shadow: 0 2px 14px rgba(60,80,180,0.12), inset 0 1px 0 rgba(255,255,255,0.95);
+      backdrop-filter: blur(24px) saturate(1.8);
+      -webkit-backdrop-filter: blur(24px) saturate(1.8);
+      border: 0.5px solid rgba(255,255,255,0.26);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.42);
     }
-    /* Property sub-nav — appears under Portfolio pill, shares parent bg/blur */
+
+    /* ── Property sub-nav ── */
     .top-sub-nav {
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 2px 16px 10px;
       gap: 8px;
-      background: var(--header-bg);
-      backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
-      -webkit-backdrop-filter: blur(52px) saturate(2.0) brightness(1.04);
-      border-bottom: 0.5px solid rgba(255,255,255,0.45);
+      background: rgba(6,9,26,0.68);
+      backdrop-filter: blur(56px) saturate(1.9);
+      -webkit-backdrop-filter: blur(56px) saturate(1.9);
+      border-bottom: 0.5px solid rgba(255,255,255,0.09);
       overflow-x: auto;
       flex-wrap: nowrap;
     }
     .sub-nav-pill {
       background: transparent;
       border: none;
-      color: var(--text-3);
+      color: var(--text-2);
       font-size: 13px;
       font-weight: 500;
       padding: 5px 16px;
@@ -216,18 +210,18 @@
       white-space: nowrap;
       flex-shrink: 0;
       transition: all 0.28s cubic-bezier(0.34,1.3,0.64,1);
-      opacity: 0.52;
+      opacity: 0.46;
     }
     .sub-nav-pill.active {
-      background: rgba(255,255,255,0.75);
-      color: var(--text);
+      background: rgba(255,255,255,0.16);
+      color: #ffffff;
       font-weight: 700;
       opacity: 1;
-      border: 0.5px solid rgba(255,255,255,0.65);
-      box-shadow: 0 1px 10px rgba(60,80,180,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+      border: 0.5px solid rgba(255,255,255,0.24);
+      box-shadow: 0 1px 12px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.38);
     }
 
-    /* Fade edges */
+    /* Fade edges on nav */
     .top-nav::before, .top-nav::after {
       content: "";
       position: absolute;
@@ -236,20 +230,21 @@
       z-index: 2;
       pointer-events: none;
     }
-    .top-nav::before { left: 0; background: linear-gradient(to right, var(--header-bg), transparent); }
-    .top-nav::after  { right: 0; background: linear-gradient(to left, var(--header-bg), transparent); }
+    .top-nav::before { left: 0; background: linear-gradient(to right, rgba(6,9,26,0.68), transparent); }
+    .top-nav::after  { right: 0; background: linear-gradient(to left, rgba(6,9,26,0.68), transparent); }
+
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
       padding: 7px 16px; border-radius: 20px; font-size: 13px;
       font-weight: 500; transition: all 0.2s; position: relative;
     }
-    .nav-tab.active { background: rgba(0,0,0,0.07); color: var(--text); font-weight: 600; }
+    .nav-tab.active { background: rgba(255,255,255,0.10); color: var(--text); font-weight: 600; }
 
-    /* Pills */
+    /* ── Pills ── */
     .pill {
       display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.65);
-      border: 1px solid rgba(0,0,0,0.1);
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
       border-radius: 20px;
       padding: 4px 12px;
       font-size: 11px;
@@ -258,9 +253,9 @@
     }
     .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 
-    /* Big stat */
+    /* ── Big stat ── */
     .stat-num {
-      font-family: 'Figtree', sans-serif;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
       font-size: 36px;
       font-weight: 700;
       letter-spacing: -0.03em;
@@ -275,28 +270,29 @@
       font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
     }
 
-    /* Chart tooltip */
+    /* ── Chart tooltip ── */
     .chart-tooltip {
       position: absolute;
-      background: rgba(16,16,26,0.86);
-      border: 0.5px solid rgba(255,255,255,0.22);
+      background: rgba(8,12,32,0.90);
+      border: 0.5px solid rgba(255,255,255,0.18);
       border-radius: 14px;
       padding: 10px 14px;
       font-size: 12px;
+      color: var(--text);
       pointer-events: none;
       backdrop-filter: blur(48px) saturate(1.6);
       -webkit-backdrop-filter: blur(48px) saturate(1.6);
       white-space: nowrap;
       z-index: 50;
       transform: translateX(-50%);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.12);
     }
 
-    /* Direction badge */
-    .dir-in  { color: var(--green); font-size: 15px; }
+    /* ── Direction badges ── */
+    .dir-in  { color: var(--green); font-size: 15px; text-shadow: 0 0 18px rgba(50,215,75,0.50); }
     .dir-out { color: var(--red);   font-size: 15px; }
 
-    /* Property badge */
+    /* ── Property badge ── */
     .prop-badge {
       display: inline-block;
       border-radius: 6px;
@@ -307,11 +303,11 @@
       letter-spacing: 0.05em;
     }
 
-    /* Segment control */
+    /* ── Segment control ── */
     .seg-ctrl {
       display: inline-flex;
-      background: rgba(0,0,0,0.05);
-      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
       border-radius: 10px;
       padding: 3px;
       gap: 2px;
@@ -327,15 +323,15 @@
       transition: all 0.18s;
     }
     .seg-btn.active {
-      background: rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.13);
       color: var(--text);
       font-weight: 600;
     }
 
-    /* Action button */
+    /* ── Action buttons ── */
     .btn-ghost {
-      background: rgba(255,255,255,0.6);
-      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.16);
       color: var(--text-2);
       border-radius: 10px;
       padding: 7px 14px;
@@ -343,7 +339,7 @@
       font-weight: 500;
       transition: all 0.18s;
     }
-    .btn-ghost:hover { background: rgba(255,255,255,0.85); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.18); color: var(--text); }
     .btn-primary {
       background: var(--green);
       border: none;
@@ -356,39 +352,40 @@
     }
     .btn-primary:hover { filter: brightness(1.1); }
 
-    /* Modal overlay */
+    /* ── Modal overlay ── */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 200;
-      background: rgba(10,10,20,0.42);
-      backdrop-filter: blur(24px) saturate(1.4);
-      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      background: rgba(0,0,0,0.60);
+      backdrop-filter: blur(28px) saturate(1.4);
+      -webkit-backdrop-filter: blur(28px) saturate(1.4);
       display: flex; align-items: center; justify-content: center;
     }
 
-    /* Tx row */
+    /* ── Tx row ── */
     .tx-row {
       display: grid;
       grid-template-columns: 76px 28px 1fr 100px 96px 120px;
       padding: 11px 16px;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
       align-items: center;
       gap: 8px;
       cursor: pointer;
       transition: background 0.15s;
     }
-    .tx-row:hover { background: rgba(0,0,0,0.03); }
+    .tx-row:hover { background: rgba(255,255,255,0.04); }
     .tx-row:last-child { border-bottom: none; }
 
-    /* Swipe container */
+    /* ── Swipe container ── */
     .page-outer {
       position: fixed;
-      top: 100px; /* header + top-nav */
+      top: 100px;
       left: 0; right: 0; bottom: 0;
       overflow: hidden;
       background: transparent;
-      touch-action: pan-y; /* let browser own vertical scroll; we own horizontal */
+      touch-action: pan-y;
     }
-    /* Sync spinner — centered fixed below header */
+
+    /* ── Sync spinner ── */
     .sync-spinner-wrap {
       position: fixed;
       top: 56px;
@@ -400,26 +397,27 @@
       align-items: center;
       justify-content: center;
       padding: 6px;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-radius: 50%;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.40);
     }
     .sync-spinner {
       width: 20px; height: 20px;
-      border: 2px solid rgba(0,0,0,0.08);
-      border-top-color: #1a1a2e;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.85);
       border-radius: 50%;
       animation: spinClear 0.65s linear infinite;
     }
     @keyframes spinClear { to { transform: rotate(360deg); } }
+
     .swipe-track {
       display: flex;
       width: 100%;
       height: 100%;
       will-change: transform;
-      transform: translate3d(0, 0, 0); /* init GPU compositor layer */
+      transform: translate3d(0, 0, 0);
       transition: none;
     }
     .swipe-pane {
@@ -439,13 +437,14 @@
       transform: translateX(-50%);
       width: 24px;
       height: 24px;
-      border: 2.5px solid rgba(128,128,128,0.2);
-      border-top-color: var(--text-3);
+      border: 2.5px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.60);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       z-index: 50;
     }
     @keyframes spin { to { transform: translateX(-50%) rotate(360deg); } }
+
     .page { padding: 0; }
     .page-header { padding: 20px 0 16px; }
     .section-title {
@@ -454,32 +453,37 @@
       font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
       margin-bottom: 10px; margin-top: 22px;
     }
+
+    /* ── Cards — frosted glass on dark ── */
     .card {
-      background: rgba(255,255,255,0.44);
-      border: 1px solid rgba(255,255,255,0.76);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: 20px;
       overflow: hidden;
-      backdrop-filter: blur(56px) saturate(2.2) brightness(1.06);
-      -webkit-backdrop-filter: blur(56px) saturate(2.2) brightness(1.06);
+      backdrop-filter: blur(56px) saturate(2.0);
+      -webkit-backdrop-filter: blur(56px) saturate(2.0);
       box-shadow: var(--card-shadow), var(--specular);
     }
     .card-padded { padding: 16px 18px; }
     .stat-row { display: flex; align-items: baseline; gap: 8px; }
-    .big-num { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+    .big-num {
+      font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+      font-family: ui-monospace, 'SF Mono', SFMono-Regular, monospace;
+    }
     .sub-num { font-size: 13px; color: var(--text-3); }
     @media (max-width: 420px) {
       .big-num { font-size: 26px; }
       .stat-num { font-size: 28px; }
     }
 
-    /* Metric card */
+    /* ── Metric card ── */
     .metric-card {
-      background: rgba(255,255,255,0.62);
-      border: 1px solid rgba(255,255,255,0.76);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: var(--radius);
       padding: 16px 18px;
-      backdrop-filter: blur(40px) saturate(1.8);
-      -webkit-backdrop-filter: blur(40px) saturate(1.8);
+      backdrop-filter: blur(48px) saturate(1.9);
+      -webkit-backdrop-filter: blur(48px) saturate(1.9);
       box-shadow: var(--card-shadow), var(--specular);
     }
 
@@ -563,7 +567,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
                      {id:"pierce",label:"Pierce Ave"},{id:"llc",label:"LLC"},{id:"transfer",label:"Transfer"},...customOpts];
   const opts = isIn ? inOptions : outOptions;
 
-  const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(0,0,0,0.1)",background:"rgba(255,255,255,0.7)",color:"var(--text)",transition:"all 0.12s"};
+  const btnBase = {borderRadius:10,padding:"7px 14px",fontSize:12,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer",border:"1px solid rgba(255,255,255,0.14)",background:"rgba(255,255,255,0.10)",color:"var(--text)",transition:"all 0.12s"};
 
   return (
     <div style={{padding:"10px 0 6px"}}>
@@ -571,7 +575,7 @@ function TagMenu({ tx, onTag, onClose, onDelete }) {
         {opts.map(p=>(
           <button key={p.id} onClick={()=>onTag(tx.id,p.id)} style={{
             ...btnBase,
-            background: tx.propId===p.id ? "rgba(0,0,0,0.1)" : btnBase.background,
+            background: tx.propId===p.id ? "rgba(255,255,255,0.22)" : btnBase.background,
             fontWeight: tx.propId===p.id ? 700 : 600,
           }}>
             {p.label}
@@ -702,15 +706,15 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"rgba(236,238,255,0.88)",backdropFilter:"blur(60px) saturate(1.8)",WebkitBackdropFilter:"blur(60px) saturate(1.8)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.6), 0 -12px 60px rgba(60,80,180,0.18)",border:"0.5px solid rgba(255,255,255,0.55)"}}>
-        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
+      <div style={{background:"rgba(10,14,36,0.96)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.08), 0 -12px 60px rgba(0,0,0,0.50)",border:"0.5px solid rgba(255,255,255,0.12)"}}>
+        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
         {/* Header */}
-        <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div>
             <div style={{fontSize:12,color:"var(--text-3)",marginBottom:2}}>{title||moLabel(mo)} · {typeLabel}</div>
-            <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:total>=0?"#30d158":"#ff453a"}}>{fmt$(Math.abs(total))}</div>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:total>=0?"var(--green)":"var(--red)"}}>{fmt$(Math.abs(total))}</div>
           </div>
-          <button onClick={onClose} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:20,width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>✕</button>
         </div>
         {/* Transaction list — full filter/tag/delete capability */}
         <div style={{overflowY:"auto",flex:1,padding:"8px 12px 24px"}}>
@@ -861,7 +865,7 @@ function ProjectionChart({ data }) {
           const val=maxV-(maxV-minV)*f;
           return (
             <g key={f}>
-              <line x1={PL} y1={y} x2={W-PR} y2={y} stroke="rgba(0,0,0,0.07)" strokeWidth="1" strokeDasharray="3,4"/>
+              <line x1={PL} y1={y} x2={W-PR} y2={y} stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="3,4"/>
               <text x={PL-6} y={y+4} textAnchor="end" style={{fontSize:8,fill:"rgba(26,26,46,0.35)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmt$(val).replace("$","")}</text>
             </g>
           );
@@ -913,7 +917,7 @@ function ProjectionChart({ data }) {
               {l:"Expenses", v:fmt$(d.exp),  c:"#ff453a"},
               {l:"Net Income",v:fmt$(d.net), c:d.net>=0?"#30d158":"#ff453a"},
             ].map(item=>(
-              <div key={item.l} style={{background:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.7)",borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all 0.1s"}}>
+              <div key={item.l} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"12px 14px",textAlign:"center",transition:"all 0.1s"}}>
                 <div style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:5}}>{item.l}</div>
                 <div style={{fontSize:16,fontWeight:800,color:item.c,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",letterSpacing:"-0.02em",transition:"all 0.08s"}}>{item.v}</div>
               </div>
@@ -960,13 +964,13 @@ function ManualIncomeModal({ manual, onSave, onClose }) {
                 placeholder="0"
                 value={vals[mo]||""}
                 onChange={e=>setVals(v=>({...v,[mo]:parseFloat(e.target.value)||0}))}
-                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",fontSize:13,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",background:"rgba(255,255,255,0.6)",boxSizing:"border-box"}}
+                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.14)",fontSize:13,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",background:"rgba(255,255,255,0.08)",color:"var(--text)",boxSizing:"border-box"}}
               />
             </div>
           ))}
         </div>
         <div style={{display:"flex",gap:8,marginTop:20,justifyContent:"flex-end"}}>
-          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"transparent",cursor:"pointer",fontSize:13}}>Cancel</button>
+          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.14)",background:"transparent",color:"var(--text-2)",cursor:"pointer",fontSize:13}}>Cancel</button>
           <button onClick={()=>{onSave(vals);onClose();}} className="btn-primary">Save</button>
         </div>
       </div>
@@ -990,7 +994,7 @@ function InvestModal({ invest, onSave, onClose }) {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
               <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
                 placeholder="0"
-                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",outline:"none"}}/>
+                style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",outline:"none"}}/>
             </div>
           </div>
         ))}
@@ -1021,7 +1025,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
   const handleBulkDel = ()  => { doBulkDelete([...selected]); clearSel(); };
 
   const Checkbox = ({id, checked, onToggle}) => (
-    <div onClick={e=>{e.stopPropagation(); onToggle ? onToggle() : toggle(id,e);}} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"#1a1a2e":"rgba(0,0,0,0.2)"}`,background:checked?"#1a1a2e":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
+    <div onClick={e=>{e.stopPropagation(); onToggle ? onToggle() : toggle(id,e);}} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"rgba(255,255,255,0.70)":"rgba(255,255,255,0.22)"}`,background:checked?"rgba(255,255,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
       {checked&&<span style={{color:"white",fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
     </div>
   );
@@ -1042,7 +1046,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             <span style={{fontSize:11,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)",marginRight:2}}>{selCount} selected —</span>
             {PROPERTIES.filter(p=>p.id!=="transfer").map(p=>(
               <button key={p.id} onClick={()=>handleBulkTag(p.id)}
-                style={{background:"rgba(0,0,0,0.06)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer"}}>
+                style={{background:"rgba(255,255,255,0.08)",color:"var(--text)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer"}}>
                 {p.label}
               </button>
             ))}
@@ -1050,7 +1054,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
               style={{background:"rgba(255,69,58,0.1)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,cursor:"pointer"}}>
               Delete {selCount}
             </button>
-            <button onClick={clearSel} style={{background:"rgba(0,0,0,0.05)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
+            <button onClick={clearSel} style={{background:"rgba(255,255,255,0.07)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
           </div>
         )}
       </div>
@@ -1059,7 +1063,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 
       {sorted.length>0&&(
         <div className="glass" style={{overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8,alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",gap:8,alignItems:"center"}}>
             <Checkbox id="__all__" checked={allSel} onToggle={toggleAll}/>
             {["DATE","","PAYEE","AMOUNT","PROPERTY"].map(h=>(
               <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
@@ -1069,9 +1073,9 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             const isSel = selected.has(tx.id);
             return (
               <div key={tx.id}>
-                <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
+                <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
                   onClick={()=>{ if(selCount>0){toggle(tx.id);return;} setTagging(t=>t===tx.id?null:tx.id); }}
-                  onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(0,0,0,0.025)";}}
+                  onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(255,255,255,0.04)";}}
                   onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                   <div onClick={e=>toggle(tx.id,e)}><Checkbox id={tx.id} checked={isSel}/></div>
                   <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmtDate(tx.date)}</span>
@@ -1097,7 +1101,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                   </div>
                 </div>
                 {tagging===tx.id&&(
-                  <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+                  <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
                     <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                   </div>
                 )}
@@ -1121,29 +1125,29 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.4)",backdropFilter:"blur(8px)"}}>
-      <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
-        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,
+      <div style={{background:"rgba(16,20,48,0.96)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onSkip}/>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"#636366",
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
           textTransform:"uppercase",marginBottom:4}}>TAG CHANGED</div>
-        <div style={{fontSize:15,color:"#1c1c1e",marginBottom:20,lineHeight:1.4}}>
+        <div style={{fontSize:15,color:"var(--text)",marginBottom:20,lineHeight:1.4}}>
           Do you want to tag everything from <b>"{payee}"</b> as <b>{label}</b>?
         </div>
         <button onClick={onApplyAll} style={{width:"100%",padding:"15px",textAlign:"left",
-          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.08)",
-          fontSize:15,color:"#1c1c1e",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
+          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          fontSize:15,color:"var(--text)",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
           <span>Tag all "{payee}" transactions</span>
-          <span style={{color:"#636366"}}>›</span>
+          <span style={{color:"var(--text-3)"}}>›</span>
         </button>
         <button onClick={onApplyName} style={{width:"100%",padding:"15px",textAlign:"left",
-          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.08)",
-          fontSize:15,color:"#1c1c1e",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
+          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          fontSize:15,color:"var(--text)",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
           <span>Create rule for "{payee}" going forward</span>
-          <span style={{color:"#636366"}}>›</span>
+          <span style={{color:"var(--text-3)"}}>›</span>
         </button>
         <button onClick={onSkip} style={{width:"100%",padding:"15px",textAlign:"center",
-          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.08)",
-          fontSize:15,color:"#636366",cursor:"pointer"}}>
+          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          fontSize:15,color:"var(--text-2)",cursor:"pointer"}}>
           No thanks
         </button>
       </div>
@@ -1159,20 +1163,20 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   const [section, setSection] = React.useState("main");
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
+  const ROW_STYLE = {display:"flex",justifyContent:"space-between",alignItems:"center",
+    padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",
+    background:"rgba(255,255,255,0.06)"};
   const row = (label, right, onClick) => (
-    <div onClick={onClick} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-      padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",cursor:onClick?"pointer":"default",
-      background:"#fff"}}>
-      <span style={{fontSize:15,color:onClick?"#1c1c1e":"#636366"}}>{label}</span>
-      <span style={{fontSize:15,color:"#636366"}}>{right}</span>
+    <div onClick={onClick} style={{...ROW_STYLE,cursor:onClick?"pointer":"default"}}>
+      <span style={{fontSize:15,color:onClick?"var(--text)":"var(--text-2)"}}>{label}</span>
+      <span style={{fontSize:15,color:"var(--text-3)"}}>{right}</span>
     </div>
   );
   const toggle = (label, key) => (
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-      padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
-      <span style={{fontSize:15,color:"#1c1c1e"}}>{label}</span>
+    <div style={ROW_STYLE}>
+      <span style={{fontSize:15,color:"var(--text)"}}>{label}</span>
       <div onClick={()=>onSaveSettings({...settings,[key]:!settings[key]})}
-        style={{width:48,height:28,borderRadius:14,background:settings[key]?"#30d158":"#ccc",
+        style={{width:48,height:28,borderRadius:14,background:settings[key]?"#32d74b":"rgba(255,255,255,0.18)",
           position:"relative",cursor:"pointer",transition:"background 0.2s"}}>
         <div style={{position:"absolute",top:2,left:settings[key]?20:2,width:24,height:24,
           borderRadius:12,background:"#fff",transition:"left 0.2s",
@@ -1182,89 +1186,89 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   );
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:400,background:settings.darkMode?"#1c1c1e":"#f2f2f7",
+    <div style={{position:"fixed",inset:0,zIndex:400,background:"#06091a",
       overflowY:"auto",display:"flex",flexDirection:"column"}}>
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"56px 20px 12px",background:settings.darkMode?"#1c1c1e":"#f2f2f7"}}>
+        padding:"56px 20px 12px",background:"#06091a"}}>
         {section!=="main"
           ? <button onClick={()=>setSection("main")} style={{background:"none",border:"none",
-              fontSize:16,color:"#007aff",cursor:"pointer",padding:0}}>‹ Back</button>
+              fontSize:16,color:"var(--blue)",cursor:"pointer",padding:0}}>‹ Back</button>
           : <div/>}
-        <div style={{fontSize:17,fontWeight:600,color:settings.darkMode?"#fff":"#1c1c1e"}}>
+        <div style={{fontSize:17,fontWeight:600,color:"var(--text)"}}>
           {section==="main"?"Settings":section==="tags"?"Tag Rules":
            section==="archive"?"Archive":section==="account"?"Account":"Settings"}
         </div>
         <button onClick={onClose} style={{background:"none",border:"none",fontSize:16,
-          color:"#007aff",cursor:"pointer"}}>Done</button>
+          color:"var(--blue)",cursor:"pointer"}}>Done</button>
       </div>
 
       {section==="main"&&<>
-        <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+        <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"16px 20px 6px"}}>Appearance</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           {toggle("Dark Mode","darkMode")}
         </div>
-        <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+        <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Data</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+            padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
             <div>
-              <span style={{fontSize:15,color:"#1c1c1e"}}>Sync Transactions</span>
-              {lastSync&&<div style={{fontSize:11,color:"#636366",marginTop:2}}>
+              <span style={{fontSize:15,color:"var(--text)"}}>Sync Transactions</span>
+              {lastSync&&<div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
                 Last synced {new Date(lastSync).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
               </div>}
             </div>
             <button onClick={onSync} disabled={syncing}
-              style={{background:syncing?"rgba(0,0,0,0.05)":"#1a1a2e",border:"none",borderRadius:8,
-                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"#636366":"#fff",cursor:syncing?"default":"pointer"}}>
+              style={{background:syncing?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--text)",cursor:syncing?"default":"pointer"}}>
               {syncing?"Syncing…":"Sync Now"}
             </button>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+            padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
             <div>
-              <span style={{fontSize:15,color:"#1c1c1e"}}>Pull Full History</span>
-              <div style={{fontSize:11,color:"#636366",marginTop:2}}>
+              <span style={{fontSize:15,color:"var(--text)"}}>Pull Full History</span>
+              <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
                 {lastPull
                   ? `Last pulled ${new Date(lastPull).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
                   : "Backfills up to 2 years of transactions"}
               </div>
             </div>
             <button onClick={onPullHistory} disabled={syncing}
-              style={{background:syncing?"rgba(0,0,0,0.05)":"rgba(0,0,0,0.06)",border:"none",borderRadius:8,
-                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"#aaa":"#1c1c1e",cursor:syncing?"default":"pointer"}}>
+              style={{background:syncing?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.10)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--text)",cursor:syncing?"default":"pointer"}}>
               {syncing?"Pulling…":"Pull History"}
             </button>
           </div>
           {row("Tag Rules",`${Object.keys(rules).length} rules ›`,()=>setSection("tags"))}
           {row("Archive / Deleted",`${archived.length} transactions ›`,()=>setSection("archive"))}
         </div>
-        <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+        <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Notifications</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           {toggle("New transactions","notifications")}
           {toggle("Daily sync at 7am","autoSync")}
         </div>
         {customProps.length>0&&<>
-          <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+          <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
             padding:"8px 20px 6px"}}>Properties</div>
           <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
             {customProps.map(p=>(
               <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+                padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
                 <div>
-                  <div style={{fontSize:15,color:"#1c1c1e",fontWeight:500}}>{p.label}</div>
-                  <div style={{fontSize:12,color:"#636366"}}>{p.isAirbnb?"Airbnb property":"Non-Airbnb property"}</div>
+                  <div style={{fontSize:15,color:"var(--text)",fontWeight:500}}>{p.label}</div>
+                  <div style={{fontSize:12,color:"var(--text-3)"}}>{p.isAirbnb?"Airbnb property":"Non-Airbnb property"}</div>
                 </div>
                 <button onClick={()=>{if(window.confirm(`Delete "${p.label}"? Transactions will become untagged.`))onDeleteProp(p.id);}}
-                  style={{background:"none",border:"none",color:"#ff3b30",fontSize:14,cursor:"pointer",padding:"4px 8px"}}>Delete</button>
+                  style={{background:"none",border:"none",color:"var(--red)",fontSize:14,cursor:"pointer",padding:"4px 8px"}}>Delete</button>
               </div>
             ))}
           </div>
         </>}
-        <div style={{fontSize:12,color:"#636366",textTransform:"uppercase",letterSpacing:"0.06em",
+        <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Account</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           {linked.map(a=>row(`${a.name} ···${a.mask||""}`, "Remove",
@@ -1274,48 +1278,48 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
       </>}
 
       {section==="tags"&&<>
-        <div style={{fontSize:12,color:"#636366",padding:"16px 20px 6px"}}>
+        <div style={{fontSize:12,color:"var(--text-3)",padding:"16px 20px 6px"}}>
           These rules auto-tag transactions from matching payees.
         </div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {Object.keys(rules).length===0&&<div style={{padding:"20px",background:"#fff",
-            textAlign:"center",color:"#636366",fontSize:14}}>No rules yet — tag a transaction to create one.</div>}
+          {Object.keys(rules).length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.06)",
+            textAlign:"center",color:"var(--text-3)",fontSize:14}}>No rules yet — tag a transaction to create one.</div>}
           {Object.entries(rules).map(([payee,propId])=>(
             <div key={payee} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+              padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
               <div>
-                <div style={{fontSize:14,color:"#1c1c1e",fontWeight:500,textTransform:"capitalize"}}>
+                <div style={{fontSize:14,color:"var(--text)",fontWeight:500,textTransform:"capitalize"}}>
                   {payee.charAt(0)+payee.slice(1).toLowerCase()}
                 </div>
-                <div style={{fontSize:12,color:"#636366"}}>{PROP_LABEL[propId]||propId}</div>
+                <div style={{fontSize:12,color:"var(--text-3)"}}>{PROP_LABEL[propId]||propId}</div>
               </div>
               <button onClick={()=>onDeleteRule(payee)} style={{background:"none",border:"none",
-                color:"#ff3b30",fontSize:14,cursor:"pointer",padding:"4px 8px"}}>Delete</button>
+                color:"var(--red)",fontSize:14,cursor:"pointer",padding:"4px 8px"}}>Delete</button>
             </div>
           ))}
         </div>
       </>}
 
       {section==="archive"&&<>
-        <div style={{fontSize:12,color:"#636366",padding:"16px 20px 6px"}}>
+        <div style={{fontSize:12,color:"var(--text-3)",padding:"16px 20px 6px"}}>
           Deleted & internal transfers. Tap Restore to bring back.
         </div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {archived.length===0&&<div style={{padding:"20px",background:"#fff",
-            textAlign:"center",color:"#636366",fontSize:14}}>Nothing archived.</div>}
+          {archived.length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.06)",
+            textAlign:"center",color:"var(--text-3)",fontSize:14}}>Nothing archived.</div>}
           {archived.map(tx=>(
             <div key={tx.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.07)",background:"#fff"}}>
+              padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
               <div style={{flex:1,minWidth:0,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",
                   whiteSpace:"nowrap"}}>{tx.payee||tx.name}</div>
-                <div style={{fontSize:12,color:"#636366"}}>{tx.date}</div>
+                <div style={{fontSize:12,color:"var(--text-3)"}}>{tx.date}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:13,fontWeight:600,color:tx.type==="in"?"#30d158":"#ff453a",
+                <span style={{fontSize:13,fontWeight:600,color:tx.type==="in"?"var(--green)":"var(--red)",
                   fontFamily:"monospace"}}>{tx.type==="in"?"+":"-"}{Math.abs(tx.amount).toFixed(0)}</span>
-                <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,122,255,0.1)",
-                  border:"none",borderRadius:8,fontSize:12,fontWeight:600,color:"#007aff",
+                <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(10,132,255,0.14)",
+                  border:"none",borderRadius:8,fontSize:12,fontWeight:600,color:"var(--blue)",
                   padding:"4px 10px",cursor:"pointer"}}>Restore</button>
               </div>
             </div>
@@ -1340,10 +1344,10 @@ function AddPropertyModal({ onSave, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(8px)"}}>
-      <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
-        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,
+      <div style={{background:"rgba(14,18,44,0.97)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onClose}/>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"#636366",
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
           textTransform:"uppercase",marginBottom:8}}>Add Property</div>
         <input
           ref={nameRef}
@@ -1351,33 +1355,33 @@ function AddPropertyModal({ onSave, onClose }) {
           onKeyDown={e=>{ if(e.key==="Enter") handleSave(); }}
           placeholder="Property name"
           style={{width:"100%",boxSizing:"border-box",fontSize:17,padding:"12px 14px",
-            border:"1px solid rgba(0,0,0,0.15)",borderRadius:12,outline:"none",marginBottom:16,
-            fontFamily:"inherit",color:"#1c1c1e"}}
+            border:"1px solid rgba(255,255,255,0.14)",borderRadius:12,outline:"none",marginBottom:16,
+            fontFamily:"inherit",color:"var(--text)",background:"rgba(255,255,255,0.08)"}}
         />
         <div style={{display:"flex",gap:8,marginBottom:name.trim()&&isAirbnb?8:16}}>
           {[{v:false,l:"Non-Airbnb"},{v:true,l:"Airbnb"}].map(opt=>(
             <button key={String(opt.v)} onClick={()=>setIsAirbnb(opt.v)}
-              style={{flex:1,padding:"10px",border:`1.5px solid ${isAirbnb===opt.v?"#007aff":"rgba(0,0,0,0.15)"}`,
+              style={{flex:1,padding:"10px",border:`1.5px solid ${isAirbnb===opt.v?"var(--blue)":"rgba(255,255,255,0.16)"}`,
                 borderRadius:10,fontSize:14,fontWeight:isAirbnb===opt.v?600:400,
-                color:isAirbnb===opt.v?"#007aff":"#636366",
-                background:isAirbnb===opt.v?"rgba(0,122,255,0.07)":"transparent",cursor:"pointer"}}>
+                color:isAirbnb===opt.v?"var(--blue)":"var(--text-2)",
+                background:isAirbnb===opt.v?"rgba(10,132,255,0.12)":"rgba(255,255,255,0.06)",cursor:"pointer"}}>
               {opt.l}
             </button>
           ))}
         </div>
-        {isAirbnb&&<div style={{fontSize:12,color:"#636366",marginBottom:16,padding:"8px 12px",
-          background:"rgba(0,0,0,0.04)",borderRadius:8}}>
+        {isAirbnb&&<div style={{fontSize:12,color:"var(--text-3)",marginBottom:16,padding:"8px 12px",
+          background:"rgba(255,255,255,0.06)",borderRadius:8}}>
           No separate tab — rolled into Airbnb aggregate
         </div>}
         <button onClick={handleSave} disabled={!name.trim()}
           style={{width:"100%",padding:"15px",borderRadius:12,fontSize:16,fontWeight:600,
             border:"none",cursor:name.trim()?"pointer":"default",
-            background:name.trim()?"#1a1a2e":"rgba(0,0,0,0.08)",
-            color:name.trim()?"#fff":"rgba(0,0,0,0.3)"}}>
+            background:name.trim()?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.06)",
+            color:name.trim()?"var(--text)":"var(--text-3)"}}>
           Add Property
         </button>
         <button onClick={onClose} style={{width:"100%",marginTop:8,padding:"12px",background:"none",
-          border:"none",fontSize:15,color:"#636366",cursor:"pointer"}}>Cancel</button>
+          border:"none",fontSize:15,color:"var(--text-2)",cursor:"pointer"}}>Cancel</button>
       </div>
     </div>
   );
@@ -2235,7 +2239,7 @@ function App() {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:"#f5f5f7"}}>
+    <div style={{minHeight:"100vh",background:"transparent"}}>
 
       {/* TOP HEADER — minimal 3-slot */}
       <div className="top-header" ref={headerRef} style={{position:"relative",justifyContent:"space-between"}}>
@@ -2247,7 +2251,7 @@ function App() {
           onTouchMove={onLogoPullMove}
           onTouchEnd={onLogoPullEnd}
           style={{position:"absolute",left:"50%",transform:`translateX(-50%) translateY(${pullY * 0.4}px)`,display:"flex",alignItems:"center",gap:7,cursor:"default",userSelect:"none",transition:pullRef.current.active?"none":"transform 0.3s ease"}}>
-          <svg width="22" height="22" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="rgba(255,255,255,0.92)"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#06091a"/><circle cx="16" cy="13" r="2" fill="rgba(255,255,255,0.92)"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="rgba(255,255,255,0.92)"/></svg>
           <span style={{fontWeight:700,fontSize:15,letterSpacing:"-0.01em"}}>Property Pigeon</span>
         </div>
         {/* Right: spacer */}
@@ -2295,7 +2299,7 @@ function App() {
 
             {/* Nudge to enter manual income if empty */}
             {Object.keys(manualIncome).length===0&&(
-              <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+              <div style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
                 <span style={{fontSize:12,color:"var(--text-2)"}}>No Airbnb revenue entered yet — add monthly payouts to see accurate numbers</span>
                 <button onClick={()=>setShowManual(true)} style={{fontSize:11,fontWeight:600,background:"#1a1a2e",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>✎ Add Income</button>
               </div>
@@ -2335,7 +2339,7 @@ function App() {
                     {toReview.length===0?(
                       <div style={{padding:"20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                         <span style={{fontSize:13,color:"var(--text-3)"}}>Nothing to review — all caught up</span>
-                        <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,fontSize:11,fontWeight:600,color:"var(--text-3)",padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap"}}>View all transactions</button>
+                        <button onClick={()=>navigateTab("Feed")} style={{background:"none",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,fontSize:11,fontWeight:600,color:"var(--text-3)",padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap"}}>View all transactions</button>
                       </div>
                     ):(
                       <>
@@ -2343,7 +2347,7 @@ function App() {
                           const sug = getSuggestion(tx);
                           const sugColor = PROP_COLOR[sug] || "#636366";
                           return (
-                            <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(0,0,0,0.06)":"none"}}>
+                            <div key={tx.id} style={{borderBottom:i<toReview.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
                               <div onClick={()=>setTagging(t=>t===tx.id?null:tx.id)}
                                 style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px",cursor:"pointer"}}>
                                 <div style={{flex:1,minWidth:0,marginRight:10}}>
@@ -2365,12 +2369,12 @@ function App() {
                                       style={{background:"rgba(52,199,89,0.12)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:13,fontWeight:700,color:"#30d158",cursor:"pointer",flexShrink:0,lineHeight:1}}>✓</button>
                                   ) : (
                                     <button onClick={e=>{e.stopPropagation();setTagging(t=>t===tx.id?null:tx.id);}}
-                                      style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:600,color:"var(--text-3)",cursor:"pointer",flexShrink:0}}>Tag</button>
+                                      style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:600,color:"var(--text-3)",cursor:"pointer",flexShrink:0}}>Tag</button>
                                   )}
                                 </div>
                               </div>
                               {tagging===tx.id&&(
-                                <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(0,0,0,0.04)"}}>
+                                <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
                                   <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                                 </div>
                               )}
@@ -2433,7 +2437,7 @@ function App() {
               </>
             )}
             {!M.annualCoc&&(
-              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
+              <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:10,padding:"8px 14px",cursor:"pointer",marginBottom:8,display:"block"}}>
                 + Add down payments to see CoC return
               </button>
             )}
@@ -2517,7 +2521,7 @@ function App() {
             {/* Per-property EXPENSES only (revenue comes in as lump sum, can't split) */}
             <div className="section-title">Expenses by Property</div>
             <div className="card" style={{marginBottom:8,overflow:"hidden"}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"8px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)",gap:8}}>
                 <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em"}}>Property</span>
                 <span style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:"right"}}>Expenses</span>
               </div>
@@ -2525,12 +2529,12 @@ function App() {
                 const pm=M.propM[id]; const p=PROPERTIES.find(x=>x.id===id);
                 const pct=M.airbnbExp>0?(pm.exp/M.airbnbExp)*100:0;
                 return (
-                  <div key={id} style={{padding:"12px 16px",borderBottom:i<2?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                  <div key={id} style={{padding:"12px 16px",borderBottom:i<2?"1px solid rgba(255,255,255,0.07)":"none"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                       <span style={{fontSize:13,fontWeight:600}}>{p.label}</span>
                       <span style={{fontSize:13,color:"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600}}>{fmt$(pm.exp)}</span>
                     </div>
-                    <div style={{height:3,background:"rgba(0,0,0,0.06)",borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,overflow:"hidden"}}>
                       <div style={{height:"100%",width:`${pct}%`,background:"#ff453a",borderRadius:2}}/>
                     </div>
                     <div style={{fontSize:10,color:"var(--text-3)",marginTop:3}}>{pct.toFixed(0)}% of total Airbnb expenses</div>
@@ -2688,7 +2692,7 @@ function App() {
               <>
                 <div className="section-title">All Quarters</div>
                 <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-                  <div style={{display:"grid",gridTemplateColumns:"72px 1fr 1fr 1fr 60px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"72px 1fr 1fr 1fr 60px",padding:"8px 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",gap:8}}>
                     {["Quarter","Revenue","Expenses","Net","Margin"].map(h=>(
                       <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.07em",textAlign:h==="Quarter"?"left":"right"}}>{h}</span>
                     ))}
@@ -2696,7 +2700,7 @@ function App() {
                   {[...qs].reverse().map((q,i,arr)=>{
                     const prev = arr[i+1];
                     return (
-                      <div key={q.key} style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr 1fr 52px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:6,alignItems:"start",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
+                      <div key={q.key} style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr 1fr 52px",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:6,alignItems:"start",background:i===0?"rgba(48,209,88,0.03)":"transparent"}}>
                         <span style={{fontSize:12,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:i===0?"#30d158":"var(--text)",paddingTop:3}}>{q.label}</span>
                         <div style={{textAlign:"right"}}>
                           <div style={{fontSize:11,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"#30d158"}}>{fmt$(q.rev)}</div>
@@ -2766,7 +2770,7 @@ function App() {
                 const fullYearExp = ytdExp + (M.annualExp - ytdExp) * (moRemaining/12);
                 const fullYearNet = fullYearRev - fullYearExp;
                 return (
-                  <div style={{borderTop:"1px solid rgba(0,0,0,0.07)",paddingTop:12,marginTop:4}}>
+                  <div style={{borderTop:"1px solid rgba(255,255,255,0.08)",paddingTop:12,marginTop:4}}>
                     <div style={{fontSize:10,color:"var(--text-3)",marginBottom:8,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>Full Year {thisYear} Forecast</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                       {[
@@ -2774,7 +2778,7 @@ function App() {
                         {l:"Expenses", v:fmt$(M.projections[0].exp), red:true},
                         {l:"Net",      v:fmt$(M.projections[0].net), green:M.projections[0].net>=0},
                       ].map(c=>(
-                        <div key={c.l} style={{background:"rgba(0,0,0,0.03)",borderRadius:10,padding:"8px 10px"}}>
+                        <div key={c.l} style={{background:"rgba(255,255,255,0.05)",borderRadius:10,padding:"8px 10px"}}>
                           <div style={{fontSize:9,color:"var(--text-3)",marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{c.l}</div>
                           <div style={{fontSize:15,fontWeight:700,color:c.red?"#ff453a":c.green?"#30d158":"var(--text)"}}>{c.v}</div>
                         </div>
@@ -2788,13 +2792,13 @@ function App() {
             {/* 5-year table */}
             <div className="section-title">5-Year Forecast · {thisYear}–{thisYear+4}</div>
             <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-              <div style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 14px",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",borderBottom:"1px solid rgba(255,255,255,0.07)",padding:"8px 14px",gap:8}}>
                 {["Year","Revenue","Expenses","Net","Margin"].map(h=>(
                   <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.08em",textAlign:h==="Year"?"left":"right"}}>{h}</span>
                 ))}
               </div>
               {M.projections.map((d,i)=>(
-                <div key={d.year} style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",padding:"13px 14px",borderBottom:"1px solid rgba(0,0,0,0.04)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
+                <div key={d.year} style={{display:"grid",gridTemplateColumns:"56px 1fr 1fr 1fr 72px",padding:"13px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8,alignItems:"center",background:i===0?"rgba(48,209,88,0.04)":"transparent"}}>
                   <span style={{fontSize:13,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:i===0?"#30d158":"var(--text)"}}>{d.year}{i===0?" ←":""}</span>
                   <span style={{fontSize:12,color:"#30d158",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right",fontWeight:600}}>{fmt$(d.rev)}</span>
                   <span style={{fontSize:12,color:"#ff453a",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textAlign:"right"}}>{fmt$(d.exp)}</span>
@@ -2814,7 +2818,7 @@ function App() {
                 {l:"Pierce Ave",    v:"Flat",    sub:"Section 8 — fixed rent, predictable"},
                 {l:"Base data",     v:`${M.moCount} months`, sub:"actual transactions to date"},
               ].map(a=>(
-                <div key={a.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:10,marginBottom:10,borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                <div key={a.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:10,marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
                   <div>
                     <div style={{fontSize:13,fontWeight:500}}>{a.l}</div>
                     <div style={{fontSize:11,color:"var(--text-3)",marginTop:1}}>{a.sub}</div>
@@ -2832,7 +2836,7 @@ function App() {
                 </div>
               )}
               {!M.annualCoc&&(
-                <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",cursor:"pointer",display:"block",width:"100%",textAlign:"left"}}>
+                <button onClick={()=>setShowInvest(true)} style={{fontSize:12,color:"var(--text-3)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:10,padding:"8px 14px",cursor:"pointer",display:"block",width:"100%",textAlign:"left"}}>
                   + Add down payments to unlock CoC return
                 </button>
               )}
@@ -2936,7 +2940,7 @@ function App() {
             {archived.length>0&&(
               <div className="card" style={{overflow:"hidden"}}>
                 {[...archived].sort((a,b)=>b.date.localeCompare(a.date)).map((tx,i)=>(
-                  <div key={tx.id} style={{borderBottom:i<archived.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                  <div key={tx.id} style={{borderBottom:i<archived.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
                     <div style={{display:"grid",gridTemplateColumns:"64px 1fr auto auto",padding:"11px 14px",gap:8,alignItems:"center"}}>
                       <span style={{fontSize:10,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmtDate(tx.date)}</span>
                       <div>
@@ -2949,7 +2953,7 @@ function App() {
                         {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                       </span>
                       <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
+                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
                           Restore
                         </button>
                         {tx.type==="in"?(
@@ -2957,14 +2961,14 @@ function App() {
                             → Airbnb
                           </button>
                         ):(
-                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
+                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
                             Re-tag
                           </button>
                         )}
                       </div>
                     </div>
                     {tagging===tx.id&&(
-                      <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(0,0,0,0.04)"}}>
+                      <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
                         <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                       </div>
                     )}
@@ -2979,7 +2983,7 @@ function App() {
                 <div className="section-title">Connected Banks</div>
                 <div className="card" style={{overflow:"hidden"}}>
                   {linked.map((a,i)=>(
-                    <div key={a.item_id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderBottom:i<linked.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                    <div key={a.item_id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderBottom:i<linked.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
                       <span style={{fontSize:13,fontWeight:500}}>{a.name}</span>
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={()=>pullHistory()} style={{fontSize:11,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer"}}>↓ Pull History</button>
@@ -3000,7 +3004,7 @@ function App() {
                 <button onClick={clearAllData} style={{background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.2)",borderRadius:10,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
                   Clear All Cached Data
                 </button>
-                <button onClick={()=>setShowManual(true)} style={{background:"rgba(0,0,0,0.04)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                <button onClick={()=>setShowManual(true)} style={{background:"rgba(255,255,255,0.06)",color:"var(--text)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
                   ✎ Manual Income
                 </button>
               </div>
@@ -3013,7 +3017,7 @@ function App() {
                 <div className="card card-padded">
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {Object.entries(autoTags).map(([payee,pid])=>(
-                      <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.07)",borderRadius:8,padding:"4px 10px"}}>
+                      <div key={payee} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:8,padding:"4px 10px"}}>
                         <span style={{fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-3)"}}>{payee}</span>
                         <span style={{color:"var(--text-3)",fontSize:10}}>→</span>
                         <PropBadge id={pid} small/>
@@ -3034,14 +3038,14 @@ function App() {
 
       {/* SIDE DRAWER */}
       {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:288,background:"rgba(235,238,255,0.88)",backdropFilter:"blur(60px) saturate(2.0) brightness(1.05)",WebkitBackdropFilter:"blur(60px) saturate(2.0) brightness(1.05)",borderRight:"0.5px solid rgba(255,255,255,0.55)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.44s cubic-bezier(0.34,1.28,0.64,1)",boxShadow:showDrawer?"6px 0 48px rgba(60,80,200,0.15), inset -1px 0 0 rgba(255,255,255,0.4)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:288,background:"rgba(10,14,36,0.94)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRight:"0.5px solid rgba(255,255,255,0.10)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.44s cubic-bezier(0.34,1.28,0.64,1)",boxShadow:showDrawer?"6px 0 48px rgba(0,0,0,0.50), inset -1px 0 0 rgba(255,255,255,0.06)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
         {/* Drawer header */}
         <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#1a1a2e"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f5f5f7"/><circle cx="16" cy="13" r="2" fill="#1a1a2e"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#1a1a2e"/></svg>
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="rgba(255,255,255,0.9)"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#06091a"/><circle cx="16" cy="13" r="2" fill="rgba(255,255,255,0.9)"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="rgba(255,255,255,0.9)"/></svg>
             <span style={{fontWeight:700,fontSize:14,letterSpacing:"-0.01em"}}>Property Pigeon</span>
           </div>
-          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>
+          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
           </button>
         </div>
