@@ -490,6 +490,121 @@
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease forwards; }
 
+    /* ── Global interaction reset ── */
+    button, a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+    /* ── Press / active states ── */
+    .top-nav-pill:active  { transform: scale(0.90) !important; opacity: 0.6 !important;
+      transition: transform 0.08s ease, opacity 0.08s ease !important; }
+    .sub-nav-pill:active  { transform: scale(0.92) !important; opacity: 0.6 !important;
+      transition: transform 0.08s ease, opacity 0.08s ease !important; }
+    .btn-ghost:active     { transform: scale(0.96) !important; opacity: 0.72; }
+    .btn-primary:active   { transform: scale(0.96) !important; filter: brightness(0.88); }
+    button:active:not(:disabled):not(.top-nav-pill):not(.sub-nav-pill):not(.btn-ghost):not(.btn-primary) {
+      opacity: 0.68;
+    }
+    .drawer-row           { transition: background 0.14s, color 0.14s; }
+    .drawer-row:active    { background: rgba(255,255,255,0.13) !important; }
+    .tx-row-wrap:active   { background: rgba(255,255,255,0.07) !important; }
+
+    /* ── Skeleton shimmer ── */
+    @keyframes shimmer {
+      0%   { background-position: -300% 0; }
+      100% { background-position:  300% 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 0%,
+        rgba(255,255,255,0.11) 45%,
+        rgba(255,255,255,0.04) 100%);
+      background-size: 300% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+      border-radius: 8px;
+      display: block;
+    }
+
+    /* ── Staggered card entrance ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+    .stagger > * { animation: fadeInUp 0.38s cubic-bezier(0.34,1.28,0.64,1) both; }
+    .stagger > *:nth-child(1) { animation-delay:   0ms; }
+    .stagger > *:nth-child(2) { animation-delay:  55ms; }
+    .stagger > *:nth-child(3) { animation-delay: 110ms; }
+    .stagger > *:nth-child(4) { animation-delay: 165ms; }
+    .stagger > *:nth-child(5) { animation-delay: 220ms; }
+    .stagger > *:nth-child(n+6) { animation-delay: 275ms; }
+
+    /* ── Tag row pulse ── */
+    @keyframes rowPulse {
+      0%   { background: rgba(50,215,75,0.22); }
+      60%  { background: rgba(50,215,75,0.06); }
+      100% { background: transparent; }
+    }
+    .row-pulse { animation: rowPulse 0.65s ease-out forwards !important; }
+
+    /* ── Error shake ── */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      15%  { transform: translateX(-5px); }
+      30%  { transform: translateX( 5px); }
+      45%  { transform: translateX(-3px); }
+      60%  { transform: translateX( 3px); }
+      75%  { transform: translateX(-2px); }
+    }
+    .shake { animation: shake 0.40s cubic-bezier(0.36,0.07,0.19,0.97) both; }
+
+    /* ── Toast notification ── */
+    @keyframes toastIn {
+      from { transform: translateX(-50%) translateY(-60px) scale(0.90); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+    }
+    @keyframes toastOut {
+      from { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+      to   { transform: translateX(-50%) translateY(-60px) scale(0.90); opacity: 0; }
+    }
+    .toast-wrap {
+      position: fixed; top: 20px; left: 50%; z-index: 2000; pointer-events: none;
+    }
+    .toast-pill {
+      background: rgba(12,16,42,0.97);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 28px; padding: 10px 20px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.10);
+      white-space: nowrap;
+      animation: toastIn 0.44s cubic-bezier(0.34,1.28,0.64,1) forwards;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast-pill.exiting { animation: toastOut 0.28s ease-in forwards; }
+
+    /* ── Bottom sheet entrance ── */
+    @keyframes sheetUp {
+      from { transform: translateY(100%); opacity: 0.7; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .sheet-enter { animation: sheetUp 0.46s cubic-bezier(0.34,1.22,0.64,1) forwards; }
+
+    /* ── SettingsPage entrance ── */
+    @keyframes pageUp {
+      from { opacity: 0.3; transform: translateY(24px); }
+      to   { opacity: 1;   transform: translateY(0);    }
+    }
+    .settings-enter { animation: pageUp 0.38s cubic-bezier(0.34,1.28,0.64,1) forwards; }
+
+    /* ── Sync checkmark draw ── */
+    @keyframes checkDraw {
+      from { stroke-dashoffset: 22; }
+      to   { stroke-dashoffset: 0; }
+    }
+    .check-path {
+      stroke-dasharray: 22; stroke-dashoffset: 22;
+      animation: checkDraw 0.34s ease-out 0.06s forwards;
+    }
+
   </style>
 </head>
 <body>
@@ -706,7 +821,7 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"rgba(10,14,36,0.96)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.08), 0 -12px 60px rgba(0,0,0,0.50)",border:"0.5px solid rgba(255,255,255,0.12)"}}>
+      <div className="sheet-enter" style={{background:"rgba(10,14,36,0.96)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.08), 0 -12px 60px rgba(0,0,0,0.50)",border:"0.5px solid rgba(255,255,255,0.12)"}}>
         <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
         {/* Header */}
         <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
@@ -1011,6 +1126,12 @@ function InvestModal({ invest, onSave, onClose }) {
 // ── TxList with bulk select ───────────────────────────────────
 function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDelete, filter, setFilter, getSuggestion }) {
   const [selected, setSelected] = useState(new Set());
+  const [pulsedId, setPulsedId] = useState(null);
+  const handleTag = (txId, propId) => {
+    doTag(txId, propId);
+    setPulsedId(txId);
+    setTimeout(()=>setPulsedId(null), 650);
+  };
 
   const filtered = filter==="in" ? txs.filter(t=>t.type==="in") : filter==="out" ? txs.filter(t=>t.type==="out") : txs;
   const sorted   = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
@@ -1073,7 +1194,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             const isSel = selected.has(tx.id);
             return (
               <div key={tx.id}>
-                <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
+                <div className={pulsedId===tx.id?"row-pulse":""} style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
                   onClick={()=>{ if(selCount>0){toggle(tx.id);return;} setTagging(t=>t===tx.id?null:tx.id); }}
                   onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(255,255,255,0.04)";}}
                   onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
@@ -1102,7 +1223,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                 </div>
                 {tagging===tx.id&&(
                   <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                    <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
+                    <TagMenu tx={tx} onTag={handleTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                   </div>
                 )}
               </div>
@@ -1125,7 +1246,7 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.4)",backdropFilter:"blur(8px)"}}>
-      <div style={{background:"rgba(16,20,48,0.96)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+      <div className="sheet-enter" style={{background:"rgba(16,20,48,0.96)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
         <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onSkip}/>
         <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
@@ -1159,7 +1280,7 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
 // ── Settings Page ─────────────────────────────────────────────────
 function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSaveSettings,
   archived, doRestore, doTag, linked, onRemoveAccount, onClearAll, customProps=[], onDeleteProp,
-  onSync, onPullHistory, syncing=false, lastSync=null, lastPull=null }) {
+  onSync, onPullHistory, syncing=false, lastSync=null, lastPull=null, shakeSync=false }) {
   const [section, setSection] = React.useState("main");
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
@@ -1172,12 +1293,15 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
       <span style={{fontSize:15,color:"var(--text-3)"}}>{right}</span>
     </div>
   );
-  const toggle = (label, key) => (
+  const toggle = (label, key, desc) => (
     <div style={ROW_STYLE}>
-      <span style={{fontSize:15,color:"var(--text)"}}>{label}</span>
+      <div style={{flex:1}}>
+        <div style={{fontSize:15,color:"var(--text)"}}>{label}</div>
+        {desc&&<div style={{fontSize:12,color:"var(--text-3)",marginTop:2}}>{desc}</div>}
+      </div>
       <div onClick={()=>onSaveSettings({...settings,[key]:!settings[key]})}
         style={{width:48,height:28,borderRadius:14,background:settings[key]?"#32d74b":"rgba(255,255,255,0.18)",
-          position:"relative",cursor:"pointer",transition:"background 0.2s"}}>
+          position:"relative",cursor:"pointer",transition:"background 0.2s",flexShrink:0}}>
         <div style={{position:"absolute",top:2,left:settings[key]?20:2,width:24,height:24,
           borderRadius:12,background:"#fff",transition:"left 0.2s",
           boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
@@ -1186,7 +1310,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   );
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:400,background:"#06091a",
+    <div className="settings-enter" style={{position:"fixed",inset:0,zIndex:400,background:"#06091a",
       overflowY:"auto",display:"flex",flexDirection:"column"}}>
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -1207,7 +1331,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
         <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"16px 20px 6px"}}>Appearance</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {toggle("Dark Mode","darkMode")}
+          {toggle("Dark Mode","darkMode","Always use dark appearance")}
         </div>
         <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Data</div>
@@ -1220,7 +1344,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
                 Last synced {new Date(lastSync).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
               </div>}
             </div>
-            <button onClick={onSync} disabled={syncing}
+            <button onClick={onSync} disabled={syncing} className={shakeSync?"shake":""}
               style={{background:syncing?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,
                 padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--text)",cursor:syncing?"default":"pointer"}}>
               {syncing?"Syncing…":"Sync Now"}
@@ -1248,8 +1372,8 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
         <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
           padding:"8px 20px 6px"}}>Notifications</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {toggle("New transactions","notifications")}
-          {toggle("Daily sync at 7am","autoSync")}
+          {toggle("New transactions","notifications","Notify when transactions arrive")}
+          {toggle("Daily sync at 7am","autoSync","Automatically refresh each morning")}
         </div>
         {customProps.length>0&&<>
           <div style={{fontSize:12,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",
@@ -1344,7 +1468,7 @@ function AddPropertyModal({ onSave, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(8px)"}}>
-      <div style={{background:"rgba(14,18,44,0.97)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+      <div className="sheet-enter" style={{background:"rgba(14,18,44,0.97)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
         <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onClose}/>
         <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
@@ -1387,6 +1511,88 @@ function AddPropertyModal({ onSave, onClose }) {
   );
 }
 
+// ── Toast system ──────────────────────────────────────────────
+function ToastManager({ toasts, onRemove }) {
+  return <>{toasts.map(t=><ToastItem key={t.id} toast={t} onRemove={onRemove}/>)}</>;
+}
+function ToastItem({ toast, onRemove }) {
+  const [ex, setEx] = React.useState(false);
+  React.useEffect(()=>{
+    const t1=setTimeout(()=>setEx(true), 2700);
+    const t2=setTimeout(()=>onRemove(toast.id), 3100);
+    return ()=>{ clearTimeout(t1); clearTimeout(t2); };
+  },[]);
+  const isOk  = toast.type==="success";
+  const isErr = toast.type==="error";
+  return (
+    <div className="toast-wrap">
+      <div className={`toast-pill${ex?" exiting":""}`}>
+        {isOk&&<svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+          stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1.5,7.5 5.5,11 12.5,3" className="check-path"/>
+        </svg>}
+        {isErr&&<svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+          stroke="var(--red)" strokeWidth="2.2" strokeLinecap="round">
+          <line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>
+        </svg>}
+        <span style={{color:isErr?"var(--red)":"var(--text)"}}>{toast.message}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── AnimatedNum — smooth count-up/down on value change ─────────
+function AnimatedNum({ value, format, style, className }) {
+  const prev = React.useRef(value);
+  const raf  = React.useRef(null);
+  const [cur, setCur] = React.useState(value);
+  React.useEffect(()=>{
+    const from=prev.current, to=value;
+    if(from===to){ prev.current=to; return; }
+    prev.current=to;
+    if(raf.current) cancelAnimationFrame(raf.current);
+    const start=performance.now();
+    const dur=Math.min(900, 350+Math.abs(to-from)*0.012);
+    function tick(now){
+      const p=Math.min((now-start)/dur,1);
+      const e=1-Math.pow(1-p,3); // ease-out-cubic
+      setCur(from+(to-from)*e);
+      if(p<1) raf.current=requestAnimationFrame(tick);
+      else { setCur(to); raf.current=null; }
+    }
+    raf.current=requestAnimationFrame(tick);
+    return ()=>{ if(raf.current) cancelAnimationFrame(raf.current); };
+  },[value]);
+  return <span style={style} className={className}>{format?format(cur):Math.round(cur)}</span>;
+}
+
+// ── SkeletonPane — shimmer placeholder during initial load ──────
+function SkeletonPane() {
+  const bar=(w,h,mb=8)=>(
+    <span className="skeleton" style={{height:h,width:w,marginBottom:mb,borderRadius:6,display:"block"}}/>
+  );
+  return (
+    <div style={{padding:"20px 16px"}}>
+      {bar("38%",11,14)}{bar("52%",34,24)}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        {[1,2,3,4].map(i=>(
+          <div key={i} className="card card-padded" style={{minHeight:76}}>
+            {bar("50%",9,10)}{bar("68%",22)}
+          </div>
+        ))}
+      </div>
+      {bar("32%",9,12)}
+      <div className="card" style={{padding:"16px 18px",marginBottom:8}}>
+        {[1,2,3,4,5].map(i=>(
+          <div key={i} style={{display:"flex",gap:10,marginBottom:10,alignItems:"center"}}>
+            {bar("16%",9)}{bar("42%",9)}{bar("20%",9)}{bar("14%",9)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────
 function App() {
   const [tab, setTab]           = useState("Portfolio");
@@ -1401,6 +1607,20 @@ function App() {
   const isFirstLayout = useRef(true);
   const [pullY, setPullY] = useState(0);
   const PULL_THRESHOLD = 72;
+
+  // ── Toast system ──────────────────────────────────────────────
+  const [toasts, setToasts]   = useState([]);
+  const toastId = useRef(0);
+  const addToast = useCallback((msg, type="info")=>{
+    const id=++toastId.current;
+    setToasts(p=>[...p,{id,message:msg,type}]);
+  },[]);
+  const removeToast = useCallback((id)=>{
+    setToasts(p=>p.filter(t=>t.id!==id));
+  },[]);
+  const [syncDone, setSyncDone]     = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [shakeTarget, setShakeTarget] = useState(null);
 
   // Dynamic tabs: base 5 + any non-Airbnb custom props
   const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
@@ -1699,6 +1919,7 @@ function App() {
     const dx = d.lastX - d.startX;
     const vel = d.velocityX || 0; // px/ms — positive = moving right
     const vw = window.innerWidth;
+    const isFlick = Math.abs(vel) > 0.70; // very fast flick → instant snap (no spring)
     // A swipe "passes" if it crossed distance threshold OR was a fast flick
     const passLeft  = dx < -vw*0.18 || vel < -0.35;
     const passRight = dx >  vw*0.18 || vel >  0.35;
@@ -1736,7 +1957,7 @@ function App() {
       if(passLeft  && tabIdx < quarterlyIdx-1) next = tabIdx+1;
       if(passRight && tabIdx > 1)              next = tabIdx-1;
       setTab(tabs[next]); setTabIdx(next);
-      setTrackPos(-next*vw, true, vel);
+      setTrackPos(-next*vw, next===tabIdx||!isFlick, vel);
       snapPillsToTab(next);
       return;
     }
@@ -1752,7 +1973,7 @@ function App() {
       if(passLeft && tabIdx < tabs.length-1){ // left → Projections
         const next = tabIdx+1;
         setTab(tabs[next]); setTabIdx(next);
-        setTrackPos(-next*vw, true, vel);
+        setTrackPos(-next*vw, !isFlick, vel);
         snapPillsToTab(next);
         return;
       }
@@ -1765,7 +1986,7 @@ function App() {
     if(passLeft  && tabIdx < tabs.length-1) next = tabIdx+1;
     if(passRight && tabIdx > 0)             next = tabIdx-1;
     setTab(tabs[next] !== undefined ? tabs[next] : tab); setTabIdx(next);
-    setTrackPos(-next*vw, true, vel);
+    setTrackPos(-next*vw, next===tabIdx||!isFlick, vel);
     snapPillsToTab(next);
   };
   const [txs, setTxs]           = useState(()=>LS.get(TX_KEY)||[]);
@@ -1781,7 +2002,7 @@ function App() {
   const [tagging, setTagging]   = useState(null);
   const [linked, setLinked]     = useState([]);
   const [syncing, setSyncing]   = useState(false);
-  const [status, setStatus]     = useState(null);
+  // status replaced by addToast
   const [linking, setLinking]   = useState(false);
   const [invest, setInvest]     = useState(()=>LS.get(INVEST_KEY)||DEFAULT_INVEST);
   // Manual income starts empty — user fills via ✎ button in nav
@@ -1805,7 +2026,8 @@ function App() {
         setTxs(arr);
         LS.set(TX_KEY,arr);
       }
-    }).catch(()=>{});
+      setInitialLoad(false);
+    }).catch(()=>{ setInitialLoad(false); });
     // Load tags from server — server wins; migrate localStorage to server if server is empty
     fetch(`${BACKEND}/api/tags`).then(r=>r.json()).then(data=>{
       if(data.tags&&Object.keys(data.tags).length>0){
@@ -1894,38 +2116,42 @@ function App() {
       setTxs(arr);
       LS.set(TX_KEY,arr);
       setTags(prev=>{ const u=applyAuto(arr,autoTags,prev); serverSaveTags(u); return u; });
-      if(!silent) setStatus(`Loaded ${arr.length} transactions`);
-    } catch(e){ if(!silent) setStatus("Load failed: "+e.message); }
+      if(!silent){ addToast("Loaded "+arr.length+" transactions","success"); setInitialLoad(false); }
+    } catch(e){ if(!silent) addToast("Load failed: "+e.message,"error"); }
   },[autoTags,applyAuto]);
 
   const sync = useCallback(async()=>{
-    setSyncing(true); setStatus(null);
+    setSyncing(true);
     try {
       const res=await fetch(`${BACKEND}/api/transactions/sync`);
       const data=await res.json();
       if(data.error) throw new Error(data.error);
       await loadAll(true);
       const ts = new Date().toISOString(); setLastSync(ts); LS.set(LAST_SYNC_KEY,ts);
-      setStatus(`Synced · ${data.total_stored} transactions total`);
-    } catch(e){setStatus("Sync failed: "+e.message);}
+      addToast("Synced · "+data.total_stored+" transactions","success");
+      setSyncDone(true); setTimeout(()=>setSyncDone(false),1800);
+    } catch(e){
+      addToast("Sync failed: "+e.message,"error");
+      setShakeTarget("sync"); setTimeout(()=>setShakeTarget(null),500);
+    }
     finally{setSyncing(false);}
   },[loadAll]);
 
   const pullHistory = useCallback(async()=>{
-    setSyncing(true); setStatus("Pulling 2 years of history — this may take 30s...");
+    setSyncing(true); addToast("Pulling full history…","info");
     try {
       const res=await fetch(`${BACKEND}/api/transactions/historical`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
       const data=await res.json();
-      if(data.errors&&data.errors.length) setStatus(`Done with errors: ${data.errors[0]}`);
+      if(data.errors&&data.errors.length) addToast("Done with errors: "+data.errors[0],"error");
       await loadAll(true);
       const ts = new Date().toISOString(); setLastPull(ts); LS.set(LAST_PULL_KEY,ts);
-      setStatus(`✓ ${data.total_stored} transactions loaded (${data.pulled} pulled from history)`);
-    } catch(e){setStatus("History pull failed: "+e.message);}
+      addToast("✓ "+data.total_stored+" transactions loaded","success");
+    } catch(e){addToast("History pull failed","error");}
     finally{setSyncing(false);}
   },[loadAll]);
 
   const connectBank=useCallback(async()=>{
-    setLinking(true); setStatus(null);
+    setLinking(true);
     try {
       const {link_token,error}=await fetch(`${BACKEND}/api/create-link-token`,{method:"POST"}).then(r=>r.json());
       if(error) throw new Error(error);
@@ -1937,7 +2163,7 @@ function App() {
           const ls=await fetch(`${BACKEND}/api/link-status`).then(r=>r.json());
           setLinked(ls.accounts||[]);
           // Pull 2 years of history immediately — this is what gets years of data like Copilot
-          setStatus(`${name} connected — pulling 2 years of history...`);
+          addToast(name+" connected — pulling history…","info");
           try {
             const hr=await fetch(`${BACKEND}/api/transactions/historical`,{
               method:"POST",headers:{"Content-Type":"application/json"},
@@ -1947,14 +2173,14 @@ function App() {
             // Also run sync to catch anything from last 90 days not in historical
             await fetch(`${BACKEND}/api/transactions/sync`).then(r=>r.json());
             await loadAll(true);
-            setStatus(`✓ ${name} — ${hr.total_stored||0} transactions loaded`);
+            addToast("✓ "+name+" — "+(hr.total_stored||0)+" transactions loaded","success");
           } catch(e) {
-            setStatus(`${name} connected. Hit Sync to load transactions.`);
+            addToast(name+" connected. Hit Sync to load transactions.","info");
           }
         },
-        onExit:err=>{if(err)setStatus("Exited: "+err.display_message);}
+        onExit:err=>{if(err)addToast("Exited: "+err.display_message,"error");}
       }).open();
-    } catch(e){setStatus("Could not open Plaid: "+e.message);}
+    } catch(e){addToast("Could not open Plaid: "+e.message,"error");}
     finally{setLinking(false);}
   },[sync]);
 
@@ -2222,7 +2448,7 @@ function App() {
     setTxs([]); setTags({}); setAutoTags({}); setManualIncome({});
     // Also clear from server
     fetch(`${BACKEND}/api/transactions/delete`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:"__ALL__"})}).catch(()=>{});
-    setStatus("All local data cleared");
+    addToast("All local data cleared","info");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
   const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
@@ -2258,7 +2484,16 @@ function App() {
         <div style={{width:40,flexShrink:0}}/>
       </div>
       {/* Sync spinner — floats below header when active */}
-      {syncing&&<div className="sync-spinner-wrap" style={{top:(headerRef.current?.offsetHeight||56)+8}}><div className="sync-spinner"/></div>}
+      {(syncing||syncDone)&&(
+        <div className="sync-spinner-wrap" style={{top:(headerRef.current?.offsetHeight||56)+8}}>
+          {syncDone
+            ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+                stroke="var(--green)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3,10 8.5,15.5 17,5" className="check-path"/>
+              </svg>
+            : <div className="sync-spinner"/>}
+        </div>
+      )}
       {/* TOP NAV — 3 main pills */}
       <div className={`top-nav${isPortfolioGroup?" has-subnav":""}`} ref={navRef}>
         <div className="top-nav-track" ref={navTrackRef}>
@@ -2283,11 +2518,12 @@ function App() {
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
         <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
+          {initialLoad ? <SkeletonPane/> :
+          <div key={"portfolio-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
               <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                <div className="big-num">{fmt$(M.totalRev)}</div>
+                <AnimatedNum value={M.totalRev} format={fmt$} className="big-num"/>
                 <div style={{fontSize:13,color:"var(--text-3)"}}>gross revenue</div>
               </div>
               <div style={{display:"flex",gap:16,marginTop:6}}>
@@ -2442,14 +2678,15 @@ function App() {
               </button>
             )}
           </div>
+          }
         </div>
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
+          <div key={"airbnb-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
-              <div className="big-num">{fmt$(M.airbnbRev)}</div>
+              <AnimatedNum value={M.airbnbRev} format={fmt$} className="big-num"/>
               <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.airbnbExp)} expenses</span>
                 <span style={{fontSize:13,color:M.airbnbCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.airbnbCF)} net</span>
@@ -2556,10 +2793,10 @@ function App() {
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
+          <div key={"pierce-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
-              <div className="big-num">{fmt$(M.pierceRev)}</div>
+              <AnimatedNum value={M.pierceRev} format={fmt$} className="big-num"/>
               <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:13,color:"#ff453a"}}>{fmt$(M.pierceExp)} expenses</span>
                 <span style={{fontSize:13,color:M.pierceCF>=0?"#30d158":"#ff453a",fontWeight:600}}>{fmt$(M.pierceCF)} net</span>
@@ -3148,7 +3385,7 @@ function App() {
             icon:<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>,
             action:()=>{setShowSettings(true);setShowDrawer(false);}},
         ].map((item,i,arr)=>(
-          <button key={item.label} onClick={item.action}
+          <button key={item.label} onClick={item.action} className="drawer-row"
             style={{background:"transparent",border:"none",
               borderBottom:i<arr.length-1?"1px solid rgba(128,128,128,0.07)":"none",
               padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -3178,10 +3415,11 @@ function App() {
         onApplyName={()=>applyRule(rulePrompt.payee,rulePrompt.propId,false)}
         onSkip={()=>setRulePrompt(null)}
       />}
+      <ToastManager toasts={toasts} onRemove={removeToast}/>
       {showSettings&&<SettingsPage
         onClose={()=>setShowSettings(false)}
         customProps={customProps} onDeleteProp={deleteCustomProp}
-        onSync={sync} onPullHistory={pullHistory} syncing={syncing} lastSync={lastSync} lastPull={lastPull}
+        onSync={sync} onPullHistory={pullHistory} syncing={syncing} lastSync={lastSync} lastPull={lastPull} shakeSync={shakeTarget==="sync"}
         autoTags={autoTags} rules={rules}
         onDeleteRule={payee=>{
           const nr={...rules}; delete nr[payee];
