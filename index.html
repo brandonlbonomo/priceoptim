@@ -2295,10 +2295,10 @@ function App() {
     }).map(tx=>({...tx,propId:tags[tx.id]||null}));
   },[txs,tags]);
   // Active = not deleted or transferred (for all normal financial calcs)
-  const enriched = allEnriched.filter(t=>t.propId!=="deleted");
-  const archived  = allEnriched.filter(t=>t.propId==="deleted"||t.propId==="transfer");
-  const untagged  = enriched.filter(t=>!t.propId);
-  const tagged    = enriched.filter(t=>t.propId&&t.propId!=="transfer");
+  const enriched  = useMemo(()=>allEnriched.filter(t=>t.propId!=="deleted"),[allEnriched]);
+  const archived  = useMemo(()=>allEnriched.filter(t=>t.propId==="deleted"||t.propId==="transfer"),[allEnriched]);
+  const untagged  = useMemo(()=>enriched.filter(t=>!t.propId),[enriched]);
+  const tagged    = useMemo(()=>enriched.filter(t=>t.propId&&t.propId!=="transfer"),[enriched]);
 
   // ── Metrics ──────────────────────────────────────────────
   const M=useMemo(()=>{
@@ -2455,6 +2455,9 @@ function App() {
     return {propM,airbnbRev,airbnbExp,airbnbCF:airbnbRev-airbnbExp,pierceRev,pierceExp,pierceCF:pierceRev-pierceExp,llcExp,totalRev,totalExp,totalCF,netMargin,cocReturn,annualCoc,propCoc,months,monthsWithProjections,moCount,projections,annualRev,annualExp,quarters,quartersWithProjections};
   },[tagged,enriched,invest,manualIncome]);
 
+  // Virtual pane window — only render content for active pane ± 1 neighbor
+  const isPane = (i) => Math.abs(i - tabIdx) <= 1;
+
   const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
 
   const clearAllData = () => {
@@ -2466,7 +2469,7 @@ function App() {
     addToast("All local data cleared","info");
   };
   // Tabs: Portfolio | Airbnb | Pierce | Feed | Archive
-  const feedTxs = feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched;
+  const feedTxs = useMemo(()=>feedFilter==="untagged"?untagged:feedFilter==="tagged"?tagged:enriched,[feedFilter,untagged,tagged,enriched]);
 
   // Tab icons
   const TAB_ICONS = {
@@ -2536,7 +2539,7 @@ function App() {
         <div ref={trackRef} className="swipe-track" style={{transform:"translateX(0px)"}}>
 
         <div className="swipe-pane">
-          {initialLoad ? <SkeletonPane/> :
+          {isPane(0) && (initialLoad ? <SkeletonPane/> :
           <div key={"portfolio-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Total Portfolio</div>
@@ -2696,12 +2699,12 @@ function App() {
               </button>
             )}
           </div>
-          }
+          )}
         </div>
 
         {/* ── AIRBNB ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
-          <div key={"airbnb-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
+          {isPane(1) && <div key={"airbnb-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Airbnb Portfolio · 8 units</div>
               <AnimatedNum value={M.airbnbRev} format={fmt$} className="big-num"/>
@@ -2806,12 +2809,12 @@ function App() {
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
               filter={airbnbTxFilter} setFilter={setAirbnbTxFilter} getSuggestion={getSuggestion}
             />
-          </div>
+          </div>}
         </div>
 
         {/* ── PIERCE ─────────────────────────────────────────────── */}
         <div className="swipe-pane">
-          <div key={"pierce-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
+          {isPane(2) && <div key={"pierce-"+tabIdx} className="stagger" style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Pierce Ave · 7 units · Section 8</div>
               <AnimatedNum value={M.pierceRev} format={fmt$} className="big-num"/>
@@ -2880,12 +2883,13 @@ function App() {
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
               filter={pierceTxFilter} setFilter={setPierceTxFilter} getSuggestion={getSuggestion}
             />
-          </div>
+          </div>}
         </div>
 
-        {/* ── ARCHIVE ─────────────────────────────────────────────── */}
+        {/* ── QUARTERLY ───────────────────────────────────────────── */}
         <div className="swipe-pane">
         {(()=>{
+          if(!isPane(3)) return null;
           const qData = M.quartersWithProjections;
           const qs = M.quarters;
           if(qData.length===0) return <div style={{minHeight:"100%"}}><div className="page-header"><div style={{fontSize:26,fontWeight:700,letterSpacing:"-0.02em"}}>Quarterly</div></div><div className="card card-padded" style={{textAlign:"center",color:"var(--text-3)",fontSize:13}}>No data yet — sync your bank to get started.</div></div>;
@@ -2983,6 +2987,7 @@ function App() {
 
         <div className="swipe-pane">
         {(()=>{
+          if(!isPane(4)) return null;
           const now = new Date();
           const thisYear = now.getFullYear();
           const thisMo = now.getMonth(); // 0-indexed
@@ -3102,7 +3107,8 @@ function App() {
         </div>
 
         {/* ── CUSTOM PROPERTY PANES ──────────────────────────────── */}
-        {customProps.filter(p=>!p.isAirbnb).map(p=>{
+        {customProps.filter(p=>!p.isAirbnb).map((p, cpi)=>{
+          if(!isPane(5 + cpi)) return <div className="swipe-pane" key={p.id}/>;
           const cMo = {};
           enriched.filter(t=>t.propId===p.id).forEach(t=>{
             const mo=t.date?.slice(0,7); if(!mo) return;
@@ -3145,7 +3151,7 @@ function App() {
 
         {/* ── FEED ───────────────────────────────────────────────── */}
         <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
+          {isPane(feedIdx) && <div style={{minHeight:"100%"}}>
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Transaction Feed</div>
@@ -3175,11 +3181,11 @@ function App() {
               doTag={doTag} doDelete={doDelete} doBulkTag={doBulkTag} doBulkDelete={doBulkDelete}
               filter={txFilter} setFilter={setTxFilter} getSuggestion={getSuggestion}
             />}
-          </div>
+          </div>}
         </div>
 
         <div className="swipe-pane">
-          <div style={{minHeight:"100%"}}>
+          {isPane(archiveIdx) && <div style={{minHeight:"100%"}}>
             <div className="page-header">
               <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Archive · Settings</div>
               <div style={{fontSize:15,fontWeight:600}}>Deleted & Internal Transfers</div>
@@ -3283,7 +3289,7 @@ function App() {
                 </div>
               </>
             )}
-          </div>
+          </div>}
         </div>
 
         </div>{/* end .swipe-track */}
