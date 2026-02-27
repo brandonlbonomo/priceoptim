@@ -289,24 +289,51 @@ def run_sync():
     all_added, all_modified, all_removed_ids = [], [], []
 
     for account in store["accounts"]:
+        name = account.get("name", "Bank Account")
         try:
             added, modified, removed = [], [], []
             cursor   = account.get("cursor")
             has_more = True
+            page     = 0
+
+            print(f"🔄 Syncing {name} — cursor={'set' if cursor else 'none (full sync)'}")
 
             while has_more:
+                page += 1
                 kwargs = {"access_token": account["access_token"], "count": 500}
                 if cursor:
                     kwargs["cursor"] = cursor
-                response = plaid_client.transactions_sync(TransactionsSyncRequest(**kwargs))
-                data     = response.to_dict()
-                added    += data.get("added",    [])
-                modified += data.get("modified", [])
-                removed  += data.get("removed",  [])
+                try:
+                    response = plaid_client.transactions_sync(TransactionsSyncRequest(**kwargs))
+                except Exception as sync_err:
+                    err_str = str(sync_err)
+                    # If cursor is invalid/expired, reset it and retry as a full sync
+                    if cursor and ("INVALID_CURSOR" in err_str or "cursor" in err_str.lower()):
+                        print(f"⚠️  Invalid cursor for {name} — resetting and retrying full sync")
+                        account["cursor"] = None
+                        cursor = None
+                        save_store(store)
+                        response = plaid_client.transactions_sync(
+                            TransactionsSyncRequest(access_token=account["access_token"], count=500)
+                        )
+                    else:
+                        raise
+                data          = response.to_dict()
+                page_added    = data.get("added",    [])
+                page_modified = data.get("modified", [])
+                page_removed  = data.get("removed",  [])
+                added    += page_added
+                modified += page_modified
+                removed  += page_removed
                 has_more  = data.get("has_more", False)
                 cursor    = data.get("next_cursor")
+                print(f"  Page {page}: +{len(page_added)} added, "
+                      f"~{len(page_modified)} modified, -{len(page_removed)} removed"
+                      f"{', more…' if has_more else ''}")
 
             account["cursor"] = cursor
+            print(f"  ✅ {name}: {len(added)} added, {len(modified)} modified, "
+                  f"{len(removed)} removed | cursor={'set' if cursor else 'none'}")
 
             def normalize(tx):
                 amount = tx.get("amount", 0)
@@ -666,6 +693,32 @@ scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(scheduled_sync, IntervalTrigger(hours=6), id="periodic_sync", replace_existing=True)
 scheduler.start()
 print("⏰ Fallback sync scheduler started (runs every 6 hours)")
+
+# ── Startup sync ──────────────────────────────────────────────────────────
+# On every startup: run an incremental sync so data is fresh.
+# If transaction count is 0 but accounts are linked, this catches the common
+# case where the Render filesystem was wiped and the env-var backup restored
+# the account tokens but not the cached transactions.
+import threading, time as _time
+
+def startup_sync():
+    _time.sleep(4)  # let gunicorn fully start before hitting Plaid
+    store    = load_store()
+    accounts = store.get("accounts", [])
+    tx_count = len(store.get("transactions", {}))
+    if not accounts:
+        print("🚀 Startup: no accounts linked — skipping sync")
+        return
+    print(f"🚀 Startup: {len(accounts)} account(s) linked, {tx_count} transactions cached — syncing…")
+    try:
+        result = run_sync()
+        print(f"✅ Startup sync done: {result.get('total', 0)} new, "
+              f"{result.get('total_stored', 0)} total stored")
+    except Exception as e:
+        print(f"❌ Startup sync failed: {e}")
+
+threading.Thread(target=startup_sync, daemon=True).start()
+print("🚀 Startup sync scheduled (runs in background after 4s)")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
