@@ -5,7 +5,7 @@ import base64
 import threading
 import time as _time
 from email.utils import parsedate_to_datetime
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, jsonify, request, redirect, send_file
 from flask_cors import CORS
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleAuthRequest
@@ -65,7 +65,7 @@ GMAIL_REDIRECT_URI  = os.getenv("GMAIL_REDIRECT_URI", "")
 GMAIL_SCOPES        = ["https://www.googleapis.com/auth/gmail.readonly"]
 print(f"📧 Gmail client : {GMAIL_CLIENT_ID[:6]}..." if GMAIL_CLIENT_ID else "⚠️  GMAIL_CLIENT_ID not set")
 
-_oauth_states: dict = {}  # in-memory CSRF state store (single-instance OK)
+# OAuth states stored in persistent file store so all gunicorn workers share them
 
 # ── Persistent store ─────────────────────────────────────────
 # store = {
@@ -742,12 +742,21 @@ def gmail_auth():
         return jsonify({"error": "GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET not set"}), 500
     if not GMAIL_REDIRECT_URI:
         return jsonify({"error": "GMAIL_REDIRECT_URI not set"}), 500
-    flow = _gmail_flow()
-    auth_url, state = flow.authorization_url(
-        access_type="offline", include_granted_scopes="true", prompt="consent"
-    )
-    _oauth_states[state] = True
-    return redirect(auth_url)
+    try:
+        flow = _gmail_flow()
+        auth_url, state = flow.authorization_url(
+            access_type="offline", include_granted_scopes="true", prompt="consent"
+        )
+        # Store state in persistent store so all gunicorn workers can validate it
+        store = load_store()
+        oauth_states = store.get("oauth_states", {})
+        oauth_states[state] = True
+        store["oauth_states"] = oauth_states
+        save_store(store)
+        return redirect(auth_url)
+    except Exception as e:
+        print(f"❌ gmail_auth error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # ── GET /api/gmail/callback ──────────────────────────────────
@@ -755,26 +764,42 @@ def gmail_auth():
 def gmail_callback():
     error = request.args.get("error", "")
     if error:
-        return jsonify({"error": f"OAuth denied: {error}"}), 400
+        print(f"❌ OAuth denied by user: {error}")
+        return f"""<html><body style="font-family:sans-serif;text-align:center;padding:60px">
+<h2>❌ Gmail connection denied</h2><p>{error}</p><p>You can close this tab.</p></body></html>"""
     state = request.args.get("state", "")
-    if state not in _oauth_states:
-        return jsonify({"error": "Invalid OAuth state — possible CSRF"}), 400
-    _oauth_states.pop(state, None)
-    code = request.args.get("code", "")
-    flow = _gmail_flow()
-    flow.fetch_token(code=code)
-    creds = flow.credentials
+    code  = request.args.get("code",  "")
+    # Validate state from persistent store (works across gunicorn workers)
     store = load_store()
-    store["gmail_credentials"] = {
-        "token":         creds.token,
-        "refresh_token": creds.refresh_token,
-        "token_uri":     creds.token_uri,
-    }
-    save_store(store)
-    print("✅ Gmail OAuth connected — refresh token stored")
-    # Return a small HTML page so the browser tab closes cleanly
+    oauth_states = store.get("oauth_states", {})
+    if state not in oauth_states:
+        print(f"❌ Invalid OAuth state: {state!r}")
+        return jsonify({"error": "Invalid OAuth state — possible CSRF"}), 400
+    del oauth_states[state]
+    store["oauth_states"] = oauth_states
+    try:
+        flow = _gmail_flow()
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+        store["gmail_credentials"] = {
+            "token":         creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri":     creds.token_uri,
+        }
+        save_store(store)
+        print("✅ Gmail OAuth connected — refresh token stored")
+    except Exception as e:
+        print(f"❌ gmail_callback fetch_token error: {e}")
+        return f"""<html><body style="font-family:sans-serif;text-align:center;padding:60px">
+<h2>❌ Gmail connection failed</h2><p>{e}</p><p>Close this tab and try again.</p></body></html>""", 500
+
+    # Kick off an immediate sync in the background so inventory populates right away
+    threading.Thread(target=run_gmail_sync, daemon=True).start()
+
     return """<html><body style="font-family:sans-serif;text-align:center;padding:60px">
-<h2>✅ Gmail connected!</h2><p>You can close this tab.</p></body></html>"""
+<h2>✅ Gmail connected!</h2>
+<p>Importing your Amazon orders now — check the Inventory tab in a moment.</p>
+<p>You can close this tab.</p></body></html>"""
 
 
 # ── Email parser ─────────────────────────────────────────────
@@ -856,7 +881,9 @@ def run_gmail_sync():
     inventory = store.get("inventory", {})
 
     results  = service.users().messages().list(
-        userId="me", q="from:ship-confirm@amazon.com", maxResults=200
+        userId="me",
+        q="from:(ship-confirm@amazon.com OR auto-confirm@amazon.com OR order-update@amazon.com) subject:(shipped OR order)",
+        maxResults=500
     ).execute()
     messages = results.get("messages", [])
     print(f"📧 Gmail sync: {len(messages)} Amazon messages found")
