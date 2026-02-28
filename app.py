@@ -715,11 +715,22 @@ def _gmail_flow():
 
 
 def _get_gmail_credentials():
-    """Load stored credentials, refresh the access token if expired."""
+    """Load stored credentials, refresh the access token only when actually expired."""
+    from datetime import datetime, timezone
     store = load_store()
     cd    = store.get("gmail_credentials")
     if not cd:
         return None
+    # Reconstruct expiry so creds.expired is accurate (None expiry = always-expired bug)
+    expiry = None
+    if cd.get("expiry"):
+        try:
+            expiry = datetime.fromisoformat(cd["expiry"])
+            # Ensure timezone-aware so comparison works
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
     creds = Credentials(
         token         = cd.get("token"),
         refresh_token = cd.get("refresh_token"),
@@ -727,11 +738,15 @@ def _get_gmail_credentials():
         client_id     = GMAIL_CLIENT_ID,
         client_secret = GMAIL_CLIENT_SECRET,
         scopes        = GMAIL_SCOPES,
+        expiry        = expiry,
     )
     if creds.expired and creds.refresh_token:
+        print("🔄 Gmail token expired — refreshing…")
         creds.refresh(GoogleAuthRequest())
-        store["gmail_credentials"]["token"] = creds.token
+        store["gmail_credentials"]["token"]  = creds.token
+        store["gmail_credentials"]["expiry"] = creds.expiry.isoformat() if creds.expiry else None
         save_store(store)
+        print(f"✅ Gmail token refreshed — new expiry: {creds.expiry}")
     return creds
 
 
@@ -785,16 +800,20 @@ def gmail_callback():
             "token":         creds.token,
             "refresh_token": creds.refresh_token,
             "token_uri":     creds.token_uri,
+            # Store expiry so creds.expired works correctly and we don't
+            # force a refresh on every single API call
+            "expiry": creds.expiry.isoformat() if creds.expiry else None,
         }
         save_store(store)
-        print("✅ Gmail OAuth connected — refresh token stored")
+        print(f"✅ Gmail OAuth connected — token expires: {creds.expiry}")
     except Exception as e:
         print(f"❌ gmail_callback fetch_token error: {e}")
         return f"""<html><body style="font-family:sans-serif;text-align:center;padding:60px">
 <h2>❌ Gmail connection failed</h2><p>{e}</p><p>Close this tab and try again.</p></body></html>""", 500
 
-    # Kick off an immediate sync in the background so inventory populates right away
-    threading.Thread(target=run_gmail_sync, daemon=True).start()
+    # Kick off an immediate sync — non-daemon so it isn't killed if the
+    # response is returned before the thread finishes
+    threading.Thread(target=run_gmail_sync, daemon=False).start()
 
     return """<html><body style="font-family:sans-serif;text-align:center;padding:60px">
 <h2>✅ Gmail connected!</h2>
@@ -871,36 +890,40 @@ def _parse_amazon_email(msg_data):
 
 def run_gmail_sync():
     """Fetch Amazon ship-confirm emails from Gmail, parse, store in inventory."""
+    print("📧 run_gmail_sync starting…")
     creds = _get_gmail_credentials()
     if not creds:
         print("📧 Gmail sync skipped — no credentials stored (visit /api/gmail/auth)")
         return {"synced": 0, "total": 0}
 
+    print(f"📧 Credentials loaded — expired={creds.expired}, has_refresh={bool(creds.refresh_token)}")
     service   = google_build("gmail", "v1", credentials=creds)
     store     = load_store()
     inventory = store.get("inventory", {})
+    already   = len(inventory)
 
-    # Gmail API uses standard search operators; OR must be between full terms
-    results  = service.users().messages().list(
-        userId="me",
-        q="from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com OR from:order-update@amazon.com",
-        maxResults=500
-    ).execute()
+    q = ("from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com "
+         "OR from:order-update@amazon.com")
+    print(f"📧 Querying Gmail: {q}")
+    results  = service.users().messages().list(userId="me", q=q, maxResults=500).execute()
     messages = results.get("messages", [])
-    print(f"📧 Gmail sync: {len(messages)} Amazon messages found")
+    new_msgs = [m for m in messages if m["id"] not in inventory]
+    print(f"📧 {len(messages)} messages matched query, {len(new_msgs)} are new (not yet in inventory)")
 
     new_count = 0
-    for ref in messages:
+    errors    = 0
+    for ref in new_msgs:
         mid = ref["id"]
-        if mid in inventory:
-            continue
         try:
             msg_data = service.users().messages().get(
                 userId="me", id=mid, format="full"
             ).execute()
-            inventory[mid] = _parse_amazon_email(msg_data)
+            parsed = _parse_amazon_email(msg_data)
+            inventory[mid] = parsed
             new_count += 1
+            print(f"  ✅ Parsed: {parsed.get('item','?')[:60]} | {parsed.get('date')} | ${parsed.get('price')}")
         except Exception as e:
+            errors += 1
             print(f"  ⚠️  Skipping message {mid}: {e}")
 
     from datetime import datetime, timezone
@@ -909,10 +932,10 @@ def run_gmail_sync():
     store["gmail_last_sync"]     = now_iso
     store["gmail_message_count"] = len(messages)
     save_store(store)
-    print(f"✅ Gmail sync done: {new_count} new, {len(inventory)} total inventory items "
-          f"({len(messages)} matched query)")
+    print(f"✅ Gmail sync done: {new_count} new, {errors} errors, "
+          f"{len(inventory)} total (was {already}) | {len(messages)} matched query")
     return {"synced": new_count, "total": len(inventory),
-            "message_count": len(messages), "last_sync": now_iso}
+            "message_count": len(messages), "last_sync": now_iso, "errors": errors}
 
 
 # ── GET /api/gmail/sync ──────────────────────────────────────
