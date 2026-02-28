@@ -880,9 +880,10 @@ def run_gmail_sync():
     store     = load_store()
     inventory = store.get("inventory", {})
 
+    # Gmail API uses standard search operators; OR must be between full terms
     results  = service.users().messages().list(
         userId="me",
-        q="from:(ship-confirm@amazon.com OR auto-confirm@amazon.com OR order-update@amazon.com) subject:(shipped OR order)",
+        q="from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com OR from:order-update@amazon.com",
         maxResults=500
     ).execute()
     messages = results.get("messages", [])
@@ -917,6 +918,13 @@ def gmail_sync_route():
     except Exception as e:
         print(f"❌ Gmail sync error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+# ── GET /api/gmail/status ─────────────────────────────────────
+@app.route("/api/gmail/status")
+def gmail_status():
+    store = load_store()
+    return jsonify({"connected": bool(store.get("gmail_credentials"))})
 
 
 # ── GET /api/inventory ───────────────────────────────────────

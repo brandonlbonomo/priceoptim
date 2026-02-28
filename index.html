@@ -1723,8 +1723,26 @@ function App() {
       outer.style.top = (headerH + mainNavH + subNavH + propPillsH) + "px";
     });
   },[isPortfolioGroup, tabIdx]);
-  // Load inventory when Inventory tab is first viewed
-  useEffect(()=>{ if(tabIdx === inventoryIdx) loadInventory(); },[tabIdx, inventoryIdx, loadInventory]);
+  // Load inventory + check Gmail connection when Inventory tab is viewed
+  useEffect(()=>{
+    if(tabIdx !== inventoryIdx) return;
+    loadInventory();
+    fetch(`${BACKEND}/api/gmail/status`).then(r=>r.json()).then(d=>setGmailConnected(!!d.connected)).catch(()=>{});
+  },[tabIdx, inventoryIdx, loadInventory]);
+
+  // When user returns from Gmail OAuth tab, auto-sync if auth was pending
+  useEffect(()=>{
+    const onVisible = () => {
+      if(document.hidden) return;
+      if(gmailAuthPendingRef.current) {
+        gmailAuthPendingRef.current = false;
+        // Small delay to let the server finish storing credentials
+        setTimeout(() => syncGmail(), 800);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [syncGmail]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
   const navRef                  = useRef(null);
@@ -2107,8 +2125,10 @@ function App() {
   const [inventory,      setInventory]      = useState([]);
   const [invFilter,      setInvFilter]      = useState("current");
   const [invSyncing,     setInvSyncing]     = useState(false);
+  const [gmailConnected, setGmailConnected] = useState(false);
   const [showAddItem,    setShowAddItem]    = useState(false);
   const [addItemForm,    setAddItemForm]    = useState({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
+  const gmailAuthPendingRef = useRef(false); // set when user opens Gmail OAuth tab
 
   useEffect(()=>{
     // Load bank connections
@@ -2542,9 +2562,14 @@ function App() {
   // ── Inventory helpers ──────────────────────────────────────
   const loadInventory = useCallback(async () => {
     try {
-      const r = await fetch(`${BACKEND}/api/inventory`);
-      const d = await r.json();
-      setInventory(d.inventory || []);
+      const [invR, statusR] = await Promise.all([
+        fetch(`${BACKEND}/api/inventory`),
+        fetch(`${BACKEND}/api/gmail/status`),
+      ]);
+      const invD    = await invR.json();
+      const statusD = await statusR.json();
+      setInventory(invD.inventory || []);
+      setGmailConnected(!!statusD.connected);
     } catch(e) { console.error("loadInventory:", e); }
   }, []);
 
@@ -3421,11 +3446,12 @@ function App() {
               </div>
             )}
 
-            {/* Gmail connect prompt if never synced */}
-            {inventory.length===0&&(
+            {/* Gmail connect prompt — show when not connected */}
+            {!gmailConnected&&(
               <div className="card card-padded" style={{textAlign:"center",marginTop:8}}>
                 <div style={{fontSize:13,color:"var(--text-3)",marginBottom:10}}>Connect Gmail to automatically import Amazon orders</div>
                 <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
+                  onClick={()=>{ gmailAuthPendingRef.current = true; }}
                   style={{display:"inline-block",background:"#007aff",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
                   Connect Gmail
                 </a>
