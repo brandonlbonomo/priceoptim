@@ -725,10 +725,11 @@ def _get_gmail_credentials():
     expiry = None
     if cd.get("expiry"):
         try:
+            # google-auth compares expiry against utcnow() which is naive UTC —
+            # keep it naive too, otherwise we get offset-naive vs offset-aware error
             expiry = datetime.fromisoformat(cd["expiry"])
-            # Ensure timezone-aware so comparison works
-            if expiry.tzinfo is None:
-                expiry = expiry.replace(tzinfo=timezone.utc)
+            if expiry.tzinfo is not None:
+                expiry = expiry.replace(tzinfo=None)
         except Exception:
             pass
     creds = Credentials(
@@ -744,7 +745,9 @@ def _get_gmail_credentials():
         print("🔄 Gmail token expired — refreshing…")
         creds.refresh(GoogleAuthRequest())
         store["gmail_credentials"]["token"]  = creds.token
-        store["gmail_credentials"]["expiry"] = creds.expiry.isoformat() if creds.expiry else None
+        # Store naive UTC (google-auth uses naive utcnow() for comparison)
+        exp = creds.expiry
+        store["gmail_credentials"]["expiry"] = exp.replace(tzinfo=None).isoformat() if exp else None
         save_store(store)
         print(f"✅ Gmail token refreshed — new expiry: {creds.expiry}")
     return creds
@@ -800,9 +803,8 @@ def gmail_callback():
             "token":         creds.token,
             "refresh_token": creds.refresh_token,
             "token_uri":     creds.token_uri,
-            # Store expiry so creds.expired works correctly and we don't
-            # force a refresh on every single API call
-            "expiry": creds.expiry.isoformat() if creds.expiry else None,
+            # Store expiry as naive UTC — google-auth compares against naive utcnow()
+            "expiry": creds.expiry.replace(tzinfo=None).isoformat() if creds.expiry else None,
         }
         save_store(store)
         print(f"✅ Gmail OAuth connected — token expires: {creds.expiry}")
