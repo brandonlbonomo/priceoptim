@@ -1,7 +1,16 @@
 import os
 import json
-from flask import Flask, jsonify, request
+import re
+import base64
+import threading
+import time as _time
+from email.utils import parsedate_to_datetime
+from flask import Flask, jsonify, request, redirect
 from flask_cors import CORS
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build as google_build
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -48,6 +57,15 @@ print(f"🏦 Plaid env  : {PLAID_ENV}")
 print(f"🌐 Plaid host : {PLAID_HOST}")
 print(f"🔑 Client ID  : {PLAID_CLIENT_ID[:6]}..." if PLAID_CLIENT_ID else "⚠️  PLAID_CLIENT_ID not set")
 print(f"🪝 Webhook URL: {PLAID_WEBHOOK_URL or '(not set — webhooks disabled)'}")
+
+# ── Gmail OAuth config ────────────────────────────────────────
+GMAIL_CLIENT_ID     = os.getenv("GMAIL_CLIENT_ID", "")
+GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
+GMAIL_REDIRECT_URI  = os.getenv("GMAIL_REDIRECT_URI", "")
+GMAIL_SCOPES        = ["https://www.googleapis.com/auth/gmail.readonly"]
+print(f"📧 Gmail client : {GMAIL_CLIENT_ID[:6]}..." if GMAIL_CLIENT_ID else "⚠️  GMAIL_CLIENT_ID not set")
+
+_oauth_states: dict = {}  # in-memory CSRF state store (single-instance OK)
 
 # ── Persistent store ─────────────────────────────────────────
 # store = {
@@ -679,6 +697,238 @@ def save_settings():
     save_store(store)
     return jsonify({"ok": True})
 
+# ══════════════════════════════════════════════════════════════
+# GMAIL OAUTH + INVENTORY
+# ══════════════════════════════════════════════════════════════
+
+def _gmail_flow():
+    """Build an OAuth2 flow from env-var credentials."""
+    client_config = {"web": {
+        "client_id":     GMAIL_CLIENT_ID,
+        "client_secret": GMAIL_CLIENT_SECRET,
+        "auth_uri":      "https://accounts.google.com/o/oauth2/auth",
+        "token_uri":     "https://oauth2.googleapis.com/token",
+        "redirect_uris": [GMAIL_REDIRECT_URI],
+    }}
+    return Flow.from_client_config(client_config, scopes=GMAIL_SCOPES,
+                                   redirect_uri=GMAIL_REDIRECT_URI)
+
+
+def _get_gmail_credentials():
+    """Load stored credentials, refresh the access token if expired."""
+    store = load_store()
+    cd    = store.get("gmail_credentials")
+    if not cd:
+        return None
+    creds = Credentials(
+        token         = cd.get("token"),
+        refresh_token = cd.get("refresh_token"),
+        token_uri     = cd.get("token_uri", "https://oauth2.googleapis.com/token"),
+        client_id     = GMAIL_CLIENT_ID,
+        client_secret = GMAIL_CLIENT_SECRET,
+        scopes        = GMAIL_SCOPES,
+    )
+    if creds.expired and creds.refresh_token:
+        creds.refresh(GoogleAuthRequest())
+        store["gmail_credentials"]["token"] = creds.token
+        save_store(store)
+    return creds
+
+
+# ── GET /api/gmail/auth ──────────────────────────────────────
+@app.route("/api/gmail/auth")
+def gmail_auth():
+    if not GMAIL_CLIENT_ID or not GMAIL_CLIENT_SECRET:
+        return jsonify({"error": "GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET not set"}), 500
+    if not GMAIL_REDIRECT_URI:
+        return jsonify({"error": "GMAIL_REDIRECT_URI not set"}), 500
+    flow = _gmail_flow()
+    auth_url, state = flow.authorization_url(
+        access_type="offline", include_granted_scopes="true", prompt="consent"
+    )
+    _oauth_states[state] = True
+    return redirect(auth_url)
+
+
+# ── GET /api/gmail/callback ──────────────────────────────────
+@app.route("/api/gmail/callback")
+def gmail_callback():
+    error = request.args.get("error", "")
+    if error:
+        return jsonify({"error": f"OAuth denied: {error}"}), 400
+    state = request.args.get("state", "")
+    if state not in _oauth_states:
+        return jsonify({"error": "Invalid OAuth state — possible CSRF"}), 400
+    _oauth_states.pop(state, None)
+    code = request.args.get("code", "")
+    flow = _gmail_flow()
+    flow.fetch_token(code=code)
+    creds = flow.credentials
+    store = load_store()
+    store["gmail_credentials"] = {
+        "token":         creds.token,
+        "refresh_token": creds.refresh_token,
+        "token_uri":     creds.token_uri,
+    }
+    save_store(store)
+    print("✅ Gmail OAuth connected — refresh token stored")
+    # Return a small HTML page so the browser tab closes cleanly
+    return """<html><body style="font-family:sans-serif;text-align:center;padding:60px">
+<h2>✅ Gmail connected!</h2><p>You can close this tab.</p></body></html>"""
+
+
+# ── Email parser ─────────────────────────────────────────────
+def _parse_amazon_email(msg_data):
+    """Extract order details from an Amazon ship-confirm Gmail message."""
+    headers  = {h["name"]: h["value"]
+                for h in msg_data.get("payload", {}).get("headers", [])}
+    subject  = headers.get("Subject", "")
+    date_str = headers.get("Date", "")
+
+    order_date = None
+    try:
+        order_date = parsedate_to_datetime(date_str).date().isoformat()
+    except Exception:
+        pass
+
+    # Decode plain-text body
+    body = ""
+    def _extract(part):
+        nonlocal body
+        if part.get("mimeType") == "text/plain" and not body:
+            raw = part.get("body", {}).get("data", "")
+            if raw:
+                body = base64.urlsafe_b64decode(raw + "==").decode("utf-8", errors="replace")
+        for sub in part.get("parts", []):
+            _extract(sub)
+    _extract(msg_data.get("payload", {}))
+
+    # Item name — from subject "order of "Widget" has shipped" pattern
+    item = ""
+    m = re.search(r'order of\s+"?(.+?)"?\s+(?:and \d+|has shipped)', subject, re.I)
+    if m:
+        item = m.group(1).strip()
+    if not item:
+        m2 = re.search(r'(?:You ordered|Item ordered|Ordered):\s*(.+)', body, re.I)
+        if m2:
+            item = m2.group(1).strip()[:120]
+
+    # Order number
+    order_num = ""
+    m3 = re.search(r'(\d{3}-\d{7}-\d{7})', subject + " " + body)
+    if m3:
+        order_num = m3.group(1)
+
+    # First dollar amount in body
+    price = None
+    prices = re.findall(r'\$\s*(\d+\.\d{2})', body)
+    if prices:
+        price = float(prices[0])
+
+    # Quantity
+    qty = 1
+    m4 = re.search(r'(?:Qty|Quantity|qty):\s*(\d+)', body, re.I)
+    if m4:
+        qty = int(m4.group(1))
+
+    return {
+        "id":        msg_data["id"],
+        "subject":   subject,
+        "item":      item or subject,
+        "order_num": order_num,
+        "price":     price,
+        "quantity":  qty,
+        "date":      order_date,
+        "prop_tag":  None,   # user-assigned property tag
+        "source":    "amazon",
+    }
+
+
+def run_gmail_sync():
+    """Fetch Amazon ship-confirm emails from Gmail, parse, store in inventory."""
+    creds = _get_gmail_credentials()
+    if not creds:
+        print("📧 Gmail sync skipped — no credentials stored (visit /api/gmail/auth)")
+        return {"synced": 0, "total": 0}
+
+    service   = google_build("gmail", "v1", credentials=creds)
+    store     = load_store()
+    inventory = store.get("inventory", {})
+
+    results  = service.users().messages().list(
+        userId="me", q="from:ship-confirm@amazon.com", maxResults=200
+    ).execute()
+    messages = results.get("messages", [])
+    print(f"📧 Gmail sync: {len(messages)} Amazon messages found")
+
+    new_count = 0
+    for ref in messages:
+        mid = ref["id"]
+        if mid in inventory:
+            continue
+        try:
+            msg_data = service.users().messages().get(
+                userId="me", id=mid, format="full"
+            ).execute()
+            inventory[mid] = _parse_amazon_email(msg_data)
+            new_count += 1
+        except Exception as e:
+            print(f"  ⚠️  Skipping message {mid}: {e}")
+
+    store["inventory"] = inventory
+    save_store(store)
+    print(f"✅ Gmail sync done: {new_count} new, {len(inventory)} total inventory items")
+    return {"synced": new_count, "total": len(inventory)}
+
+
+# ── GET /api/gmail/sync ──────────────────────────────────────
+@app.route("/api/gmail/sync")
+def gmail_sync_route():
+    try:
+        result = run_gmail_sync()
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        print(f"❌ Gmail sync error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ── GET /api/inventory ───────────────────────────────────────
+@app.route("/api/inventory")
+def get_inventory():
+    store = load_store()
+    items = list(store.get("inventory", {}).values())
+    items.sort(key=lambda x: x.get("date") or "", reverse=True)
+    return jsonify({"inventory": items, "total": len(items)})
+
+
+# ── POST /api/inventory ──────────────────────────────────────
+# Add a manual inventory item or update an existing one's prop_tag
+@app.route("/api/inventory", methods=["POST"])
+def update_inventory():
+    store     = load_store()
+    inventory = store.get("inventory", {})
+    item      = request.json or {}
+    iid       = item.get("id") or f"manual-{int(_time.time()*1000)}"
+    if iid in inventory:
+        # Merge — allows updating prop_tag without overwriting everything
+        inventory[iid].update({k: v for k, v in item.items() if k != "id"})
+    else:
+        inventory[iid] = {
+            "id":        iid,
+            "item":      item.get("item", ""),
+            "quantity":  item.get("quantity", 1),
+            "price":     item.get("price"),
+            "date":      item.get("date"),
+            "order_num": item.get("order_num", ""),
+            "subject":   item.get("item", ""),
+            "prop_tag":  item.get("prop_tag"),
+            "source":    "manual",
+        }
+    store["inventory"] = inventory
+    save_store(store)
+    return jsonify({"ok": True, "id": iid, "item": inventory[iid]})
+
+
 # ── Daily sync scheduler ──────────────────────────────────────
 def scheduled_sync():
     print("⏰ Scheduled daily sync starting...")
@@ -688,18 +938,24 @@ def scheduled_sync():
     except Exception as e:
         print(f"❌ Scheduled sync failed: {e}")
 
+def scheduled_gmail_sync():
+    print("⏰ Scheduled Gmail sync starting…")
+    try:
+        result = run_gmail_sync()
+        print(f"✅ Scheduled Gmail sync done: {result.get('synced', 0)} new, "
+              f"{result.get('total', 0)} total")
+    except Exception as e:
+        print(f"❌ Scheduled Gmail sync failed: {e}")
+
 scheduler = BackgroundScheduler(daemon=True)
-# Fallback sync every 6 hours — catches any transactions that Plaid webhooks miss
+# Plaid fallback sync every 6 hours
 scheduler.add_job(scheduled_sync, IntervalTrigger(hours=6), id="periodic_sync", replace_existing=True)
+# Gmail inventory sync every 6 hours
+scheduler.add_job(scheduled_gmail_sync, IntervalTrigger(hours=6), id="gmail_sync", replace_existing=True)
 scheduler.start()
-print("⏰ Fallback sync scheduler started (runs every 6 hours)")
+print("⏰ Scheduler started: Plaid + Gmail syncs every 6 hours")
 
 # ── Startup sync ──────────────────────────────────────────────────────────
-# On every startup: run an incremental sync so data is fresh.
-# If transaction count is 0 but accounts are linked, this catches the common
-# case where the Render filesystem was wiped and the env-var backup restored
-# the account tokens but not the cached transactions.
-import threading, time as _time
 
 def startup_sync():
     _time.sleep(4)  # let gunicorn fully start before hitting Plaid

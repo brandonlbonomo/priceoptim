@@ -1285,7 +1285,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 }
 
 
-const BASE_TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections"];
+const BASE_TABS=["Portfolio","Airbnb","Pierce","Quarterly","Projections","Inventory"];
 
 
 // ── Rule Prompt Modal — Copilot-style "apply to all?" ────────────
@@ -1677,21 +1677,23 @@ function App() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [shakeTarget, setShakeTarget] = useState(null);
 
-  // Dynamic tabs: base 5 + any non-Airbnb custom props
+  // Dynamic tabs: base tabs + any non-Airbnb custom props
   const tabs = useMemo(()=>[...BASE_TABS,...customProps.filter(p=>!p.isAirbnb).map(p=>p.label)],[customProps]);
-  const feedIdx    = tabs.length;
-  const archiveIdx = tabs.length + 1;
+  const inventoryIdx = BASE_TABS.indexOf("Inventory");  // 5
+  const feedIdx      = tabs.length;
+  const archiveIdx   = tabs.length + 1;
 
   // Portfolio group = Portfolio overview + all property sub-panes (not Quarterly/Projections/Feed/Archive)
-  const isPortfolioGroup = tabIdx < feedIdx && tabs[tabIdx] !== "Quarterly" && tabs[tabIdx] !== "Projections";
+  const isPortfolioGroup = tabIdx < feedIdx && tabs[tabIdx] !== "Quarterly" && tabs[tabIdx] !== "Projections" && tabs[tabIdx] !== "Inventory";
   // Index of Quarterly tab — sub-panes are all indices between 1 and this (exclusive)
   const quarterlyIdx = tabs.indexOf("Quarterly");
   // isSubPane: inside a property pane (not Portfolio overview, not Quarterly/Projections/Feed/Archive)
   const isSubPane = tabIdx >= 1 && tabIdx < quarterlyIdx;
   // Map tab index → visual pill index (Portfolio=0, Quarterly=1, Projections=2)
   const tabToPillIdx = t => {
-    if(tabs[t]==="Quarterly") return 1;
+    if(tabs[t]==="Quarterly")   return 1;
     if(tabs[t]==="Projections") return 2;
+    if(tabs[t]==="Inventory")   return 3;
     return 0; // Portfolio overview + all property sub-panes
   };
 
@@ -1721,6 +1723,8 @@ function App() {
       outer.style.top = (headerH + mainNavH + subNavH + propPillsH) + "px";
     });
   },[isPortfolioGroup, tabIdx]);
+  // Load inventory when Inventory tab is first viewed
+  useEffect(()=>{ if(tabIdx === inventoryIdx) loadInventory(); },[tabIdx, inventoryIdx, loadInventory]);
   const trackRef                = useRef(null);
   const headerRef               = useRef(null);
   const navRef                  = useRef(null);
@@ -2100,6 +2104,11 @@ function App() {
   const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
   const [drillDown, setDrillDown] = useState(null); // {mo:"2025-11", type:"rev"|"exp"|"net", txs:[]}
   const [pierceTxFilter, setPierceTxFilter] = useState("all");
+  const [inventory,      setInventory]      = useState([]);
+  const [invFilter,      setInvFilter]      = useState("current");
+  const [invSyncing,     setInvSyncing]     = useState(false);
+  const [showAddItem,    setShowAddItem]    = useState(false);
+  const [addItemForm,    setAddItemForm]    = useState({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
 
   useEffect(()=>{
     // Load bank connections
@@ -2530,6 +2539,60 @@ function App() {
 
   const hasBank=linked.length>0||txs.length>0; // show content if we have txs even if linked state not yet resolved
 
+  // ── Inventory helpers ──────────────────────────────────────
+  const loadInventory = useCallback(async () => {
+    try {
+      const r = await fetch(`${BACKEND}/api/inventory`);
+      const d = await r.json();
+      setInventory(d.inventory || []);
+    } catch(e) { console.error("loadInventory:", e); }
+  }, []);
+
+  const tagInventoryItem = useCallback(async (id, propTag) => {
+    setInventory(prev => prev.map(it => it.id === id ? {...it, prop_tag: propTag} : it));
+    try {
+      await fetch(`${BACKEND}/api/inventory`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({id, prop_tag: propTag}),
+      });
+    } catch(e) { console.error("tagInventoryItem:", e); }
+  }, []);
+
+  const INVENTORY_PROP_CYCLE = [null,"lockwood","everton","bstreet","pierce"];
+  const cycleItemProp = useCallback((id, currentTag) => {
+    const idx = INVENTORY_PROP_CYCLE.indexOf(currentTag);
+    const next = INVENTORY_PROP_CYCLE[(idx + 1) % INVENTORY_PROP_CYCLE.length];
+    tagInventoryItem(id, next);
+  }, [tagInventoryItem]);
+
+  const syncGmail = useCallback(async () => {
+    setInvSyncing(true);
+    try {
+      const r = await fetch(`${BACKEND}/api/gmail/sync`);
+      const d = await r.json();
+      if(d.ok){ await loadInventory(); addToast(`Synced ${d.synced} new order${d.synced===1?"":"s"}`,"success"); }
+      else     { addToast(d.error || "Gmail sync failed","error"); }
+    } catch(e) { addToast("Gmail sync failed","error"); }
+    setInvSyncing(false);
+  }, [loadInventory, addToast]);
+
+  const addManualItem = useCallback(async (form) => {
+    try {
+      const r = await fetch(`${BACKEND}/api/inventory`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          item:     form.item,
+          quantity: Number(form.quantity)||1,
+          price:    form.price ? Number(form.price) : null,
+          date:     form.date,
+          prop_tag: form.prop_tag,
+        }),
+      });
+      const d = await r.json();
+      if(d.ok){ setInventory(prev=>[d.item,...prev]); addToast("Item added","success"); }
+    } catch(e) { addToast("Failed to add item","error"); }
+  }, [addToast]);
+
   const clearAllData = () => {
     if(!window.confirm("Clear all cached transactions and tags? This cannot be undone.")) return;
     LS.set(TX_KEY, []); LS.set(TAGS_KEY, {}); LS.set(AUTO_KEY, {}); LS.set(MANUAL_KEY, {});
@@ -2591,6 +2654,7 @@ function App() {
           <button ref={el=>pillRefs.current[0]=el} className={`top-nav-pill${isPortfolioGroup?" active":""}`} onClick={()=>navigateTab("Portfolio")}>Portfolio</button>
           <button ref={el=>pillRefs.current[1]=el} className={`top-nav-pill${tabs[tabIdx]==="Quarterly"?" active":""}`} onClick={()=>navigateTab("Quarterly")}>Quarterly</button>
           <button ref={el=>pillRefs.current[2]=el} className={`top-nav-pill${tabs[tabIdx]==="Projections"?" active":""}`} onClick={()=>navigateTab("Projections")}>Projections</button>
+          <button ref={el=>pillRefs.current[3]=el} className={`top-nav-pill${tabs[tabIdx]==="Inventory"?" active":""}`} onClick={()=>navigateTab("Inventory")}>Inventory</button>
         </div>
       </div>
       {/* SUB NAV — property pills, visible while in Portfolio group */}
@@ -3207,9 +3271,174 @@ function App() {
         })()}
         </div>
 
+        {/* ── INVENTORY ───────────────────────────────────────────── */}
+        <div className="swipe-pane">
+        {(()=>{
+          if(!isPane(inventoryIdx)) return null;
+          const now        = new Date();
+          const cutoff     = new Date(now - 60*24*60*60*1000).toISOString().slice(0,10);
+          const thisMonth  = now.toISOString().slice(0,7);
+          const INV_PROPS  = [{id:null,label:"Tag property"},{id:"lockwood",label:"Lockwood"},{id:"everton",label:"Everton"},{id:"bstreet",label:"B Street"},{id:"pierce",label:"Pierce Ave"}];
+          const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave"};
+          const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
+          const current    = inventory.filter(it=>it.date&&it.date>=cutoff);
+          const displayList = invFilter==="current" ? current : inventory;
+
+          // Per-property spend this month
+          const propSpend = {};
+          inventory.forEach(it=>{
+            if(it.date?.startsWith(thisMonth)&&it.prop_tag&&it.price!=null)
+              propSpend[it.prop_tag]=(propSpend[it.prop_tag]||0)+it.price*(it.quantity||1);
+          });
+
+          // Low stock: items last ordered 60+ days ago
+          const lastSeen={};
+          inventory.forEach(it=>{
+            const k=(it.item||"").toLowerCase().trim();
+            if(!lastSeen[k]||it.date>lastSeen[k])lastSeen[k]={item:it.item,date:it.date};
+          });
+          const lowStock=Object.values(lastSeen).filter(s=>s.date&&s.date<cutoff);
+
+          return (
+          <div style={{minHeight:"100%"}}>
+            <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Inventory · Supplies</div>
+                <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                  <div className="big-num" style={{fontSize:32}}>{inventory.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>orders tracked</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:4,flexShrink:0}}>
+                <button onClick={syncGmail} disabled={invSyncing}
+                  style={{fontSize:12,fontWeight:600,background:"rgba(0,122,255,0.12)",color:"#007aff",border:"1px solid rgba(0,122,255,0.2)",borderRadius:10,padding:"7px 12px",cursor:"pointer",opacity:invSyncing?0.5:1,touchAction:"manipulation"}}>
+                  {invSyncing?"Syncing…":"⟳ Gmail"}
+                </button>
+                <button onClick={()=>setShowAddItem(v=>!v)}
+                  style={{fontSize:12,fontWeight:600,background:"rgba(255,255,255,0.10)",color:"var(--text)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
+                  + Manual
+                </button>
+              </div>
+            </div>
+
+            {/* Manual add form */}
+            {showAddItem&&(
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item</div>
+                <input value={addItemForm.item} onChange={e=>setAddItemForm(f=>({...f,item:e.target.value}))}
+                  placeholder="Item name" style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
+                  <input type="number" min="1" value={addItemForm.quantity} onChange={e=>setAddItemForm(f=>({...f,quantity:e.target.value}))}
+                    placeholder="Qty" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                  <input type="number" step="0.01" value={addItemForm.price} onChange={e=>setAddItemForm(f=>({...f,price:e.target.value}))}
+                    placeholder="Price $" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                  <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
+                    style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                </div>
+                <select value={addItemForm.prop_tag||""} onChange={e=>setAddItemForm(f=>({...f,prop_tag:e.target.value||null}))}
+                  style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",marginBottom:8,outline:"none"}}>
+                  {INV_PROPS.map(p=><option key={p.id||""} value={p.id||""}>{p.label}</option>)}
+                </select>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});}}
+                    style={{flex:1,background:"#007aff",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
+                  <button onClick={()=>setShowAddItem(false)}
+                    style={{flex:1,background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Per-property spend this month */}
+            {Object.keys(propSpend).length>0&&(
+              <>
+                <div className="section-title">Supply Spend · This Month</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  {Object.entries(propSpend).map(([pid,amt])=>(
+                    <div key={pid} className="card card-padded">
+                      <div style={{fontSize:10,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{PROP_LABEL[pid]}</div>
+                      <div style={{fontSize:20,fontWeight:700,color:PROP_COLOR[pid]||"var(--text)"}}>{fmt$(amt)}</div>
+                      <div style={{fontSize:11,color:"var(--text-3)"}}>supplies</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Low stock alerts */}
+            {lowStock.length>0&&(
+              <div className="card card-padded" style={{marginBottom:8,background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.22)"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#ff9f0a",marginBottom:6,letterSpacing:"0.04em",textTransform:"uppercase"}}>⚠ Low Stock — {lowStock.length} item{lowStock.length!==1?"s":""} not reordered in 60+ days</div>
+                {lowStock.slice(0,4).map(s=>(
+                  <div key={s.item} style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:12,color:"var(--text-2)"}}>{s.item}</span>
+                    <span style={{fontSize:11,color:"var(--text-3)"}}>last ordered {s.date}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Filter seg control */}
+            <div className="seg-ctrl" style={{marginBottom:8}}>
+              <button className={`seg-btn${invFilter==="current"?" active":""}`} onClick={()=>setInvFilter("current")}>Current Stock ({current.length})</button>
+              <button className={`seg-btn${invFilter==="all"?" active":""}`} onClick={()=>setInvFilter("all")}>All Orders ({inventory.length})</button>
+            </div>
+
+            {/* Item list */}
+            {displayList.length===0?(
+              <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
+                {inventory.length===0
+                  ? <>No orders yet. Tap <strong>⟳ Gmail</strong> to import Amazon ship confirmations, or <strong>+ Manual</strong> to add items.</>
+                  : "No orders in the last 60 days."}
+              </div>
+            ):(
+              <div className="card" style={{overflow:"hidden",marginBottom:8}}>
+                {displayList.map((it,i)=>(
+                  <div key={it.id} style={{borderBottom:i<displayList.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
+                    <div style={{display:"flex",alignItems:"center",padding:"12px 14px",gap:10}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
+                        <div style={{display:"flex",gap:6,marginTop:4,alignItems:"center",flexWrap:"wrap"}}>
+                          {it.date&&<span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{it.date}</span>}
+                          {it.quantity>1&&<span style={{fontSize:11,color:"var(--text-3)"}}>×{it.quantity}</span>}
+                          <button onClick={()=>cycleItemProp(it.id,it.prop_tag)}
+                            style={{fontSize:10,fontWeight:700,padding:"2px 9px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                              background:it.prop_tag?`${PROP_COLOR[it.prop_tag]}18`:"rgba(255,255,255,0.08)",
+                              color:it.prop_tag?PROP_COLOR[it.prop_tag]:"var(--text-3)",
+                              border:`1px solid ${it.prop_tag?`${PROP_COLOR[it.prop_tag]}30`:"rgba(255,255,255,0.12)"}`}}>
+                            {it.prop_tag?PROP_LABEL[it.prop_tag]:"+ tag"}
+                          </button>
+                          <span style={{fontSize:10,color:"var(--text-3)",opacity:0.5}}>{it.source==="manual"?"manual":"amazon"}</span>
+                        </div>
+                      </div>
+                      {it.price!=null&&(
+                        <div style={{flexShrink:0,textAlign:"right"}}>
+                          <div style={{fontSize:14,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text)"}}>{fmt$(it.price)}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Gmail connect prompt if never synced */}
+            {inventory.length===0&&(
+              <div className="card card-padded" style={{textAlign:"center",marginTop:8}}>
+                <div style={{fontSize:13,color:"var(--text-3)",marginBottom:10}}>Connect Gmail to automatically import Amazon orders</div>
+                <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
+                  style={{display:"inline-block",background:"#007aff",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
+                  Connect Gmail
+                </a>
+              </div>
+            )}
+          </div>
+          );
+        })()}
+        </div>
+
         {/* ── CUSTOM PROPERTY PANES ──────────────────────────────── */}
         {customProps.filter(p=>!p.isAirbnb).map((p, cpi)=>{
-          if(!isPane(5 + cpi)) return <div className="swipe-pane" key={p.id}/>;
+          if(!isPane(BASE_TABS.length + cpi)) return <div className="swipe-pane" key={p.id}/>;
           const cMo = {};
           enriched.filter(t=>t.propId===p.id).forEach(t=>{
             const mo=t.date?.slice(0,7); if(!mo) return;
