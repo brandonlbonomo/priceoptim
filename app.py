@@ -719,6 +719,15 @@ def _get_gmail_credentials():
     from datetime import datetime, timezone
     store = load_store()
     cd    = store.get("gmail_credentials")
+    # Fallback: GMAIL_CREDENTIALS_JSON env var survives redeploys even on ephemeral filesystems
+    if not cd:
+        raw = os.environ.get("GMAIL_CREDENTIALS_JSON", "").strip()
+        if raw:
+            try:
+                cd = json.loads(raw)
+                print("📧 Loaded Gmail credentials from GMAIL_CREDENTIALS_JSON env var")
+            except Exception as e:
+                print(f"⚠️ GMAIL_CREDENTIALS_JSON parse error: {e}")
     if not cd:
         return None
     # Reconstruct expiry so creds.expired is accurate (None expiry = always-expired bug)
@@ -810,7 +819,10 @@ def gmail_callback():
             "expiry": creds.expiry.replace(tzinfo=None).isoformat() if creds.expiry else None,
         }
         save_store(store)
+        creds_json = json.dumps(store["gmail_credentials"])
         print(f"✅ Gmail OAuth connected — token expires: {creds.expiry}")
+        print(f"📋 Set this in Render env vars to survive redeploys:")
+        print(f"   GMAIL_CREDENTIALS_JSON={creds_json}")
     except Exception as e:
         print(f"❌ gmail_callback fetch_token error: {e}")
         return f"""<html><body style="font-family:sans-serif;text-align:center;padding:60px">
@@ -820,10 +832,16 @@ def gmail_callback():
     # response is returned before the thread finishes
     threading.Thread(target=run_gmail_sync, daemon=False).start()
 
-    return """<html><body style="font-family:sans-serif;text-align:center;padding:60px">
+    return f"""<html><body style="font-family:sans-serif;padding:40px;max-width:640px;margin:auto">
 <h2>✅ Gmail connected!</h2>
 <p>Importing your Amazon orders now — check the Inventory tab in a moment.</p>
-<p>You can close this tab.</p></body></html>"""
+<hr style="margin:24px 0">
+<p style="font-size:13px;color:#555"><strong>To make this permanent across server restarts:</strong><br>
+Copy the value below and add it as a Render environment variable named
+<code>GMAIL_CREDENTIALS_JSON</code>.</p>
+<textarea readonly style="width:100%;height:80px;font-size:11px;font-family:monospace;padding:8px;box-sizing:border-box">{creds_json}</textarea>
+<p style="font-size:12px;color:#888">You only need to do this once. After setting the env var, credentials survive redeploys automatically.</p>
+</body></html>"""
 
 
 # ── Email parser ─────────────────────────────────────────────

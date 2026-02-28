@@ -2600,10 +2600,19 @@ function App() {
     setInvSyncing(true);
     try {
       const r = await fetch(`${BACKEND}/api/gmail/sync`);
+      if(r.status === 502 || r.status === 503) {
+        addToast("Server is starting up — wait 30s and try again","error");
+        setInvSyncing(false); return;
+      }
       const d = await r.json();
-      if(d.ok){ await loadInventory(); addToast(`Synced ${d.synced} new order${d.synced===1?"":"s"}`,"success"); }
-      else     { addToast(d.error || "Gmail sync failed","error"); }
-    } catch(e) { addToast("Gmail sync failed","error"); }
+      if(d.ok){
+        await loadInventory();
+        if(d.synced > 0) addToast(`Synced ${d.synced} new order${d.synced===1?"":"s"}`,"success");
+        else addToast(`Up to date — ${d.total} order${d.total===1?"":"s"} on file`,"success");
+      } else {
+        addToast(d.error || "Gmail sync failed","error");
+      }
+    } catch(e) { addToast("Gmail sync failed — check connection","error"); }
     setInvSyncing(false);
   }, [loadInventory, addToast]);
 
