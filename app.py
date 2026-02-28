@@ -742,14 +742,17 @@ def _get_gmail_credentials():
         expiry        = expiry,
     )
     if creds.expired and creds.refresh_token:
-        print("🔄 Gmail token expired — refreshing…")
-        creds.refresh(GoogleAuthRequest())
-        store["gmail_credentials"]["token"]  = creds.token
-        # Store naive UTC (google-auth uses naive utcnow() for comparison)
-        exp = creds.expiry
-        store["gmail_credentials"]["expiry"] = exp.replace(tzinfo=None).isoformat() if exp else None
-        save_store(store)
-        print(f"✅ Gmail token refreshed — new expiry: {creds.expiry}")
+        print("🔄 Gmail token expired/unknown — refreshing…")
+        try:
+            creds.refresh(GoogleAuthRequest())
+            store["gmail_credentials"]["token"]  = creds.token
+            exp = creds.expiry
+            store["gmail_credentials"]["expiry"] = exp.replace(tzinfo=None).isoformat() if exp else None
+            save_store(store)
+            print(f"✅ Gmail token refreshed — new expiry: {creds.expiry}")
+        except Exception as refresh_err:
+            print(f"⚠️ Token refresh failed ({refresh_err}) — trying existing token as-is")
+            # The existing token might still be valid; let the API call tell us if not
     return creds
 
 
@@ -907,7 +910,11 @@ def run_gmail_sync():
     q = ("from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com "
          "OR from:order-update@amazon.com")
     print(f"📧 Querying Gmail: {q}")
-    results  = service.users().messages().list(userId="me", q=q, maxResults=500).execute()
+    try:
+        results = service.users().messages().list(userId="me", q=q, maxResults=500).execute()
+    except Exception as api_err:
+        print(f"❌ Gmail API list failed: {api_err}")
+        raise RuntimeError(f"Gmail API error: {api_err}") from api_err
     messages = results.get("messages", [])
     new_msgs = [m for m in messages if m["id"] not in inventory]
     print(f"📧 {len(messages)} messages matched query, {len(new_msgs)} are new (not yet in inventory)")
