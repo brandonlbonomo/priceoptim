@@ -2605,15 +2605,26 @@ function App() {
         setInvSyncing(false); return;
       }
       const d = await r.json();
-      if(d.ok){
-        await loadInventory();
-        if(d.synced > 0) addToast(`Synced ${d.synced} new order${d.synced===1?"":"s"}`,"success");
-        else addToast(`Up to date — ${d.total} order${d.total===1?"":"s"} on file`,"success");
-      } else {
-        addToast(d.error || "Gmail sync failed","error");
-      }
-    } catch(e) { addToast("Gmail sync failed — check connection","error"); }
-    setInvSyncing(false);
+      if(!d.ok) { addToast(d.error || "Gmail sync failed","error"); setInvSyncing(false); return; }
+      // Sync runs in background on server — poll /api/gmail/status until last_sync changes
+      const prevSync = d.last_sync;
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const sr = await fetch(`${BACKEND}/api/gmail/status`);
+          const sd = await sr.json();
+          const done = sd.last_sync && sd.last_sync !== prevSync;
+          if(done || attempts >= 20) {
+            clearInterval(poll);
+            await loadInventory();
+            if(done) addToast(`Gmail synced — ${sd.inventory_count} order${sd.inventory_count===1?"":"s"} on file`,"success");
+            else     addToast("Sync is taking a while — check back shortly","error");
+            setInvSyncing(false);
+          }
+        } catch(_) { /* keep polling on transient errors */ }
+      }, 2000);
+    } catch(e) { addToast("Gmail sync failed — check connection","error"); setInvSyncing(false); }
   }, [loadInventory, addToast]);
 
   const addManualItem = useCallback(async (form) => {

@@ -965,15 +965,35 @@ def run_gmail_sync():
             "message_count": len(messages), "last_sync": now_iso, "errors": errors}
 
 
+# Tracks whether a sync is in progress so we don't stack concurrent syncs
+_gmail_sync_running = False
+
 # ── GET /api/gmail/sync ──────────────────────────────────────
+# Fires sync in a background thread and returns immediately — no HTTP timeout risk
 @app.route("/api/gmail/sync")
 def gmail_sync_route():
-    try:
-        result = run_gmail_sync()
-        return jsonify({"ok": True, **result})
-    except Exception as e:
-        print(f"❌ Gmail sync error: {e}")
-        return jsonify({"error": str(e)}), 500
+    global _gmail_sync_running
+    if _gmail_sync_running:
+        store = load_store()
+        return jsonify({"ok": True, "status": "running",
+                        "message": "Sync already in progress — check back in a moment",
+                        "total": len(store.get("inventory", {}))})
+
+    def _bg():
+        global _gmail_sync_running
+        _gmail_sync_running = True
+        try:
+            run_gmail_sync()
+        except Exception as e:
+            print(f"❌ Background Gmail sync error: {e}")
+        finally:
+            _gmail_sync_running = False
+
+    threading.Thread(target=_bg, daemon=False).start()
+    store = load_store()
+    return jsonify({"ok": True, "status": "started",
+                    "last_sync": store.get("gmail_last_sync"),
+                    "total": len(store.get("inventory", {}))})
 
 
 # ── GET /api/gmail/status ─────────────────────────────────────
