@@ -903,10 +903,16 @@ def run_gmail_sync():
         except Exception as e:
             print(f"  ⚠️  Skipping message {mid}: {e}")
 
-    store["inventory"] = inventory
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    store["inventory"]           = inventory
+    store["gmail_last_sync"]     = now_iso
+    store["gmail_message_count"] = len(messages)
     save_store(store)
-    print(f"✅ Gmail sync done: {new_count} new, {len(inventory)} total inventory items")
-    return {"synced": new_count, "total": len(inventory)}
+    print(f"✅ Gmail sync done: {new_count} new, {len(inventory)} total inventory items "
+          f"({len(messages)} matched query)")
+    return {"synced": new_count, "total": len(inventory),
+            "message_count": len(messages), "last_sync": now_iso}
 
 
 # ── GET /api/gmail/sync ──────────────────────────────────────
@@ -924,7 +930,41 @@ def gmail_sync_route():
 @app.route("/api/gmail/status")
 def gmail_status():
     store = load_store()
-    return jsonify({"connected": bool(store.get("gmail_credentials"))})
+    return jsonify({
+        "connected":       bool(store.get("gmail_credentials")),
+        "last_sync":       store.get("gmail_last_sync"),
+        "inventory_count": len(store.get("inventory", {})),
+        "message_count":   store.get("gmail_message_count", 0),
+    })
+
+
+# ── GET /api/gmail/debug ──────────────────────────────────────
+# Proves the stored credentials are live and the query actually hits Gmail
+@app.route("/api/gmail/debug")
+def gmail_debug():
+    creds = _get_gmail_credentials()
+    if not creds:
+        return jsonify({"connected": False, "error": "No credentials stored — visit /api/gmail/auth"})
+    try:
+        service = google_build("gmail", "v1", credentials=creds)
+        profile = service.users().getProfile(userId="me").execute()
+        results = service.users().messages().list(
+            userId="me",
+            q="from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com OR from:order-update@amazon.com",
+            maxResults=5
+        ).execute()
+        store = load_store()
+        return jsonify({
+            "connected":           True,
+            "email":               profile.get("emailAddress"),
+            "gmail_total_msgs":    profile.get("messagesTotal"),
+            "amazon_msgs_found":   len(results.get("messages", [])),
+            "inventory_stored":    len(store.get("inventory", {})),
+            "last_sync":           store.get("gmail_last_sync"),
+        })
+    except Exception as e:
+        print(f"❌ Gmail debug error: {e}")
+        return jsonify({"connected": False, "error": str(e)}), 500
 
 
 # ── GET /api/inventory ───────────────────────────────────────

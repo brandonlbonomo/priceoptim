@@ -1723,12 +1723,15 @@ function App() {
       outer.style.top = (headerH + mainNavH + subNavH + propPillsH) + "px";
     });
   },[isPortfolioGroup, tabIdx]);
-  // Load inventory + check Gmail connection when Inventory tab is viewed
+  // Load inventory + check Gmail connection when Inventory tab is viewed;
+  // auto-sync if connected but inventory is empty (covers first-open after OAuth)
   useEffect(()=>{
     if(tabIdx !== inventoryIdx) return;
-    loadInventory();
-    fetch(`${BACKEND}/api/gmail/status`).then(r=>r.json()).then(d=>setGmailConnected(!!d.connected)).catch(()=>{});
-  },[tabIdx, inventoryIdx, loadInventory]);
+    loadInventory().then(status => {
+      if(status?.connected && (inventory.length === 0)) syncGmail();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[tabIdx, inventoryIdx]);
 
   // When user returns from Gmail OAuth tab, auto-sync if auth was pending
   useEffect(()=>{
@@ -2126,6 +2129,7 @@ function App() {
   const [invFilter,      setInvFilter]      = useState("current");
   const [invSyncing,     setInvSyncing]     = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailLastSync,  setGmailLastSync]  = useState(null);
   const [showAddItem,    setShowAddItem]    = useState(false);
   const [addItemForm,    setAddItemForm]    = useState({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
   const gmailAuthPendingRef = useRef(false); // set when user opens Gmail OAuth tab
@@ -2570,6 +2574,8 @@ function App() {
       const statusD = await statusR.json();
       setInventory(invD.inventory || []);
       setGmailConnected(!!statusD.connected);
+      setGmailLastSync(statusD.last_sync || null);
+      return statusD;  // caller can inspect connection state
     } catch(e) { console.error("loadInventory:", e); }
   }, []);
 
@@ -3446,17 +3452,41 @@ function App() {
               </div>
             )}
 
-            {/* Gmail connect prompt — show when not connected */}
-            {!gmailConnected&&(
-              <div className="card card-padded" style={{textAlign:"center",marginTop:8}}>
-                <div style={{fontSize:13,color:"var(--text-3)",marginBottom:10}}>Connect Gmail to automatically import Amazon orders</div>
-                <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
-                  onClick={()=>{ gmailAuthPendingRef.current = true; }}
-                  style={{display:"inline-block",background:"#007aff",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
-                  Connect Gmail
-                </a>
-              </div>
-            )}
+            {/* Gmail status card — always visible at bottom */}
+            <div className="card card-padded" style={{marginTop:8}}>
+              {gmailConnected ? (
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  {/* iOS-style green checkmark */}
+                  <div style={{width:30,height:30,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 8px rgba(48,209,88,0.35)"}}>
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                      <polyline points="2.5,7.5 6.2,11.2 12.5,3.8" stroke="white" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>Gmail connected</div>
+                    <div style={{fontSize:11,color:"var(--text-3)"}}>
+                      {gmailLastSync
+                        ? `Last synced ${new Date(gmailLastSync).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
+                        : "Not yet synced — tap ⟳ Gmail above"}
+                    </div>
+                  </div>
+                  <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
+                    onClick={()=>{ gmailAuthPendingRef.current = true; }}
+                    style={{fontSize:11,color:"#007aff",textDecoration:"none",fontWeight:600,flexShrink:0,touchAction:"manipulation"}}>
+                    Reconnect
+                  </a>
+                </div>
+              ) : (
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:13,color:"var(--text-3)",marginBottom:10}}>Connect Gmail to automatically import Amazon orders</div>
+                  <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
+                    onClick={()=>{ gmailAuthPendingRef.current = true; }}
+                    style={{display:"inline-block",background:"#007aff",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
+                    Connect Gmail
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
           );
         })()}
