@@ -2642,25 +2642,6 @@ function App() {
     tagInventoryItem(id, next);
   }, [tagInventoryItem]);
 
-  const bulkAction = useCallback(async (action, propTag) => {
-    const ids = [...selectedItems];
-    if(!ids.length) return;
-    // Optimistic update
-    setInventory(prev => prev.map(it => {
-      if(!selectedItems.has(it.id)) return it;
-      if(action==="tag")     return {...it, prop_tag: propTag};
-      if(action==="exclude") return {...it, excluded: true};
-      return it;
-    }));
-    setSelectedItems(new Set());
-    try {
-      await fetch(`${BACKEND}/api/inventory/bulk`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ids, action, prop_tag: propTag}),
-      });
-    } catch(e) { console.error("bulkAction:", e); await loadInventory(); }
-  }, [selectedItems, loadInventory]);
-
   const saveCitySettings = useCallback(async (settings) => {
     setCitySettings(settings);
     try {
