@@ -1394,6 +1394,22 @@ def bulk_inventory():
     return jsonify({"ok": True, "updated": updated})
 
 
+# ── POST /api/inventory/delete ───────────────────────────────
+@app.route("/api/inventory/delete", methods=["POST"])
+def delete_inventory_items():
+    """Permanently remove a list of inventory item IDs from the store."""
+    body  = request.json or {}
+    ids   = body.get("ids", [])
+    store = load_store()
+    inv   = store.get("inventory", {})
+    removed = [iid for iid in ids if iid in inv]
+    for iid in removed:
+        del inv[iid]
+    store["inventory"] = inv
+    save_store(store)
+    return jsonify({"ok": True, "removed": len(removed)})
+
+
 # ── POST /api/inventory/classify ─────────────────────────────
 @app.route("/api/inventory/classify", methods=["POST"])
 def classify_inventory_item():

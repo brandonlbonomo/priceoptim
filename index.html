@@ -3750,23 +3750,50 @@ function App() {
                                 {/* Inline edit panel */}
                                 {isEditing&&(
                                   <div style={{padding:"0 14px 12px",background:"rgba(0,0,0,0.02)"}}>
-                                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:6,marginBottom:8}}>
-                                      <input value={editRow.name}
-                                        onChange={e=>setEditRow(r=>({...r,name:e.target.value}))}
-                                        placeholder="Item name"
-                                        style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                                      <input type="number" min="1" value={editRow.unitCount}
-                                        onChange={e=>setEditRow(r=>({...r,unitCount:parseInt(e.target.value)||1}))}
-                                        placeholder="Units"
-                                        style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none",textAlign:"center"}}/>
-                                    </div>
-                                    <div style={{fontSize:10,color:"var(--text-3)",marginBottom:8}}>Units = items per pack/delivery · applies to all {rowIds.length} order{rowIds.length!==1?"s":""}</div>
-                                    <div style={{display:"flex",gap:6}}>
-                                      <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount);}}
-                                        style={{flex:1,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Save</button>
-                                      <button onClick={e=>{e.stopPropagation();setEditRow(null);}}
-                                        style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:8,padding:"8px",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
-                                    </div>
+                                    {editRow.confirmDelete?(
+                                      /* ── Delete confirmation ── */
+                                      <>
+                                        <div style={{fontSize:13,fontWeight:600,color:"var(--red)",marginBottom:10}}>
+                                          Remove {rowIds.length} order{rowIds.length!==1?"s":""} for "{editRow.name}"?
+                                        </div>
+                                        <div style={{display:"flex",gap:6}}>
+                                          <button onClick={async e=>{
+                                            e.stopPropagation();
+                                            setInventory(prev=>prev.filter(it=>!rowIds.includes(it.id)));
+                                            setEditRow(null);
+                                            fetch(`${BACKEND}/api/inventory/delete`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:rowIds})}).catch(()=>{});
+                                          }} style={{flex:2,background:"#dc2626",color:"#fff",border:"none",borderRadius:8,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>
+                                            Delete
+                                          </button>
+                                          <button onClick={e=>{e.stopPropagation();setEditRow(r=>({...r,confirmDelete:false}));}}
+                                            style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:8,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>
+                                            Keep
+                                          </button>
+                                        </div>
+                                      </>
+                                    ):(
+                                      /* ── Edit fields ── */
+                                      <>
+                                        <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:6,marginBottom:8}}>
+                                          <input value={editRow.name}
+                                            onChange={e=>setEditRow(r=>({...r,name:e.target.value}))}
+                                            placeholder="Item name"
+                                            style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                                          <input type="number" min="1" value={editRow.unitCount}
+                                            onChange={e=>setEditRow(r=>({...r,unitCount:parseInt(e.target.value)||1}))}
+                                            placeholder="Units"
+                                            style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none",textAlign:"center"}}/>
+                                        </div>
+                                        <div style={{display:"flex",gap:6}}>
+                                          <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount);}}
+                                            style={{flex:2,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Save</button>
+                                          <button onClick={e=>{e.stopPropagation();setEditRow(r=>({...r,confirmDelete:true}));}}
+                                            style={{flex:1,background:"rgba(220,38,38,0.08)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.18)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:600,cursor:"pointer",touchAction:"manipulation"}}>Delete</button>
+                                          <button onClick={e=>{e.stopPropagation();setEditRow(null);}}
+                                            style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:8,padding:"8px",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 )}
                               </div>
