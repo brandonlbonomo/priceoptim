@@ -1170,10 +1170,12 @@ def _reclean_inventory_store(store):
         if it["classified"] is None and re.match(r'^delivered:', subject.strip(), re.I):
             it["excluded"] = True
         if subject:
-            # Extract canonical name from original subject line
-            it["item"] = _clean_item_name(subject)
-            # Extract unit count from original text BEFORE canonicalization
-            it["unit_count"] = _extract_unit_count(subject)
+            # Skip auto-name if the user has manually locked the name
+            if not it.get("name_locked"):
+                it["item"] = _clean_item_name(subject)
+            # Skip auto-unit_count if the user has manually locked it
+            if not it.get("unit_count_locked"):
+                it["unit_count"] = _extract_unit_count(subject)
             # Re-extract order quantity from "Ordered: 4 'Product'" pattern
             m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
             if m and it.get("quantity", 1) == 1:
@@ -1465,12 +1467,13 @@ def edit_inventory_items():
         if not it:
             continue
         if item_name:
-            it["item"] = item_name
-            # Regenerate inventory_key so deduplication grouping stays correct
+            it["item"]        = item_name
+            it["name_locked"] = True   # prevent reclean from overwriting
             words = re.sub(r"[^a-z0-9\s]", "", item_name.lower()).split()
             it["inventory_key"] = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
         if unit_count is not None:
-            it["unit_count"] = max(1, int(unit_count))
+            it["unit_count"]        = max(1, int(unit_count))
+            it["unit_count_locked"] = True   # prevent reclean from overwriting
         updated += 1
 
     store["inventory"] = inventory
