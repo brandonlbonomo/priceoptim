@@ -1007,7 +1007,9 @@ def _extract_canonical_name(raw_title):
 
 
 _LIQUID_RE = re.compile(
-    r'soap|shampoo|conditioner|body\s*wash|hand\s*sanitizer|sanitiser|lotion|dish\s*liquid',
+    r'soap|shampoo|conditioner|body\s*wash|sanitizer|sanitiser|lotion|dish\s*liquid|'
+    r'water|detergent|bleach|cleaner|spray|softener|rinse|mouthwash|'
+    r'fabric\s*softener|laundry\s*liquid|dish\s*soap',
     re.I)
 
 def _extract_volume_oz(text):
@@ -1517,6 +1519,12 @@ def edit_inventory_items():
         if "volume_oz" in body:  # explicit key presence — allows clearing with null
             it["volume_oz"]        = volume_oz  # None = revert to count-based
             it["volume_oz_locked"] = (volume_oz is not None)
+        if "per_stay" in body:
+            per_stay_val = body.get("per_stay")
+            if per_stay_val is None:
+                it.pop("per_stay", None)
+            else:
+                it["per_stay"] = float(per_stay_val)
         updated += 1
 
     store["inventory"] = inventory
