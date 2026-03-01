@@ -3388,6 +3388,7 @@ function App() {
 
           const unclassified = inventory.filter(it=>!it.excluded&&(it.classified==null||it.classified===undefined));
           const consistent   = inventory.filter(it=>it.classified==="inventory");
+          const noCity       = consistent.filter(it=>!it.city_tag);
           const hidden       = inventory.filter(it=>it.excluded||it.classified==="not_inventory");
           const STATUS_COL   = {green:"#16a34a",yellow:"#d97706",red:"#dc2626",unknown:"#d1d5db"};
           const STATUS_BG    = {green:"rgba(22,163,74,0.10)",yellow:"rgba(217,119,6,0.10)",red:"rgba(220,38,38,0.10)",unknown:"rgba(0,0,0,0.04)"};
@@ -3575,6 +3576,43 @@ function App() {
                     {/* ── City summary cards ── */}
                     {!selectedCity&&(
                       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+                        {/* Items classified as inventory but missing city assignment */}
+                        {noCity.length>0&&(
+                          <div>
+                            <div style={{fontSize:12,fontWeight:700,color:"#d97706",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:"#d97706"}}/>
+                              {noCity.length} item{noCity.length!==1?"s":""} need city assignment
+                            </div>
+                            <div className="card" style={{overflow:"hidden"}}>
+                              {noCity.map((it,i)=>{
+                                const selCity=classifyCity[it.id];
+                                return (
+                                  <div key={it.id} style={{borderBottom:i<noCity.length-1?"1px solid rgba(0,0,0,0.05)":"none",padding:"12px 14px"}}>
+                                    <div style={{fontSize:13,fontWeight:600,marginBottom:8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{fmtItem(it.item,it.unit_count)}</div>
+                                    <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                                      {CITY_LIST.map(city=>(
+                                        <button key={city.id} onClick={()=>setClassifyCity(p=>({...p,[it.id]:city.id}))}
+                                          style={{fontSize:11,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                                            background:selCity===city.id?`${CITY_COLOR[city.id]}15`:"rgba(0,0,0,0.04)",
+                                            color:selCity===city.id?CITY_COLOR[city.id]:"var(--text-3)",
+                                            border:`1px solid ${selCity===city.id?`${CITY_COLOR[city.id]}30`:"rgba(0,0,0,0.08)"}`}}>
+                                          {city.id==="houston"?"Houston TX":"Niagara NY"}
+                                        </button>
+                                      ))}
+                                      <button disabled={!selCity} onClick={()=>selCity&&classifyItem(it.id,"inventory",selCity)}
+                                        style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:selCity?"pointer":"default",touchAction:"manipulation",marginLeft:"auto",
+                                          background:selCity?"rgba(22,163,74,0.12)":"rgba(0,0,0,0.04)",
+                                          color:selCity?"var(--green)":"var(--text-3)",
+                                          border:`1px solid ${selCity?"rgba(22,163,74,0.22)":"rgba(0,0,0,0.07)"}`}}>
+                                        Assign
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         {cityDashboard.map(city=>{
                           if(city.rows.length===0) return null;
                           const total=city.rows.length;

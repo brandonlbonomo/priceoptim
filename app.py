@@ -1058,13 +1058,21 @@ def _parse_amazon_email(msg_data):
             _walk(sub)
     _walk(msg_data.get("payload", {}))
 
-    # Clean item name from subject
+    # Extract canonical product name from email subject
     item = _clean_item_name(subject)
-    # Fallback: look in body
-    if not item or item == subject:
+
+    # If body has a longer product description, check if it gives a better
+    # canonical name (e.g. "You ordered: Bounty Quick-Size Paper Towels 12 Rolls")
+    if body:
         m2 = re.search(r'(?:You ordered|Item ordered|Ordered):\s*(.+)', body, re.I)
         if m2:
-            item = m2.group(1).strip()[:120]
+            body_item = m2.group(1).strip()[:200]
+            body_canonical = _clean_item_name(body_item)
+            # Prefer body result if subject canonical was a single-word (likely brand)
+            if body_canonical and len(body_canonical.split()) > len(item.split()):
+                item = body_canonical
+                # Also update raw title source for unit count extraction below
+                subject = body_item
 
     # Order number  (###-#######-#######)
     order_num = ""
@@ -1072,8 +1080,8 @@ def _parse_amazon_email(msg_data):
     if m3:
         order_num = m3.group(1)
 
-    # Unit count — how many units are in this product (e.g. 12-pack = 12)
-    unit_count = _extract_unit_count(item)
+    # Unit count — extract from original source text BEFORE canonicalization
+    unit_count = _extract_unit_count(subject)
 
     # Order quantity — "Ordered: 4 'Product'" has qty before the product name
     qty = 1
@@ -1112,28 +1120,30 @@ def _parse_amazon_email(msg_data):
 def _reclean_inventory_store(store):
     """
     Retroactively clean all stored inventory items:
-    - Re-apply _clean_item_name to the stored subject → update 'item'
-    - Re-extract unit_count and quantity-from-subject
+    - Re-apply _clean_item_name to the stored subject → canonical product name
+    - Re-extract unit_count from ORIGINAL text (not the canonical name)
     - Auto-exclude untagged delivery notifications
     """
     inventory = store.get("inventory", {})
     for it in inventory.values():
-        subject = it.get("subject") or it.get("item", "")
-        # Ensure new classification fields exist (no-op if already set by user)
+        # Use the raw email subject for canonical extraction (has full product title)
+        subject = it.get("subject") or ""
+        # Ensure new classification fields exist
         it.setdefault("classified",    None)
         it.setdefault("city_tag",      None)
         it.setdefault("inventory_key", None)
         # Auto-exclude delivery notifications only if user hasn't classified them yet
         if it["classified"] is None and re.match(r'^delivered:', subject.strip(), re.I):
             it["excluded"] = True
-        # Re-clean item name
-        it["item"] = _clean_item_name(subject)
-        # Re-extract unit count from cleaned name
-        it["unit_count"] = _extract_unit_count(it["item"])
-        # Re-extract order quantity from subject pattern "Ordered: 4 'Product'"
-        m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
-        if m and it.get("quantity", 1) == 1:
-            it["quantity"] = int(m.group(1))
+        if subject:
+            # Extract canonical name from original subject line
+            it["item"] = _clean_item_name(subject)
+            # Extract unit count from original text BEFORE canonicalization
+            it["unit_count"] = _extract_unit_count(subject)
+            # Re-extract order quantity from "Ordered: 4 'Product'" pattern
+            m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
+            if m and it.get("quantity", 1) == 1:
+                it["quantity"] = int(m.group(1))
     store["inventory"] = inventory
     return store
 
