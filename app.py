@@ -960,17 +960,20 @@ def _parse_amazon_email(msg_data):
         price = float(prices[0])
 
     return {
-        "id":         msg_data["id"],
-        "subject":    subject,
-        "item":       item or subject,
-        "order_num":  order_num,
-        "price":      price,
-        "quantity":   qty,
-        "unit_count": unit_count,
-        "date":       order_date,
-        "prop_tag":   None,
-        "excluded":   False,
-        "source":     "amazon",
+        "id":            msg_data["id"],
+        "subject":       subject,
+        "item":          item or subject,
+        "order_num":     order_num,
+        "price":         price,
+        "quantity":      qty,
+        "unit_count":    unit_count,
+        "date":          order_date,
+        "prop_tag":      None,
+        "excluded":      False,
+        "source":        "amazon",
+        "classified":    None,   # None | "inventory" | "not_inventory"
+        "city_tag":      None,   # None | "houston" | "niagara"
+        "inventory_key": None,   # normalized name for grouping duplicate orders
     }
 
 
@@ -984,8 +987,12 @@ def _reclean_inventory_store(store):
     inventory = store.get("inventory", {})
     for it in inventory.values():
         subject = it.get("subject") or it.get("item", "")
-        # Auto-exclude untagged delivery notifications
-        if re.match(r'^delivered:', subject.strip(), re.I) and not it.get("prop_tag"):
+        # Ensure new classification fields exist (no-op if already set by user)
+        it.setdefault("classified",    None)
+        it.setdefault("city_tag",      None)
+        it.setdefault("inventory_key", None)
+        # Auto-exclude delivery notifications only if user hasn't classified them yet
+        if it["classified"] is None and re.match(r'^delivered:', subject.strip(), re.I):
             it["excluded"] = True
         # Re-clean item name
         it["item"] = _clean_item_name(subject)
@@ -1191,6 +1198,43 @@ def bulk_inventory():
     store["inventory"] = inventory
     save_store(store)
     return jsonify({"ok": True, "updated": updated})
+
+
+# ── POST /api/inventory/classify ─────────────────────────────
+@app.route("/api/inventory/classify", methods=["POST"])
+def classify_inventory_item():
+    """Classify a single inventory item as 'inventory' or 'not_inventory'."""
+    body       = request.json or {}
+    item_id    = body.get("id")
+    classified = body.get("classified")   # "inventory" | "not_inventory" | None
+    city_tag   = body.get("city_tag")     # "houston" | "niagara" | None
+    item_name  = body.get("item_name")    # optional user-edited name
+
+    store     = load_store()
+    inventory = store.get("inventory", {})
+    if item_id not in inventory:
+        return jsonify({"ok": False, "error": "Item not found"}), 404
+
+    it = inventory[item_id]
+    it["classified"] = classified
+    it["excluded"]   = (classified == "not_inventory")
+
+    if classified == "inventory":
+        it["city_tag"] = city_tag
+        if item_name:
+            it["item"] = item_name
+        # Generate normalized inventory key for deduplication / grouping
+        name  = it.get("item", "")
+        stop  = {"the","a","an","of","for","with","and","or","in","by","to","from"}
+        words = re.sub(r"[^a-z0-9\s]", "", name.lower()).split()
+        it["inventory_key"] = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
+    else:
+        it["city_tag"]      = None
+        it["inventory_key"] = None
+
+    store["inventory"] = inventory
+    save_store(store)
+    return jsonify({"ok": True})
 
 
 # ── POST /api/inventory/reclean ──────────────────────────────

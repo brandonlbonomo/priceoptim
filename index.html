@@ -2125,25 +2125,22 @@ function App() {
   const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
   const [drillDown, setDrillDown] = useState(null); // {mo:"2025-11", type:"rev"|"exp"|"net", txs:[]}
   const [pierceTxFilter, setPierceTxFilter] = useState("all");
-  const [inventory,           setInventory]           = useState([]);
-  const [invFilter,           setInvFilter]           = useState("tagged");
-  const [invSyncing,          setInvSyncing]          = useState(false);
-  const [gmailConnected,      setGmailConnected]      = useState(false);
-  const [gmailLastSync,       setGmailLastSync]       = useState(null);
-  const [showAddItem,         setShowAddItem]         = useState(false);
-  const [addItemForm,         setAddItemForm]         = useState({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
-  const [selectedItems,       setSelectedItems]       = useState(new Set());
-  const [expandedProps,       setExpandedProps]       = useState(new Set(["lockwood","everton","bstreet","pierce","untagged"]));
-  const [consumptionSettings, setConsumptionSettings] = useState({});
-  const [showConsSetting,     setShowConsSetting]     = useState(false);
-  const gmailAuthPendingRef  = useRef(false);
-  const invRecleanedRef      = useRef(false);
+  const [inventory,        setInventory]        = useState([]);
+  const [invSyncing,       setInvSyncing]       = useState(false);
+  const [gmailConnected,   setGmailConnected]   = useState(false);
+  const [gmailLastSync,    setGmailLastSync]    = useState(null);
+  const [showAddItem,      setShowAddItem]      = useState(false);
+  const [addItemForm,      setAddItemForm]      = useState({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});
+  const [citySettings,     setCitySettings]     = useState({});
+  const [showCitySettings, setShowCitySettings] = useState(false);
+  const [classifyCity,     setClassifyCity]     = useState({});   // {[itemId]: "houston"|"niagara"}
+  const [showHiddenItems,  setShowHiddenItems]  = useState(false);
+  const gmailAuthPendingRef = useRef(false);
+  const invRecleanedRef     = useRef(false);
 
   // ── City / property layout ─────────────────────────────────
-  const CITIES = [
-    {id:"houston",  label:"Houston, TX",       props:["lockwood","everton"]},
-    {id:"niagara",  label:"Niagara Falls, NY",  props:["bstreet","pierce"]},
-  ];
+  const CITY_LIST  = [{id:"houston", label:"Houston, TX"},{id:"niagara", label:"Niagara Falls, NY"}];
+  const CITY_COLOR = {houston:"#007aff", niagara:"#bf5af2"};
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave"};
   const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
 
@@ -2167,20 +2164,11 @@ function App() {
     for(const c of ITEM_CATS) if(c.re.test(name)) return c.perTurn;
     return 0.2;
   };
-  const estimateRemaining = useCallback((it) => {
-    if(!it.prop_tag || !it.date) return null;
-    const s = consumptionSettings[it.prop_tag];
-    if(!s?.turns_per_month) return null;
-    const totalUnits = (it.unit_count||1) * (it.quantity||1);
-    const perTurn    = getCatPerTurn(it.item||"");
-    const monthsSince = (Date.now() - new Date(it.date)) / (30*24*60*60*1000);
-    const consumed   = perTurn * s.turns_per_month * monthsSince;
-    const remaining  = Math.max(0, totalUnits - consumed);
-    const turnsLeft  = remaining / perTurn;
-    const daysLeft   = turnsLeft / s.turns_per_month * 30;
-    return {remaining: Math.round(remaining*10)/10, daysLeft: Math.round(daysLeft)};
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consumptionSettings]);
+  const normalizeItemKey = name => {
+    const stop = new Set(["the","a","an","of","for","with","and","or","in","by","to","from","your","my","x"]);
+    return (name||"").toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim()
+      .split(" ").filter(w=>w.length>2&&!stop.has(w)).slice(0,5).join(" ");
+  };
 
   useEffect(()=>{
     // Load bank connections
@@ -2632,7 +2620,7 @@ function App() {
       setInventory(invD.inventory || []);
       setGmailConnected(!!statusD.connected);
       setGmailLastSync(statusD.last_sync || null);
-      setConsumptionSettings(consD.settings || {});
+      setCitySettings(consD.settings || {});
       return statusD;
     } catch(e) { console.error("loadInventory:", e); }
   }, []);
@@ -2673,15 +2661,36 @@ function App() {
     } catch(e) { console.error("bulkAction:", e); await loadInventory(); }
   }, [selectedItems, loadInventory]);
 
-  const saveConsumptionSettings = useCallback(async (settings) => {
-    setConsumptionSettings(settings);
+  const saveCitySettings = useCallback(async (settings) => {
+    setCitySettings(settings);
     try {
       await fetch(`${BACKEND}/api/consumption-settings`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({settings}),
       });
-    } catch(e) { console.error("saveConsumptionSettings:", e); }
+    } catch(e) { console.error("saveCitySettings:", e); }
   }, []);
+
+  const classifyItem = useCallback(async (id, classified, cityTag) => {
+    // Optimistic update
+    setInventory(prev => prev.map(it => {
+      if(it.id !== id) return it;
+      return {
+        ...it,
+        classified,
+        city_tag:      cityTag,
+        excluded:      classified === "not_inventory",
+        inventory_key: classified === "inventory" ? normalizeItemKey(it.item||"") : null,
+      };
+    }));
+    setClassifyCity(prev => { const n={...prev}; delete n[id]; return n; });
+    try {
+      await fetch(`${BACKEND}/api/inventory/classify`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({id, classified, city_tag: cityTag}),
+      });
+    } catch(e) { console.error("classifyItem:", e); await loadInventory(); }
+  }, [loadInventory]);
 
   const syncGmail = useCallback(async () => {
     setInvSyncing(true);
@@ -3413,100 +3422,68 @@ function App() {
         <div className="swipe-pane">
         {(()=>{
           if(!isPane(inventoryIdx)) return null;
-          const INV_PROPS = [{id:null,label:"Tag property"},{id:"lockwood",label:"Lockwood"},{id:"everton",label:"Everton"},{id:"bstreet",label:"B Street"},{id:"pierce",label:"Pierce Ave"}];
-          const visibleInv = inventory.filter(it=>!it.excluded);
-          const allIds = visibleInv.map(it=>it.id);
-          const allSelected = allIds.length>0 && allIds.every(id=>selectedItems.has(id));
-          const someSelected = selectedItems.size>0;
-          const taggedCount = visibleInv.filter(it=>it.prop_tag).length;
-          const untagged = visibleInv.filter(it=>!it.prop_tag);
 
-          // Low-stock: consumption engine alerts (<14 days remaining)
-          const lowStockItems = visibleInv.filter(it=>{
-            const est = estimateRemaining(it);
-            return est && est.daysLeft<14 && est.remaining>0;
-          });
+          const unclassified = inventory.filter(it=>!it.excluded&&(it.classified==null||it.classified===undefined));
+          const consistent   = inventory.filter(it=>it.classified==="inventory");
+          const hidden       = inventory.filter(it=>it.excluded||it.classified==="not_inventory");
+          const STATUS_COLOR = {green:"#30d158",yellow:"#ff9f0a",red:"#ff453a",unknown:"rgba(255,255,255,0.3)"};
 
-          // City summary
-          const citySummary = CITIES.map(city=>{
-            const cityItems = visibleInv.filter(it=>city.props.includes(it.prop_tag));
-            const alertCount = cityItems.filter(it=>{const e=estimateRemaining(it);return e&&e.daysLeft<14;}).length;
-            return {...city,totalItems:cityItems.length,alertCount};
-          });
-
-          const toggleSelectAll = ()=>{
-            if(allSelected) setSelectedItems(new Set());
-            else setSelectedItems(new Set(allIds));
-          };
-          const toggleSelectItem = id=>{
-            setSelectedItems(prev=>{
-              const next=new Set(prev);
-              next.has(id)?next.delete(id):next.add(id);
-              return next;
+          // Build city dashboard: group consistent items by city + inventory_key
+          const cityDashboard = CITY_LIST.map(city=>{
+            const cityItems=consistent.filter(it=>it.city_tag===city.id);
+            const s=citySettings[city.id]||{};
+            const groups={};
+            cityItems.forEach(it=>{
+              const key=it.inventory_key||normalizeItemKey(it.item||"");
+              if(!groups[key])groups[key]=[];
+              groups[key].push(it);
             });
-          };
-          const togglePropExpanded = pid=>{
-            setExpandedProps(prev=>{
-              const next=new Set(prev);
-              next.has(pid)?next.delete(pid):next.add(pid);
-              return next;
+            const rows=Object.entries(groups).map(([key,orders])=>{
+              orders.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+              const latest=orders[0];
+              const totalUnits=orders.reduce((sum,o)=>sum+(o.unit_count||1)*(o.quantity||1),0);
+              let remaining=null,daysLeft=null,status="unknown";
+              if(s.turns_per_month&&s.active_units){
+                const perTurn=getCatPerTurn(latest.item||"");
+                const cpd=perTurn*s.turns_per_month*s.active_units/30;
+                if(cpd>0){
+                  let total=0;
+                  orders.forEach(o=>{
+                    const units=(o.unit_count||1)*(o.quantity||1);
+                    const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
+                    total+=Math.max(0,units-cpd*days);
+                  });
+                  remaining=Math.round(total*10)/10;
+                  daysLeft=Math.round(remaining/cpd);
+                  status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
+                }
+              }
+              return {key,name:latest.item,lastOrderDate:latest.date,totalUnits,remaining,daysLeft,status,orders};
             });
-          };
-
-          const renderItem = (it,showTagBtn=false)=>{
-            const est = estimateRemaining(it);
-            const isLow = est && est.daysLeft<14;
-            const checked = selectedItems.has(it.id);
-            return (
-              <div key={it.id} style={{display:"flex",alignItems:"center",padding:"11px 14px",gap:10,
-                background:checked?"rgba(0,122,255,0.08)":"transparent"}}>
-                <input type="checkbox" checked={checked} onChange={()=>toggleSelectItem(it.id)}
-                  style={{width:16,height:16,borderRadius:4,accentColor:"#007aff",flexShrink:0,cursor:"pointer"}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
-                  <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
-                    {it.date&&<span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{it.date}</span>}
-                    {(it.unit_count>1||it.quantity>1)&&(
-                      <span style={{fontSize:11,color:"var(--text-3)"}}>
-                        {it.quantity>1?`${it.quantity}×`:""}{it.unit_count>1?`${it.unit_count}u`:""}
-                      </span>
-                    )}
-                    {est&&(
-                      <span style={{fontSize:11,fontWeight:600,
-                        color:isLow?"#ff9f0a":"var(--text-3)",
-                        background:isLow?"rgba(255,149,0,0.12)":"transparent",
-                        padding:isLow?"1px 6px":"0",borderRadius:isLow?6:0}}>
-                        {isLow?`⚠ ~${est.daysLeft}d left`:`~${est.remaining} left`}
-                      </span>
-                    )}
-                    {showTagBtn&&(
-                      <button onClick={()=>cycleItemProp(it.id,it.prop_tag)}
-                        style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
-                          background:"rgba(255,255,255,0.08)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)"}}>
-                        + tag
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {it.price!=null&&<div style={{flexShrink:0,fontSize:13,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)"}}>{fmt$(it.price)}</div>}
-              </div>
-            );
-          };
+            rows.sort((a,b)=>({red:0,yellow:1,green:2,unknown:3})[a.status]-({red:0,yellow:1,green:2,unknown:3})[b.status]);
+            return {...city,rows,alertCount:rows.filter(r=>r.status==="red").length,hasSettings:!!(s.turns_per_month&&s.active_units)};
+          });
 
           return (
           <div style={{minHeight:"100%"}}>
+
             {/* Header */}
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Inventory · Supplies</div>
-                <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                  <div className="big-num" style={{fontSize:32}}>{visibleInv.length}</div>
-                  <div style={{fontSize:13,color:"var(--text-3)"}}>{taggedCount} tagged</div>
+                <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
+                  <div className="big-num" style={{fontSize:32}}>{consistent.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>tracked</div>
+                  {unclassified.length>0&&(
+                    <div style={{fontSize:12,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#ff9f0a",border:"1px solid rgba(255,149,0,0.3)",borderRadius:12,padding:"2px 9px"}}>
+                      {unclassified.length} new
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{display:"flex",gap:8,marginTop:4,flexShrink:0}}>
-                <button onClick={()=>setShowConsSetting(v=>!v)}
-                  style={{fontSize:12,fontWeight:600,background:showConsSetting?"rgba(0,122,255,0.15)":"rgba(255,255,255,0.08)",color:showConsSetting?"#007aff":"var(--text-2)",border:`1px solid ${showConsSetting?"rgba(0,122,255,0.3)":"rgba(255,255,255,0.14)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
+                <button onClick={()=>setShowCitySettings(v=>!v)}
+                  style={{fontSize:12,fontWeight:600,background:showCitySettings?"rgba(0,122,255,0.15)":"rgba(255,255,255,0.08)",color:showCitySettings?"#007aff":"var(--text-2)",border:`1px solid ${showCitySettings?"rgba(0,122,255,0.3)":"rgba(255,255,255,0.14)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
                   ⚙ Settings
                 </button>
                 <button onClick={syncGmail} disabled={invSyncing}
@@ -3516,44 +3493,33 @@ function App() {
               </div>
             </div>
 
-            {/* Consumption settings panel */}
-            {showConsSetting&&(
+            {/* Occupancy settings */}
+            {showCitySettings&&(
               <div className="card card-padded" style={{marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"var(--text-2)"}}>Consumption Settings · per property</div>
-                {Object.entries(PROP_LABEL).map(([pid,plabel])=>{
-                  const s = consumptionSettings[pid]||{};
+                <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"var(--text-2)"}}>Occupancy Settings — drives depletion estimates</div>
+                {CITY_LIST.map(city=>{
+                  const s=citySettings[city.id]||{};
                   return (
-                    <div key={pid} style={{marginBottom:12}}>
-                      <div style={{fontSize:12,fontWeight:600,color:PROP_COLOR[pid],marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:7,height:7,borderRadius:"50%",background:PROP_COLOR[pid]}}/>
-                        {plabel}
+                    <div key={city.id} style={{marginBottom:12}}>
+                      <div style={{fontSize:12,fontWeight:600,color:CITY_COLOR[city.id],marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:CITY_COLOR[city.id]}}/>
+                        {city.label}
                       </div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                        <div>
-                          <div style={{fontSize:10,color:"var(--text-3)",marginBottom:3}}>Guest turns / month</div>
-                          <input type="number" min="0" step="0.5" value={s.turns_per_month||""}
-                            onChange={e=>{
-                              const newS={...consumptionSettings,[pid]:{...(consumptionSettings[pid]||{}),turns_per_month:parseFloat(e.target.value)||0}};
-                              saveConsumptionSettings(newS);
-                            }}
-                            placeholder="e.g. 6"
-                            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                        </div>
-                        <div>
-                          <div style={{fontSize:10,color:"var(--text-3)",marginBottom:3}}>Occupancy %</div>
-                          <input type="number" min="0" max="100" step="1" value={s.occupancy_pct||""}
-                            onChange={e=>{
-                              const newS={...consumptionSettings,[pid]:{...(consumptionSettings[pid]||{}),occupancy_pct:parseFloat(e.target.value)||0}};
-                              saveConsumptionSettings(newS);
-                            }}
-                            placeholder="e.g. 65"
-                            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                        </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                        {[{k:"turns_per_month",l:"Turns / mo",p:"e.g. 6"},{k:"occupancy_pct",l:"Occupancy %",p:"e.g. 65"},{k:"active_units",l:"Active units",p:"e.g. 2"}].map(({k,l,p})=>(
+                          <div key={k}>
+                            <div style={{fontSize:10,color:"var(--text-3)",marginBottom:3}}>{l}</div>
+                            <input type="number" min="0" step="any" value={s[k]||""}
+                              onChange={e=>{const n={...citySettings,[city.id]:{...(citySettings[city.id]||{}),[k]:parseFloat(e.target.value)||0}};saveCitySettings(n);}}
+                              placeholder={p}
+                              style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );
                 })}
-                <button onClick={()=>setShowConsSetting(false)}
+                <button onClick={()=>setShowCitySettings(false)}
                   style={{width:"100%",background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Done</button>
               </div>
             )}
@@ -3561,7 +3527,7 @@ function App() {
             {/* Manual add form */}
             {showAddItem&&(
               <div className="card card-padded" style={{marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item</div>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item Manually</div>
                 <input value={addItemForm.item} onChange={e=>setAddItemForm(f=>({...f,item:e.target.value}))}
                   placeholder="Item name" style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
@@ -3572,12 +3538,19 @@ function App() {
                   <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
                     style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                 </div>
-                <select value={addItemForm.prop_tag||""} onChange={e=>setAddItemForm(f=>({...f,prop_tag:e.target.value||null}))}
-                  style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",marginBottom:8,outline:"none"}}>
-                  {INV_PROPS.map(p=><option key={p.id||""} value={p.id||""}>{p.label}</option>)}
-                </select>
+                <div style={{display:"flex",gap:6,marginBottom:8}}>
+                  {CITY_LIST.map(city=>(
+                    <button key={city.id} onClick={()=>setAddItemForm(f=>({...f,city_tag:city.id}))}
+                      style={{flex:1,fontSize:12,padding:"8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
+                        background:addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}20`:"rgba(255,255,255,0.06)",
+                        color:addItemForm.city_tag===city.id?CITY_COLOR[city.id]:"var(--text-3)",
+                        border:`1px solid ${addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}40`:"rgba(255,255,255,0.10)"}`}}>
+                      {city.id==="houston"?"Houston TX":"Niagara NY"}
+                    </button>
+                  ))}
+                </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});}}
+                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});}}
                     style={{flex:1,background:"#007aff",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
                   <button onClick={()=>setShowAddItem(false)}
                     style={{flex:1,background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
@@ -3585,133 +3558,161 @@ function App() {
               </div>
             )}
 
-            {/* Low-stock alerts */}
-            {lowStockItems.length>0&&(
-              <div className="card card-padded" style={{marginBottom:8,background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.22)"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#ff9f0a",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>⚠ Running Low — {lowStockItems.length} item{lowStockItems.length!==1?"s":""}</div>
-                {lowStockItems.map(it=>{
-                  const est=estimateRemaining(it);
-                  return (
-                    <div key={it.id} style={{display:"flex",justifyContent:"space-between",marginBottom:3,alignItems:"center"}}>
-                      <span style={{fontSize:12,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{it.item}</span>
-                      <span style={{fontSize:11,color:"#ff9f0a",fontWeight:600,flexShrink:0,marginLeft:8}}>~{est.daysLeft}d · {PROP_LABEL[it.prop_tag]||it.prop_tag}</span>
-                    </div>
-                  );
-                })}
+            {/* ── Unclassified Inbox ─────────────────────────── */}
+            {unclassified.length>0&&(
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#ff9f0a",display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:"#ff9f0a",boxShadow:"0 0 6px #ff9f0a"}}/>
+                    {unclassified.length} Unclassified
+                  </div>
+                  <div style={{display:"flex",gap:5}}>
+                    <button onClick={()=>{const m={};unclassified.forEach(it=>m[it.id]="houston");setClassifyCity(p=>({...p,...m}));}}
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(0,122,255,0.10)",color:"#007aff",border:"1px solid rgba(0,122,255,0.2)"}}>All→Houston</button>
+                    <button onClick={()=>{const m={};unclassified.forEach(it=>m[it.id]="niagara");setClassifyCity(p=>({...p,...m}));}}
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(191,90,242,0.10)",color:"#bf5af2",border:"1px solid rgba(191,90,242,0.2)"}}>All→Niagara</button>
+                    <button onClick={()=>Promise.all(unclassified.map(it=>classifyItem(it.id,"not_inventory",null)))}
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.18)"}}>Skip all</button>
+                  </div>
+                </div>
+                <div className="card" style={{overflow:"hidden"}}>
+                  {unclassified.map((it,i)=>{
+                    const selCity=classifyCity[it.id];
+                    return (
+                      <div key={it.id} style={{borderBottom:i<unclassified.length-1?"1px solid rgba(255,255,255,0.07)":"none",padding:"12px 14px"}}>
+                        <div style={{marginBottom:8}}>
+                          <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
+                          <div style={{fontSize:11,color:"var(--text-3)",marginTop:2,display:"flex",gap:8}}>
+                            {it.date&&<span>{it.date}</span>}
+                            {it.unit_count>1&&<span>{it.unit_count}-pack</span>}
+                            {it.price!=null&&<span>{fmt$(it.price)}</span>}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          {CITY_LIST.map(city=>(
+                            <button key={city.id} onClick={()=>setClassifyCity(p=>({...p,[it.id]:city.id}))}
+                              style={{fontSize:11,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                                background:selCity===city.id?`${CITY_COLOR[city.id]}18`:"rgba(255,255,255,0.05)",
+                                color:selCity===city.id?CITY_COLOR[city.id]:"var(--text-3)",
+                                border:`1px solid ${selCity===city.id?`${CITY_COLOR[city.id]}35`:"rgba(255,255,255,0.10)"}`}}>
+                              {city.id==="houston"?"Houston TX":"Niagara NY"}
+                            </button>
+                          ))}
+                          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                            <button disabled={!selCity} onClick={()=>selCity&&classifyItem(it.id,"inventory",selCity)}
+                              style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:selCity?"pointer":"default",touchAction:"manipulation",
+                                background:selCity?"rgba(48,209,88,0.14)":"rgba(255,255,255,0.04)",
+                                color:selCity?"#30d158":"rgba(255,255,255,0.2)",
+                                border:`1px solid ${selCity?"rgba(48,209,88,0.25)":"rgba(255,255,255,0.08)"}`}}>
+                              ✓ Inventory
+                            </button>
+                            <button onClick={()=>classifyItem(it.id,"not_inventory",null)}
+                              style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                                background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.18)"}}>
+                              ✗ Skip
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Select-all + bulk action bar */}
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"0 2px",flexWrap:"wrap"}}>
-              <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"var(--text-3)",flexShrink:0}}>
-                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
-                  style={{width:16,height:16,borderRadius:4,accentColor:"#007aff",cursor:"pointer"}}/>
-                {someSelected?`${selectedItems.size} selected`:"Select all"}
-              </label>
-              {someSelected?(
-                <div style={{display:"flex",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
-                  {Object.entries(PROP_LABEL).map(([pid,plabel])=>(
-                    <button key={pid} onClick={()=>bulkAction("tag",pid)}
-                      style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                        background:`${PROP_COLOR[pid]}18`,color:PROP_COLOR[pid],border:`1px solid ${PROP_COLOR[pid]}40`}}>
-                      {plabel}
-                    </button>
-                  ))}
-                  <button onClick={()=>bulkAction("exclude")}
-                    style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                      background:"rgba(255,69,58,0.10)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.20)"}}>
-                    Not inventory
-                  </button>
-                </div>
-              ):(
-                <button onClick={()=>setShowAddItem(v=>!v)} style={{marginLeft:"auto",fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                  background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"1px solid rgba(255,255,255,0.12)"}}>
-                  + Manual
-                </button>
-              )}
-            </div>
-
-            {/* City-grouped inventory */}
-            {visibleInv.length===0?(
+            {/* ── Consistent Inventory Dashboard ──────────────── */}
+            {consistent.length===0&&unclassified.length===0?(
               <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
-                No orders yet. Tap <strong>⟳ Gmail</strong> to import Amazon orders, or <strong>+ Manual</strong> to add items.
+                No items yet. Tap <strong>⟳ Gmail</strong> to import Amazon orders.
               </div>
-            ):(
+            ):consistent.length>0&&(
               <>
-                {CITIES.map(city=>{
-                  const cityItems = visibleInv.filter(it=>city.props.includes(it.prop_tag));
-                  if(cityItems.length===0) return null;
-                  const cs = citySummary.find(c=>c.id===city.id);
+                <div style={{fontSize:12,fontWeight:700,color:"var(--text-2)",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                  Consistent Inventory
+                  <button onClick={()=>setShowAddItem(v=>!v)} style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",background:"rgba(255,255,255,0.08)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)",marginLeft:"auto"}}>+ Manual</button>
+                </div>
+                {cityDashboard.map(city=>{
+                  if(city.rows.length===0) return null;
                   return (
-                    <div key={city.id} style={{marginBottom:14}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                        <div style={{fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em"}}>{city.label}</div>
-                        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                          <span style={{fontSize:11,color:"var(--text-3)"}}>{cs.totalItems} items</span>
-                          {cs.alertCount>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff9f0a"}}>⚠ {cs.alertCount} low</span>}
+                    <div key={city.id} style={{marginBottom:16}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:8,height:8,borderRadius:"50%",background:CITY_COLOR[city.id]}}/>
+                          <span style={{fontSize:12,fontWeight:700,color:"var(--text-2)"}}>{city.label}</span>
+                          <span style={{fontSize:11,color:"var(--text-3)"}}>{city.rows.length} items</span>
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          {city.alertCount>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff453a"}}>● {city.alertCount} low</span>}
+                          {!city.hasSettings&&(
+                            <button onClick={()=>setShowCitySettings(true)}
+                              style={{fontSize:11,color:"#007aff",background:"none",border:"none",cursor:"pointer",padding:0,touchAction:"manipulation"}}>
+                              + set occupancy
+                            </button>
+                          )}
                         </div>
                       </div>
-                      {city.props.map(pid=>{
-                        const propItems = visibleInv.filter(it=>it.prop_tag===pid);
-                        if(propItems.length===0) return null;
-                        const isExp = expandedProps.has(pid);
-                        const propAlerts = propItems.filter(it=>{const e=estimateRemaining(it);return e&&e.daysLeft<14;}).length;
-                        return (
-                          <div key={pid} className="card" style={{marginBottom:6,overflow:"hidden"}}>
-                            <button onClick={()=>togglePropExpanded(pid)}
-                              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-                                padding:"12px 14px",background:"none",border:"none",cursor:"pointer",touchAction:"manipulation",gap:8}}>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <div style={{width:8,height:8,borderRadius:"50%",background:PROP_COLOR[pid],flexShrink:0}}/>
-                                <span style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{PROP_LABEL[pid]}</span>
-                                <span style={{fontSize:11,color:"var(--text-3)"}}>{propItems.length} item{propItems.length!==1?"s":""}</span>
-                                {propAlerts>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff9f0a"}}>⚠ {propAlerts}</span>}
+                      <div className="card" style={{overflow:"hidden"}}>
+                        {city.rows.map((row,i)=>{
+                          const col=STATUS_COLOR[row.status];
+                          return (
+                            <div key={row.key} style={{display:"flex",alignItems:"center",padding:"12px 14px",gap:12,
+                              borderBottom:i<city.rows.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
+                              <div style={{width:9,height:9,borderRadius:"50%",background:col,flexShrink:0,
+                                boxShadow:row.status!=="unknown"?`0 0 7px ${col}`:"none"}}/>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
+                                <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
+                                  {row.orders.length>1?`${row.orders.length} orders · `:""}ordered {row.lastOrderDate}
+                                </div>
                               </div>
-                              <span style={{fontSize:12,color:"var(--text-3)",display:"inline-block",transform:isExp?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
-                            </button>
-                            {isExp&&(
-                              <div style={{borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-                                {propItems.map((it,i)=>(
-                                  <div key={it.id} style={{borderBottom:i<propItems.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
-                                    {renderItem(it,false)}
-                                  </div>
-                                ))}
+                              <div style={{flexShrink:0,textAlign:"right"}}>
+                                {row.daysLeft!=null?(
+                                  <>
+                                    <div style={{fontSize:14,fontWeight:700,color:col}}>{row.daysLeft}d</div>
+                                    <div style={{fontSize:10,color:"var(--text-3)"}}>~{row.remaining} left</div>
+                                  </>
+                                ):(
+                                  <div style={{fontSize:12,color:"var(--text-3)"}}>{row.totalUnits}u</div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
+              </>
+            )}
 
-                {/* Untagged section */}
-                {untagged.length>0&&(
-                  <div style={{marginBottom:14}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em"}}>Untagged</div>
-                      <span style={{fontSize:11,color:"var(--text-3)"}}>{untagged.length} · tap to assign</span>
-                    </div>
-                    <div className="card" style={{overflow:"hidden"}}>
-                      <button onClick={()=>togglePropExpanded("untagged")}
-                        style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
-                          padding:"12px 14px",background:"none",border:"none",cursor:"pointer",touchAction:"manipulation"}}>
-                        <span style={{fontSize:13,fontWeight:500,color:"var(--text-2)"}}>{untagged.length} untagged item{untagged.length!==1?"s":""}</span>
-                        <span style={{fontSize:12,color:"var(--text-3)",display:"inline-block",transform:expandedProps.has("untagged")?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
-                      </button>
-                      {expandedProps.has("untagged")&&(
-                        <div style={{borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-                          {untagged.map((it,i)=>(
-                            <div key={it.id} style={{borderBottom:i<untagged.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
-                              {renderItem(it,true)}
-                            </div>
-                          ))}
+            {/* ── Hidden items ────────────────────────────────── */}
+            {hidden.length>0&&(
+              <div style={{marginBottom:16}}>
+                <button onClick={()=>setShowHiddenItems(v=>!v)}
+                  style={{fontSize:12,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"4px 0",touchAction:"manipulation",width:"100%",textAlign:"left"}}>
+                  {showHiddenItems?"▾":"▸"} {hidden.length} hidden item{hidden.length!==1?"s":""} — {showHiddenItems?"collapse":"view"}
+                </button>
+                {showHiddenItems&&(
+                  <div className="card" style={{overflow:"hidden",marginTop:4}}>
+                    {hidden.map((it,i)=>(
+                      <div key={it.id} style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:10,
+                        borderBottom:i<hidden.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:"var(--text-3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.item}</div>
+                          <div style={{fontSize:10,color:"var(--text-3)",opacity:0.6,marginTop:1}}>{it.date}</div>
                         </div>
-                      )}
-                    </div>
+                        <button onClick={()=>{
+                          setInventory(prev=>prev.map(x=>x.id===it.id?{...x,classified:null,excluded:false,city_tag:null,inventory_key:null}:x));
+                          fetch(`${BACKEND}/api/inventory/classify`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:it.id,classified:null,city_tag:null})}).catch(()=>{});
+                        }}
+                          style={{fontSize:11,color:"#007aff",background:"none",border:"none",cursor:"pointer",padding:"2px 0",flexShrink:0,touchAction:"manipulation"}}>
+                          Reclassify
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {/* Gmail status card */}
