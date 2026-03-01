@@ -931,6 +931,22 @@ _PRODUCT_PATTERNS = [
     (r'ibuprofen|tylenol|acetaminophen|advil',         'Pain Reliever'),
 ]
 
+# Product nouns used to anchor fallback name extraction when no pattern matches.
+# These are kept (not filtered) and used as pivot words.
+_PRODUCT_NOUNS = {
+    'pillow','pillows','pillowcase','pillowcases',
+    'sheet','sheets','duvet','comforter','blanket','quilt',
+    'towel','towels','washcloth','washcloths','bathrobe',
+    'mat','rug','curtain','curtains','liner','liners',
+    'tissue','napkin','napkins',
+    'soap','shampoo','conditioner','lotion','cream','gel','serum',
+    'brush','toothbrush','toothpaste','floss','razor','razors',
+    'detergent','softener','bleach','sponge','sponges',
+    'wipes','cleaner','spray','disinfectant',
+    'coffee','wrap','foil','sanitizer','bandage','bandages',
+    'cover','protector','pads','pad','insert','inserts',
+}
+
 # Stop words for fallback name extraction
 _NAME_STOP = {
     'and','the','for','with','of','in','by','to','from','a','an','or','on','at',
@@ -962,11 +978,29 @@ def _extract_canonical_name(raw_title):
         if re.search(pattern, t, re.I):
             return canonical
 
-    # 2. Fallback: remove numbers and units, keep first 3 meaningful words
-    words = re.sub(r'\b\d+\b', '', raw_title)            # strip bare numbers
-    words = re.sub(r'[,.()\[\]"\'!?]+', ' ', words)     # strip punctuation
-    tokens = [w for w in words.split()
-              if w.lower() not in _NAME_STOP and len(w) > 1]
+    # 2. Fallback: anchor on a known product noun, or skip leading brand word
+    words = re.sub(r'\b\d+\b', '', raw_title)        # strip bare numbers
+    words = re.sub(r'[,.()\[\]"\'!?]+', ' ', words)  # strip punctuation
+    all_tokens = [w for w in words.split() if len(w) > 1]
+
+    # 2a. Look for a product noun anywhere in the title; build name around it
+    for i, w in enumerate(all_tokens):
+        if w.lower() in _PRODUCT_NOUNS:
+            # Take 0-2 meaningful descriptor words before the noun + noun itself
+            window = all_tokens[max(0, i - 2):i + 2]
+            clean = [t for t in window if t.lower() not in _NAME_STOP]
+            if clean:
+                return " ".join(clean[:3]).title()
+
+    # 2b. No product noun found — skip the first word if it looks like a brand
+    # (starts with uppercase and isn't a stop word), then take 3 content words
+    skip = 1 if all_tokens and all_tokens[0][0].isupper() else 0
+    tokens = [w for w in all_tokens[skip:] if w.lower() not in _NAME_STOP]
+    if tokens:
+        return " ".join(tokens[:3]).title()
+
+    # Last resort — take first 3 non-stop words from the full title
+    tokens = [w for w in all_tokens if w.lower() not in _NAME_STOP]
     if tokens:
         return " ".join(tokens[:3]).title()
     return raw_title.strip()
@@ -1144,6 +1178,12 @@ def _reclean_inventory_store(store):
             m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
             if m and it.get("quantity", 1) == 1:
                 it["quantity"] = int(m.group(1))
+        # Always regenerate inventory_key for classified items so grouping is fresh
+        if it.get("classified") == "inventory" and it.get("item"):
+            name  = it["item"]
+            stop  = {"the","a","an","of","for","with","and","or","in","by","to","from"}
+            words = re.sub(r"[^a-z0-9\s]", "", name.lower()).split()
+            it["inventory_key"] = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
     store["inventory"] = inventory
     return store
 
@@ -1298,18 +1338,30 @@ def update_inventory():
     if iid in inventory:
         inventory[iid].update({k: v for k, v in item.items() if k != "id"})
     else:
+        name = item.get("item", "")
+        classified = item.get("classified")  # "inventory" | None
+        city_tag   = item.get("city_tag")
+        # Generate inventory_key if classifying as inventory
+        inv_key = None
+        if classified == "inventory" and name:
+            stop  = {"the","a","an","of","for","with","and","or","in","by","to","from"}
+            words = re.sub(r"[^a-z0-9\s]", "", name.lower()).split()
+            inv_key = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
         inventory[iid] = {
-            "id":         iid,
-            "item":       item.get("item", ""),
-            "quantity":   item.get("quantity", 1),
-            "unit_count": item.get("unit_count", 1),
-            "price":      item.get("price"),
-            "date":       item.get("date"),
-            "order_num":  item.get("order_num", ""),
-            "subject":    item.get("item", ""),
-            "prop_tag":   item.get("prop_tag"),
-            "excluded":   False,
-            "source":     "manual",
+            "id":            iid,
+            "item":          name,
+            "quantity":      item.get("quantity", 1),
+            "unit_count":    item.get("unit_count", 1),
+            "price":         item.get("price"),
+            "date":          item.get("date"),
+            "order_num":     item.get("order_num", ""),
+            "subject":       name,
+            "prop_tag":      item.get("prop_tag"),
+            "excluded":      classified == "not_inventory",
+            "source":        "manual",
+            "classified":    classified,
+            "city_tag":      city_tag,
+            "inventory_key": inv_key,
         }
     store["inventory"] = inventory
     save_store(store)
@@ -1377,6 +1429,37 @@ def classify_inventory_item():
     store["inventory"] = inventory
     save_store(store)
     return jsonify({"ok": True})
+
+
+# ── POST /api/inventory/edit ─────────────────────────────────
+@app.route("/api/inventory/edit", methods=["POST"])
+def edit_inventory_items():
+    """Update item name and/or unit_count for a list of inventory item IDs."""
+    body       = request.json or {}
+    ids        = body.get("ids", [])
+    item_name  = body.get("item_name")   # new canonical name (optional)
+    unit_count = body.get("unit_count")  # new unit count integer (optional)
+
+    store     = load_store()
+    inventory = store.get("inventory", {})
+    stop      = {"the","a","an","of","for","with","and","or","in","by","to","from"}
+    updated   = 0
+    for iid in ids:
+        it = inventory.get(iid)
+        if not it:
+            continue
+        if item_name:
+            it["item"] = item_name
+            # Regenerate inventory_key so deduplication grouping stays correct
+            words = re.sub(r"[^a-z0-9\s]", "", item_name.lower()).split()
+            it["inventory_key"] = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
+        if unit_count is not None:
+            it["unit_count"] = max(1, int(unit_count))
+        updated += 1
+
+    store["inventory"] = inventory
+    save_store(store)
+    return jsonify({"ok": True, "updated": updated})
 
 
 # ── POST /api/inventory/reclean ──────────────────────────────

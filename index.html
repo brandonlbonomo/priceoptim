@@ -2110,7 +2110,8 @@ function App() {
   const [gmailConnected,   setGmailConnected]   = useState(false);
   const [gmailLastSync,    setGmailLastSync]    = useState(null);
   const [showAddItem,      setShowAddItem]      = useState(false);
-  const [addItemForm,      setAddItemForm]      = useState({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});
+  const [addItemForm,      setAddItemForm]      = useState({item:"",quantity:1,unit_count:1,date:new Date().toISOString().slice(0,10),city_tag:null});
+  const [editRow,          setEditRow]          = useState(null); // null | {key, name, unitCount}
   const [citySettings,     setCitySettings]     = useState({});
   const [showCitySettings, setShowCitySettings] = useState(false);
   const [classifyCity,     setClassifyCity]     = useState({});   // {[itemId]: "houston"|"niagara"}
@@ -2655,6 +2656,27 @@ function App() {
     } catch(e) { console.error("classifyItem:", e); await loadInventory(); }
   }, [loadInventory]);
 
+  const bulkEditRow = useCallback(async (ids, name, unitCount) => {
+    // Optimistic update: update all orders in this group
+    setInventory(prev => prev.map(it => {
+      if(!ids.includes(it.id)) return it;
+      const updates = {};
+      if(name)      { updates.item = name; updates.inventory_key = normalizeItemKey(name); }
+      if(unitCount) { updates.unit_count = unitCount; }
+      return {...it, ...updates};
+    }));
+    setEditRow(null);
+    try {
+      const body = {ids};
+      if(name)      body.item_name  = name;
+      if(unitCount) body.unit_count = unitCount;
+      await fetch(`${BACKEND}/api/inventory/edit`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(body),
+      });
+    } catch(e) { console.error("bulkEditRow:", e); await loadInventory(); }
+  }, [loadInventory]);
+
   const syncGmail = useCallback(async () => {
     setInvSyncing(true);
     try {
@@ -2691,11 +2713,13 @@ function App() {
       const r = await fetch(`${BACKEND}/api/inventory`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          item:     form.item,
-          quantity: Number(form.quantity)||1,
-          price:    form.price ? Number(form.price) : null,
-          date:     form.date,
-          prop_tag: form.prop_tag,
+          item:       form.item,
+          quantity:   Number(form.quantity)||1,
+          unit_count: Number(form.unit_count)||1,
+          date:       form.date,
+          prop_tag:   form.prop_tag,
+          classified: form.city_tag ? "inventory" : null,
+          city_tag:   form.city_tag||null,
         }),
       });
       const d = await r.json();
@@ -3686,43 +3710,65 @@ function App() {
                           {detailCity.rows.map((row,i)=>{
                             const col=STATUS_COL[row.status];
                             const bg=STATUS_BG[row.status];
-                            // Bar fill: 0-14d = 0-33%, 14-30d = 33-66%, 30+d = 66-100%
                             const barPct=row.daysLeft!=null?Math.min(100,Math.round((row.daysLeft/60)*100)):null;
+                            const isEditing=editRow&&editRow.key===row.key;
+                            const rowIds=row.orders.map(o=>o.id);
                             return (
-                              <div key={row.key} style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"11px 14px",gap:0,
-                                borderBottom:i<detailCity.rows.length-1?"1px solid rgba(0,0,0,0.05)":"none",
-                                alignItems:"center"}}>
-                                {/* Item name + last order */}
-                                <div style={{minWidth:0}}>
-                                  <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
-                                  <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>
-                                    {row.lastOrderDate}{row.lastOrderQty>1?` · ×${row.lastOrderQty}`:""}
-                                    {row.orders.length>1&&<span> · {row.orders.length} orders</span>}
+                              <div key={row.key} style={{borderBottom:i<detailCity.rows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                                {/* Summary row — tap to edit */}
+                                <div onClick={()=>setEditRow(isEditing?null:{key:row.key,name:row.name||"",unitCount:row.orders[0]?.unit_count||1})}
+                                  style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"11px 14px",gap:0,alignItems:"center",cursor:"pointer"}}>
+                                  <div style={{minWidth:0}}>
+                                    <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
+                                    <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>
+                                      {row.lastOrderDate}{row.lastOrderQty>1?` · ×${row.lastOrderQty}`:""}
+                                      {row.orders.length>1&&<span> · {row.orders.length} orders</span>}
+                                    </div>
+                                  </div>
+                                  <div style={{padding:"0 8px"}}>
+                                    {barPct!=null?(
+                                      <div style={{position:"relative",height:8,borderRadius:4,background:"rgba(0,0,0,0.07)",overflow:"hidden"}}>
+                                        <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${barPct}%`,background:col,borderRadius:4,transition:"width 0.3s ease"}}/>
+                                      </div>
+                                    ):(
+                                      <div style={{fontSize:11,color:"var(--text-3)",textAlign:"center"}}>{row.totalUnits}u</div>
+                                    )}
+                                    {row.remaining!=null&&(
+                                      <div style={{fontSize:10,color:"var(--text-3)",textAlign:"center",marginTop:3}}>~{row.remaining} left</div>
+                                    )}
+                                  </div>
+                                  <div style={{textAlign:"right"}}>
+                                    {row.daysLeft!=null?(
+                                      <div style={{display:"inline-block",background:bg,color:col,fontSize:12,fontWeight:700,borderRadius:8,padding:"3px 8px",border:`1px solid ${col}30`}}>
+                                        {row.daysLeft}d
+                                      </div>
+                                    ):(
+                                      <div style={{fontSize:11,color:"var(--text-3)"}}>—</div>
+                                    )}
                                   </div>
                                 </div>
-                                {/* Battery-style stock bar */}
-                                <div style={{padding:"0 8px"}}>
-                                  {barPct!=null?(
-                                    <div style={{position:"relative",height:8,borderRadius:4,background:"rgba(0,0,0,0.07)",overflow:"hidden"}}>
-                                      <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${barPct}%`,background:col,borderRadius:4,transition:"width 0.3s ease"}}/>
+                                {/* Inline edit panel */}
+                                {isEditing&&(
+                                  <div style={{padding:"0 14px 12px",background:"rgba(0,0,0,0.02)"}}>
+                                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:6,marginBottom:8}}>
+                                      <input value={editRow.name}
+                                        onChange={e=>setEditRow(r=>({...r,name:e.target.value}))}
+                                        placeholder="Item name"
+                                        style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                                      <input type="number" min="1" value={editRow.unitCount}
+                                        onChange={e=>setEditRow(r=>({...r,unitCount:parseInt(e.target.value)||1}))}
+                                        placeholder="Units"
+                                        style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none",textAlign:"center"}}/>
                                     </div>
-                                  ):(
-                                    <div style={{fontSize:11,color:"var(--text-3)",textAlign:"center"}}>{row.totalUnits}u</div>
-                                  )}
-                                  {row.remaining!=null&&(
-                                    <div style={{fontSize:10,color:"var(--text-3)",textAlign:"center",marginTop:3}}>~{row.remaining} left</div>
-                                  )}
-                                </div>
-                                {/* Days badge */}
-                                <div style={{textAlign:"right"}}>
-                                  {row.daysLeft!=null?(
-                                    <div style={{display:"inline-block",background:bg,color:col,fontSize:12,fontWeight:700,borderRadius:8,padding:"3px 8px",border:`1px solid ${col}30`}}>
-                                      {row.daysLeft}d
+                                    <div style={{fontSize:10,color:"var(--text-3)",marginBottom:8}}>Units = items per pack/delivery · applies to all {rowIds.length} order{rowIds.length!==1?"s":""}</div>
+                                    <div style={{display:"flex",gap:6}}>
+                                      <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount);}}
+                                        style={{flex:1,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Save</button>
+                                      <button onClick={e=>{e.stopPropagation();setEditRow(null);}}
+                                        style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:8,padding:"8px",fontSize:12,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
                                     </div>
-                                  ):(
-                                    <div style={{fontSize:11,color:"var(--text-3)"}}>—</div>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -3738,9 +3784,9 @@ function App() {
                           placeholder="Item name" style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
                           <input type="number" min="1" value={addItemForm.quantity} onChange={e=>setAddItemForm(f=>({...f,quantity:e.target.value}))}
-                            placeholder="Qty" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                          <input type="number" step="0.01" value={addItemForm.price} onChange={e=>setAddItemForm(f=>({...f,price:e.target.value}))}
-                            placeholder="Price $" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                            placeholder="# orders" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                          <input type="number" min="1" value={addItemForm.unit_count} onChange={e=>setAddItemForm(f=>({...f,unit_count:e.target.value}))}
+                            placeholder="Units/pack" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                           <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
                             style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                         </div>
@@ -3756,7 +3802,7 @@ function App() {
                           ))}
                         </div>
                         <div style={{display:"flex",gap:8}}>
-                          <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});}}
+                          <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,date:new Date().toISOString().slice(0,10),city_tag:null});}}
                             style={{flex:1,background:"var(--blue)",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
                           <button onClick={()=>setShowAddItem(false)}
                             style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
