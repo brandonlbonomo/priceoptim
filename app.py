@@ -844,9 +844,63 @@ Copy the value below and add it as a Render environment variable named
 </body></html>"""
 
 
+# ── Email helpers ─────────────────────────────────────────────
+
+def _clean_item_name(subject):
+    """Strip Amazon boilerplate from a subject line to get the product name."""
+    s = subject.strip()
+    # Remove enclosing quotes
+    s = s.strip('"').strip("'")
+    # Common prefixes to strip
+    prefixes = [
+        r"your amazon\.com order of\s+",
+        r"your order of\s+",
+        r"ordered:\s+",
+        r"order confirmation:\s+",
+        r"you ordered\s+",
+        r"shipped:\s+",
+        r"your shipment of\s+",
+    ]
+    for p in prefixes:
+        s = re.sub(p, "", s, flags=re.I)
+    # Common suffixes to strip
+    s = re.sub(r'\s+(?:has shipped|have shipped|has been shipped|and \d+ more item[s]?).*$', '', s, flags=re.I)
+    s = re.sub(r'\s*\(order #[\w-]+\).*$', '', s, flags=re.I)
+    return s.strip('"').strip() or subject
+
+
+def _extract_unit_count(text):
+    """
+    Parse a product name/description for a pack/quantity indicator.
+    Returns the integer unit count, or 1 if nothing found.
+    """
+    patterns = [
+        r'(\d+)\s*-\s*(?:pack|pk|ct|count)',   # 12-pack, 6-pk, 100-ct
+        r'(\d+)\s*(?:pack|pk)',                  # 6 pack
+        r'pack\s+of\s+(\d+)',                    # pack of 100
+        r'set\s+of\s+(\d+)',                     # set of 4
+        r'(\d+)\s*(?:count|ct)\.?',              # 100 count / 100ct
+        r'(\d+)\s*pc\.?s?',                      # 20 pcs / 20pc
+        r'(\d+)\s*piece',                        # 4 piece
+        r'(\d+)\s*rolls?',                       # 6 rolls
+        r'(\d+)\s*sheets?',                      # 200 sheets
+        r'(\d+)\s*bags?',                        # 50 bags
+        r'qty[:\s]+(\d+)',                       # qty: 6
+        r'quantity[:\s]+(\d+)',                  # quantity: 4
+        r'x\s*(\d+)\b',                          # x3
+    ]
+    for p in patterns:
+        m = re.search(p, text, re.I)
+        if m:
+            val = int(m.group(1))
+            if 1 < val <= 2000:   # sanity bounds
+                return val
+    return 1
+
+
 # ── Email parser ─────────────────────────────────────────────
 def _parse_amazon_email(msg_data):
-    """Extract order details from an Amazon ship-confirm Gmail message."""
+    """Extract order details from an Amazon order/ship-confirm Gmail message."""
     headers  = {h["name"]: h["value"]
                 for h in msg_data.get("payload", {}).get("headers", [])}
     subject  = headers.get("Subject", "")
@@ -858,56 +912,59 @@ def _parse_amazon_email(msg_data):
     except Exception:
         pass
 
-    # Decode plain-text body
+    # Decode plain-text body (walk MIME tree)
     body = ""
-    def _extract(part):
+    def _walk(part):
         nonlocal body
         if part.get("mimeType") == "text/plain" and not body:
             raw = part.get("body", {}).get("data", "")
             if raw:
                 body = base64.urlsafe_b64decode(raw + "==").decode("utf-8", errors="replace")
         for sub in part.get("parts", []):
-            _extract(sub)
-    _extract(msg_data.get("payload", {}))
+            _walk(sub)
+    _walk(msg_data.get("payload", {}))
 
-    # Item name — from subject "order of "Widget" has shipped" pattern
-    item = ""
-    m = re.search(r'order of\s+"?(.+?)"?\s+(?:and \d+|has shipped)', subject, re.I)
-    if m:
-        item = m.group(1).strip()
-    if not item:
+    # Clean item name from subject
+    item = _clean_item_name(subject)
+    # Fallback: look in body
+    if not item or item == subject:
         m2 = re.search(r'(?:You ordered|Item ordered|Ordered):\s*(.+)', body, re.I)
         if m2:
             item = m2.group(1).strip()[:120]
 
-    # Order number
+    # Order number  (###-#######-#######)
     order_num = ""
     m3 = re.search(r'(\d{3}-\d{7}-\d{7})', subject + " " + body)
     if m3:
         order_num = m3.group(1)
 
-    # First dollar amount in body
-    price = None
-    prices = re.findall(r'\$\s*(\d+\.\d{2})', body)
-    if prices:
-        price = float(prices[0])
+    # Unit count — how many units are in this product (e.g. 12-pack = 12)
+    unit_count = _extract_unit_count(item)
 
-    # Quantity
+    # Order quantity — how many of this product were ordered
     qty = 1
     m4 = re.search(r'(?:Qty|Quantity|qty):\s*(\d+)', body, re.I)
     if m4:
         qty = int(m4.group(1))
 
+    # Price — first dollar amount in body
+    price = None
+    prices = re.findall(r'\$\s*(\d+\.\d{2})', body)
+    if prices:
+        price = float(prices[0])
+
     return {
-        "id":        msg_data["id"],
-        "subject":   subject,
-        "item":      item or subject,
-        "order_num": order_num,
-        "price":     price,
-        "quantity":  qty,
-        "date":      order_date,
-        "prop_tag":  None,   # user-assigned property tag
-        "source":    "amazon",
+        "id":         msg_data["id"],
+        "subject":    subject,
+        "item":       item or subject,
+        "order_num":  order_num,
+        "price":      price,
+        "quantity":   qty,
+        "unit_count": unit_count,
+        "date":       order_date,
+        "prop_tag":   None,
+        "excluded":   False,
+        "source":     "amazon",
     }
 
 
@@ -925,8 +982,10 @@ def run_gmail_sync():
     inventory = store.get("inventory", {})
     already   = len(inventory)
 
-    q = ("from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com "
-         "OR from:order-update@amazon.com")
+    # Only order + ship confirmations — exclude delivery/tracking notifications
+    q = ("(from:ship-confirm@amazon.com OR from:auto-confirm@amazon.com)"
+         " -subject:delivered -subject:\"out for delivery\""
+         " -subject:\"delivery attempt\" -subject:\"arriving today\"")
     print(f"📧 Querying Gmail: {q}")
     try:
         results = service.users().messages().list(userId="me", q=q, maxResults=500).execute()
@@ -1047,7 +1106,7 @@ def get_inventory():
 
 
 # ── POST /api/inventory ──────────────────────────────────────
-# Add a manual inventory item or update an existing one's prop_tag
+# Add a manual inventory item or update fields (prop_tag, excluded, unit_count…)
 @app.route("/api/inventory", methods=["POST"])
 def update_inventory():
     store     = load_store()
@@ -1055,23 +1114,66 @@ def update_inventory():
     item      = request.json or {}
     iid       = item.get("id") or f"manual-{int(_time.time()*1000)}"
     if iid in inventory:
-        # Merge — allows updating prop_tag without overwriting everything
         inventory[iid].update({k: v for k, v in item.items() if k != "id"})
     else:
         inventory[iid] = {
-            "id":        iid,
-            "item":      item.get("item", ""),
-            "quantity":  item.get("quantity", 1),
-            "price":     item.get("price"),
-            "date":      item.get("date"),
-            "order_num": item.get("order_num", ""),
-            "subject":   item.get("item", ""),
-            "prop_tag":  item.get("prop_tag"),
-            "source":    "manual",
+            "id":         iid,
+            "item":       item.get("item", ""),
+            "quantity":   item.get("quantity", 1),
+            "unit_count": item.get("unit_count", 1),
+            "price":      item.get("price"),
+            "date":       item.get("date"),
+            "order_num":  item.get("order_num", ""),
+            "subject":    item.get("item", ""),
+            "prop_tag":   item.get("prop_tag"),
+            "excluded":   False,
+            "source":     "manual",
         }
     store["inventory"] = inventory
     save_store(store)
     return jsonify({"ok": True, "id": iid, "item": inventory[iid]})
+
+
+# ── POST /api/inventory/bulk ──────────────────────────────────
+# Apply an action to multiple items at once: tag or exclude
+@app.route("/api/inventory/bulk", methods=["POST"])
+def bulk_inventory():
+    store     = load_store()
+    inventory = store.get("inventory", {})
+    body      = request.json or {}
+    ids       = body.get("ids", [])
+    action    = body.get("action")         # "tag" | "exclude"
+    prop_tag  = body.get("prop_tag")       # for action="tag"
+    updated   = 0
+    for iid in ids:
+        if iid not in inventory:
+            continue
+        if action == "tag":
+            inventory[iid]["prop_tag"] = prop_tag
+        elif action == "exclude":
+            inventory[iid]["excluded"] = True
+        elif action == "include":
+            inventory[iid]["excluded"] = False
+        updated += 1
+    store["inventory"] = inventory
+    save_store(store)
+    return jsonify({"ok": True, "updated": updated})
+
+
+# ── GET /api/consumption-settings ────────────────────────────
+@app.route("/api/consumption-settings")
+def get_consumption_settings():
+    store = load_store()
+    return jsonify({"settings": store.get("consumption_settings", {})})
+
+
+# ── POST /api/consumption-settings ───────────────────────────
+@app.route("/api/consumption-settings", methods=["POST"])
+def save_consumption_settings():
+    store = load_store()
+    store["consumption_settings"] = request.json.get("settings", {})
+    save_store(store)
+    return jsonify({"ok": True})
 
 
 # ── Daily sync scheduler ──────────────────────────────────────

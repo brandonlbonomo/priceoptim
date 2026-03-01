@@ -2125,14 +2125,61 @@ function App() {
   const [airbnbTxFilter, setAirbnbTxFilter] = useState("all");
   const [drillDown, setDrillDown] = useState(null); // {mo:"2025-11", type:"rev"|"exp"|"net", txs:[]}
   const [pierceTxFilter, setPierceTxFilter] = useState("all");
-  const [inventory,      setInventory]      = useState([]);
-  const [invFilter,      setInvFilter]      = useState("current");
-  const [invSyncing,     setInvSyncing]     = useState(false);
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [gmailLastSync,  setGmailLastSync]  = useState(null);
-  const [showAddItem,    setShowAddItem]    = useState(false);
-  const [addItemForm,    setAddItemForm]    = useState({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
-  const gmailAuthPendingRef = useRef(false); // set when user opens Gmail OAuth tab
+  const [inventory,           setInventory]           = useState([]);
+  const [invFilter,           setInvFilter]           = useState("tagged");
+  const [invSyncing,          setInvSyncing]          = useState(false);
+  const [gmailConnected,      setGmailConnected]      = useState(false);
+  const [gmailLastSync,       setGmailLastSync]       = useState(null);
+  const [showAddItem,         setShowAddItem]         = useState(false);
+  const [addItemForm,         setAddItemForm]         = useState({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});
+  const [selectedItems,       setSelectedItems]       = useState(new Set());
+  const [expandedProps,       setExpandedProps]       = useState(new Set(["lockwood","everton","bstreet","pierce","untagged"]));
+  const [consumptionSettings, setConsumptionSettings] = useState({});
+  const [showConsSetting,     setShowConsSetting]     = useState(false);
+  const gmailAuthPendingRef = useRef(false);
+
+  // ── City / property layout ─────────────────────────────────
+  const CITIES = [
+    {id:"houston",  label:"Houston, TX",       props:["lockwood","everton"]},
+    {id:"niagara",  label:"Niagara Falls, NY",  props:["bstreet","pierce"]},
+  ];
+  const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave"};
+  const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
+
+  // ── Consumption engine ─────────────────────────────────────
+  const ITEM_CATS = [
+    {re:/toothbrush/i,                             perTurn:1,     label:"Toothbrush"},
+    {re:/toilet\s*paper|bath\s*tissue|tp\b/i,      perTurn:1,     label:"Toilet Paper"},
+    {re:/paper\s*towel/i,                          perTurn:0.5,   label:"Paper Towels"},
+    {re:/shampoo/i,                                perTurn:0.05,  label:"Shampoo"},
+    {re:/conditioner/i,                            perTurn:0.05,  label:"Conditioner"},
+    {re:/body\s*wash|bodywash/i,                   perTurn:0.05,  label:"Body Wash"},
+    {re:/trash\s*bag|garbage\s*bag|bin\s*liner/i,  perTurn:1,     label:"Trash Bags"},
+    {re:/hand\s*soap|dish\s*soap/i,                perTurn:0.15,  label:"Soap"},
+    {re:/sponge|scrub/i,                           perTurn:0.25,  label:"Sponge"},
+    {re:/coffee\s*pod|k-?cup|kcup/i,               perTurn:3,     label:"Coffee Pods"},
+    {re:/dryer\s*sheet/i,                          perTurn:2,     label:"Dryer Sheets"},
+    {re:/laundry/i,                                perTurn:0.1,   label:"Laundry"},
+    {re:/dish\s*tab|dishwasher/i,                  perTurn:1,     label:"Dishwasher Tab"},
+  ];
+  const getCatPerTurn = name => {
+    for(const c of ITEM_CATS) if(c.re.test(name)) return c.perTurn;
+    return 0.2;
+  };
+  const estimateRemaining = useCallback((it) => {
+    if(!it.prop_tag || !it.date) return null;
+    const s = consumptionSettings[it.prop_tag];
+    if(!s?.turns_per_month) return null;
+    const totalUnits = (it.unit_count||1) * (it.quantity||1);
+    const perTurn    = getCatPerTurn(it.item||"");
+    const monthsSince = (Date.now() - new Date(it.date)) / (30*24*60*60*1000);
+    const consumed   = perTurn * s.turns_per_month * monthsSince;
+    const remaining  = Math.max(0, totalUnits - consumed);
+    const turnsLeft  = remaining / perTurn;
+    const daysLeft   = turnsLeft / s.turns_per_month * 30;
+    return {remaining: Math.round(remaining*10)/10, daysLeft: Math.round(daysLeft)};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consumptionSettings]);
 
   useEffect(()=>{
     // Load bank connections
@@ -2566,16 +2613,19 @@ function App() {
   // ── Inventory helpers ──────────────────────────────────────
   const loadInventory = useCallback(async () => {
     try {
-      const [invR, statusR] = await Promise.all([
+      const [invR, statusR, consR] = await Promise.all([
         fetch(`${BACKEND}/api/inventory`),
         fetch(`${BACKEND}/api/gmail/status`),
+        fetch(`${BACKEND}/api/consumption-settings`),
       ]);
       const invD    = await invR.json();
       const statusD = await statusR.json();
+      const consD   = await consR.json();
       setInventory(invD.inventory || []);
       setGmailConnected(!!statusD.connected);
       setGmailLastSync(statusD.last_sync || null);
-      return statusD;  // caller can inspect connection state
+      setConsumptionSettings(consD.settings || {});
+      return statusD;
     } catch(e) { console.error("loadInventory:", e); }
   }, []);
 
@@ -2595,6 +2645,35 @@ function App() {
     const next = INVENTORY_PROP_CYCLE[(idx + 1) % INVENTORY_PROP_CYCLE.length];
     tagInventoryItem(id, next);
   }, [tagInventoryItem]);
+
+  const bulkAction = useCallback(async (action, propTag) => {
+    const ids = [...selectedItems];
+    if(!ids.length) return;
+    // Optimistic update
+    setInventory(prev => prev.map(it => {
+      if(!selectedItems.has(it.id)) return it;
+      if(action==="tag")     return {...it, prop_tag: propTag};
+      if(action==="exclude") return {...it, excluded: true};
+      return it;
+    }));
+    setSelectedItems(new Set());
+    try {
+      await fetch(`${BACKEND}/api/inventory/bulk`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ids, action, prop_tag: propTag}),
+      });
+    } catch(e) { console.error("bulkAction:", e); await loadInventory(); }
+  }, [selectedItems, loadInventory]);
+
+  const saveConsumptionSettings = useCallback(async (settings) => {
+    setConsumptionSettings(settings);
+    try {
+      await fetch(`${BACKEND}/api/consumption-settings`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({settings}),
+      });
+    } catch(e) { console.error("saveConsumptionSettings:", e); }
+  }, []);
 
   const syncGmail = useCallback(async () => {
     setInvSyncing(true);
@@ -3326,51 +3405,150 @@ function App() {
         <div className="swipe-pane">
         {(()=>{
           if(!isPane(inventoryIdx)) return null;
-          const now        = new Date();
-          const cutoff     = new Date(now - 60*24*60*60*1000).toISOString().slice(0,10);
-          const thisMonth  = now.toISOString().slice(0,7);
-          const INV_PROPS  = [{id:null,label:"Tag property"},{id:"lockwood",label:"Lockwood"},{id:"everton",label:"Everton"},{id:"bstreet",label:"B Street"},{id:"pierce",label:"Pierce Ave"}];
-          const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",pierce:"Pierce Ave"};
-          const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
-          const current    = inventory.filter(it=>it.date&&it.date>=cutoff);
-          const displayList = invFilter==="current" ? current : inventory;
+          const INV_PROPS = [{id:null,label:"Tag property"},{id:"lockwood",label:"Lockwood"},{id:"everton",label:"Everton"},{id:"bstreet",label:"B Street"},{id:"pierce",label:"Pierce Ave"}];
+          const visibleInv = inventory.filter(it=>!it.excluded);
+          const allIds = visibleInv.map(it=>it.id);
+          const allSelected = allIds.length>0 && allIds.every(id=>selectedItems.has(id));
+          const someSelected = selectedItems.size>0;
+          const taggedCount = visibleInv.filter(it=>it.prop_tag).length;
+          const untagged = visibleInv.filter(it=>!it.prop_tag);
 
-          // Per-property spend this month
-          const propSpend = {};
-          inventory.forEach(it=>{
-            if(it.date?.startsWith(thisMonth)&&it.prop_tag&&it.price!=null)
-              propSpend[it.prop_tag]=(propSpend[it.prop_tag]||0)+it.price*(it.quantity||1);
+          // Low-stock: consumption engine alerts (<14 days remaining)
+          const lowStockItems = visibleInv.filter(it=>{
+            const est = estimateRemaining(it);
+            return est && est.daysLeft<14 && est.remaining>0;
           });
 
-          // Low stock: items last ordered 60+ days ago
-          const lastSeen={};
-          inventory.forEach(it=>{
-            const k=(it.item||"").toLowerCase().trim();
-            if(!lastSeen[k]||it.date>lastSeen[k])lastSeen[k]={item:it.item,date:it.date};
+          // City summary
+          const citySummary = CITIES.map(city=>{
+            const cityItems = visibleInv.filter(it=>city.props.includes(it.prop_tag));
+            const alertCount = cityItems.filter(it=>{const e=estimateRemaining(it);return e&&e.daysLeft<14;}).length;
+            return {...city,totalItems:cityItems.length,alertCount};
           });
-          const lowStock=Object.values(lastSeen).filter(s=>s.date&&s.date<cutoff);
+
+          const toggleSelectAll = ()=>{
+            if(allSelected) setSelectedItems(new Set());
+            else setSelectedItems(new Set(allIds));
+          };
+          const toggleSelectItem = id=>{
+            setSelectedItems(prev=>{
+              const next=new Set(prev);
+              next.has(id)?next.delete(id):next.add(id);
+              return next;
+            });
+          };
+          const togglePropExpanded = pid=>{
+            setExpandedProps(prev=>{
+              const next=new Set(prev);
+              next.has(pid)?next.delete(pid):next.add(pid);
+              return next;
+            });
+          };
+
+          const renderItem = (it,showTagBtn=false)=>{
+            const est = estimateRemaining(it);
+            const isLow = est && est.daysLeft<14;
+            const checked = selectedItems.has(it.id);
+            return (
+              <div key={it.id} style={{display:"flex",alignItems:"center",padding:"11px 14px",gap:10,
+                background:checked?"rgba(0,122,255,0.08)":"transparent"}}>
+                <input type="checkbox" checked={checked} onChange={()=>toggleSelectItem(it.id)}
+                  style={{width:16,height:16,borderRadius:4,accentColor:"#007aff",flexShrink:0,cursor:"pointer"}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
+                  <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
+                    {it.date&&<span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{it.date}</span>}
+                    {(it.unit_count>1||it.quantity>1)&&(
+                      <span style={{fontSize:11,color:"var(--text-3)"}}>
+                        {it.quantity>1?`${it.quantity}×`:""}{it.unit_count>1?`${it.unit_count}u`:""}
+                      </span>
+                    )}
+                    {est&&(
+                      <span style={{fontSize:11,fontWeight:600,
+                        color:isLow?"#ff9f0a":"var(--text-3)",
+                        background:isLow?"rgba(255,149,0,0.12)":"transparent",
+                        padding:isLow?"1px 6px":"0",borderRadius:isLow?6:0}}>
+                        {isLow?`⚠ ~${est.daysLeft}d left`:`~${est.remaining} left`}
+                      </span>
+                    )}
+                    {showTagBtn&&(
+                      <button onClick={()=>cycleItemProp(it.id,it.prop_tag)}
+                        style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
+                          background:"rgba(255,255,255,0.08)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)"}}>
+                        + tag
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {it.price!=null&&<div style={{flexShrink:0,fontSize:13,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)"}}>{fmt$(it.price)}</div>}
+              </div>
+            );
+          };
 
           return (
           <div style={{minHeight:"100%"}}>
+            {/* Header */}
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Inventory · Supplies</div>
                 <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                  <div className="big-num" style={{fontSize:32}}>{inventory.length}</div>
-                  <div style={{fontSize:13,color:"var(--text-3)"}}>orders tracked</div>
+                  <div className="big-num" style={{fontSize:32}}>{visibleInv.length}</div>
+                  <div style={{fontSize:13,color:"var(--text-3)"}}>{taggedCount} tagged</div>
                 </div>
               </div>
               <div style={{display:"flex",gap:8,marginTop:4,flexShrink:0}}>
+                <button onClick={()=>setShowConsSetting(v=>!v)}
+                  style={{fontSize:12,fontWeight:600,background:showConsSetting?"rgba(0,122,255,0.15)":"rgba(255,255,255,0.08)",color:showConsSetting?"#007aff":"var(--text-2)",border:`1px solid ${showConsSetting?"rgba(0,122,255,0.3)":"rgba(255,255,255,0.14)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
+                  ⚙ Settings
+                </button>
                 <button onClick={syncGmail} disabled={invSyncing}
                   style={{fontSize:12,fontWeight:600,background:"rgba(0,122,255,0.12)",color:"#007aff",border:"1px solid rgba(0,122,255,0.2)",borderRadius:10,padding:"7px 12px",cursor:"pointer",opacity:invSyncing?0.5:1,touchAction:"manipulation"}}>
                   {invSyncing?"Syncing…":"⟳ Gmail"}
                 </button>
-                <button onClick={()=>setShowAddItem(v=>!v)}
-                  style={{fontSize:12,fontWeight:600,background:"rgba(255,255,255,0.10)",color:"var(--text)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
-                  + Manual
-                </button>
               </div>
             </div>
+
+            {/* Consumption settings panel */}
+            {showConsSetting&&(
+              <div className="card card-padded" style={{marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"var(--text-2)"}}>Consumption Settings · per property</div>
+                {Object.entries(PROP_LABEL).map(([pid,plabel])=>{
+                  const s = consumptionSettings[pid]||{};
+                  return (
+                    <div key={pid} style={{marginBottom:12}}>
+                      <div style={{fontSize:12,fontWeight:600,color:PROP_COLOR[pid],marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:PROP_COLOR[pid]}}/>
+                        {plabel}
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                        <div>
+                          <div style={{fontSize:10,color:"var(--text-3)",marginBottom:3}}>Guest turns / month</div>
+                          <input type="number" min="0" step="0.5" value={s.turns_per_month||""}
+                            onChange={e=>{
+                              const newS={...consumptionSettings,[pid]:{...(consumptionSettings[pid]||{}),turns_per_month:parseFloat(e.target.value)||0}};
+                              saveConsumptionSettings(newS);
+                            }}
+                            placeholder="e.g. 6"
+                            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:10,color:"var(--text-3)",marginBottom:3}}>Occupancy %</div>
+                          <input type="number" min="0" max="100" step="1" value={s.occupancy_pct||""}
+                            onChange={e=>{
+                              const newS={...consumptionSettings,[pid]:{...(consumptionSettings[pid]||{}),occupancy_pct:parseFloat(e.target.value)||0}};
+                              saveConsumptionSettings(newS);
+                            }}
+                            placeholder="e.g. 65"
+                            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button onClick={()=>setShowConsSetting(false)}
+                  style={{width:"100%",background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Done</button>
+              </div>
+            )}
 
             {/* Manual add form */}
             {showAddItem&&(
@@ -3391,7 +3569,7 @@ function App() {
                   {INV_PROPS.map(p=><option key={p.id||""} value={p.id||""}>{p.label}</option>)}
                 </select>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});}}
+                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),prop_tag:null});}}
                     style={{flex:1,background:"#007aff",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
                   <button onClick={()=>setShowAddItem(false)}
                     style={{flex:1,background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
@@ -3399,84 +3577,139 @@ function App() {
               </div>
             )}
 
-            {/* Per-property spend this month */}
-            {Object.keys(propSpend).length>0&&(
-              <>
-                <div className="section-title">Supply Spend · This Month</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                  {Object.entries(propSpend).map(([pid,amt])=>(
-                    <div key={pid} className="card card-padded">
-                      <div style={{fontSize:10,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{PROP_LABEL[pid]}</div>
-                      <div style={{fontSize:20,fontWeight:700,color:PROP_COLOR[pid]||"var(--text)"}}>{fmt$(amt)}</div>
-                      <div style={{fontSize:11,color:"var(--text-3)"}}>supplies</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Low stock alerts */}
-            {lowStock.length>0&&(
+            {/* Low-stock alerts */}
+            {lowStockItems.length>0&&(
               <div className="card card-padded" style={{marginBottom:8,background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.22)"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#ff9f0a",marginBottom:6,letterSpacing:"0.04em",textTransform:"uppercase"}}>⚠ Low Stock — {lowStock.length} item{lowStock.length!==1?"s":""} not reordered in 60+ days</div>
-                {lowStock.slice(0,4).map(s=>(
-                  <div key={s.item} style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                    <span style={{fontSize:12,color:"var(--text-2)"}}>{s.item}</span>
-                    <span style={{fontSize:11,color:"var(--text-3)"}}>last ordered {s.date}</span>
-                  </div>
-                ))}
+                <div style={{fontSize:11,fontWeight:700,color:"#ff9f0a",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>⚠ Running Low — {lowStockItems.length} item{lowStockItems.length!==1?"s":""}</div>
+                {lowStockItems.map(it=>{
+                  const est=estimateRemaining(it);
+                  return (
+                    <div key={it.id} style={{display:"flex",justifyContent:"space-between",marginBottom:3,alignItems:"center"}}>
+                      <span style={{fontSize:12,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{it.item}</span>
+                      <span style={{fontSize:11,color:"#ff9f0a",fontWeight:600,flexShrink:0,marginLeft:8}}>~{est.daysLeft}d · {PROP_LABEL[it.prop_tag]||it.prop_tag}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* Filter seg control */}
-            <div className="seg-ctrl" style={{marginBottom:8}}>
-              <button className={`seg-btn${invFilter==="current"?" active":""}`} onClick={()=>setInvFilter("current")}>Current Stock ({current.length})</button>
-              <button className={`seg-btn${invFilter==="all"?" active":""}`} onClick={()=>setInvFilter("all")}>All Orders ({inventory.length})</button>
+            {/* Select-all + bulk action bar */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"0 2px",flexWrap:"wrap"}}>
+              <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"var(--text-3)",flexShrink:0}}>
+                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                  style={{width:16,height:16,borderRadius:4,accentColor:"#007aff",cursor:"pointer"}}/>
+                {someSelected?`${selectedItems.size} selected`:"Select all"}
+              </label>
+              {someSelected?(
+                <div style={{display:"flex",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
+                  {Object.entries(PROP_LABEL).map(([pid,plabel])=>(
+                    <button key={pid} onClick={()=>bulkAction("tag",pid)}
+                      style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                        background:`${PROP_COLOR[pid]}18`,color:PROP_COLOR[pid],border:`1px solid ${PROP_COLOR[pid]}40`}}>
+                      {plabel}
+                    </button>
+                  ))}
+                  <button onClick={()=>bulkAction("exclude")}
+                    style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                      background:"rgba(255,69,58,0.10)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.20)"}}>
+                    Not inventory
+                  </button>
+                </div>
+              ):(
+                <button onClick={()=>setShowAddItem(v=>!v)} style={{marginLeft:"auto",fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
+                  background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"1px solid rgba(255,255,255,0.12)"}}>
+                  + Manual
+                </button>
+              )}
             </div>
 
-            {/* Item list */}
-            {displayList.length===0?(
+            {/* City-grouped inventory */}
+            {visibleInv.length===0?(
               <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
-                {inventory.length===0
-                  ? <>No orders yet. Tap <strong>⟳ Gmail</strong> to import Amazon ship confirmations, or <strong>+ Manual</strong> to add items.</>
-                  : "No orders in the last 60 days."}
+                No orders yet. Tap <strong>⟳ Gmail</strong> to import Amazon orders, or <strong>+ Manual</strong> to add items.
               </div>
             ):(
-              <div className="card" style={{overflow:"hidden",marginBottom:8}}>
-                {displayList.map((it,i)=>(
-                  <div key={it.id} style={{borderBottom:i<displayList.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
-                    <div style={{display:"flex",alignItems:"center",padding:"12px 14px",gap:10}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
-                        <div style={{display:"flex",gap:6,marginTop:4,alignItems:"center",flexWrap:"wrap"}}>
-                          {it.date&&<span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{it.date}</span>}
-                          {it.quantity>1&&<span style={{fontSize:11,color:"var(--text-3)"}}>×{it.quantity}</span>}
-                          <button onClick={()=>cycleItemProp(it.id,it.prop_tag)}
-                            style={{fontSize:10,fontWeight:700,padding:"2px 9px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                              background:it.prop_tag?`${PROP_COLOR[it.prop_tag]}18`:"rgba(255,255,255,0.08)",
-                              color:it.prop_tag?PROP_COLOR[it.prop_tag]:"var(--text-3)",
-                              border:`1px solid ${it.prop_tag?`${PROP_COLOR[it.prop_tag]}30`:"rgba(255,255,255,0.12)"}`}}>
-                            {it.prop_tag?PROP_LABEL[it.prop_tag]:"+ tag"}
-                          </button>
-                          <span style={{fontSize:10,color:"var(--text-3)",opacity:0.5}}>{it.source==="manual"?"manual":"amazon"}</span>
+              <>
+                {CITIES.map(city=>{
+                  const cityItems = visibleInv.filter(it=>city.props.includes(it.prop_tag));
+                  if(cityItems.length===0) return null;
+                  const cs = citySummary.find(c=>c.id===city.id);
+                  return (
+                    <div key={city.id} style={{marginBottom:14}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em"}}>{city.label}</div>
+                        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                          <span style={{fontSize:11,color:"var(--text-3)"}}>{cs.totalItems} items</span>
+                          {cs.alertCount>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff9f0a"}}>⚠ {cs.alertCount} low</span>}
                         </div>
                       </div>
-                      {it.price!=null&&(
-                        <div style={{flexShrink:0,textAlign:"right"}}>
-                          <div style={{fontSize:14,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text)"}}>{fmt$(it.price)}</div>
+                      {city.props.map(pid=>{
+                        const propItems = visibleInv.filter(it=>it.prop_tag===pid);
+                        if(propItems.length===0) return null;
+                        const isExp = expandedProps.has(pid);
+                        const propAlerts = propItems.filter(it=>{const e=estimateRemaining(it);return e&&e.daysLeft<14;}).length;
+                        return (
+                          <div key={pid} className="card" style={{marginBottom:6,overflow:"hidden"}}>
+                            <button onClick={()=>togglePropExpanded(pid)}
+                              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                                padding:"12px 14px",background:"none",border:"none",cursor:"pointer",touchAction:"manipulation",gap:8}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <div style={{width:8,height:8,borderRadius:"50%",background:PROP_COLOR[pid],flexShrink:0}}/>
+                                <span style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{PROP_LABEL[pid]}</span>
+                                <span style={{fontSize:11,color:"var(--text-3)"}}>{propItems.length} item{propItems.length!==1?"s":""}</span>
+                                {propAlerts>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff9f0a"}}>⚠ {propAlerts}</span>}
+                              </div>
+                              <span style={{fontSize:12,color:"var(--text-3)",display:"inline-block",transform:isExp?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+                            </button>
+                            {isExp&&(
+                              <div style={{borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+                                {propItems.map((it,i)=>(
+                                  <div key={it.id} style={{borderBottom:i<propItems.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
+                                    {renderItem(it,false)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {/* Untagged section */}
+                {untagged.length>0&&(
+                  <div style={{marginBottom:14}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em"}}>Untagged</div>
+                      <span style={{fontSize:11,color:"var(--text-3)"}}>{untagged.length} · tap to assign</span>
+                    </div>
+                    <div className="card" style={{overflow:"hidden"}}>
+                      <button onClick={()=>togglePropExpanded("untagged")}
+                        style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                          padding:"12px 14px",background:"none",border:"none",cursor:"pointer",touchAction:"manipulation"}}>
+                        <span style={{fontSize:13,fontWeight:500,color:"var(--text-2)"}}>{untagged.length} untagged item{untagged.length!==1?"s":""}</span>
+                        <span style={{fontSize:12,color:"var(--text-3)",display:"inline-block",transform:expandedProps.has("untagged")?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+                      </button>
+                      {expandedProps.has("untagged")&&(
+                        <div style={{borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+                          {untagged.map((it,i)=>(
+                            <div key={it.id} style={{borderBottom:i<untagged.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
+                              {renderItem(it,true)}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
 
-            {/* Gmail status card — always visible at bottom */}
-            <div className="card card-padded" style={{marginTop:8}}>
+            {/* Gmail status card */}
+            <div className="card card-padded" style={{marginTop:8,marginBottom:16}}>
               {gmailConnected ? (
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  {/* iOS-style green checkmark */}
                   <div style={{width:30,height:30,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 8px rgba(48,209,88,0.35)"}}>
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                       <polyline points="2.5,7.5 6.2,11.2 12.5,3.8" stroke="white" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
