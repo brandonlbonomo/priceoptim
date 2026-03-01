@@ -1006,6 +1006,29 @@ def _extract_canonical_name(raw_title):
     return raw_title.strip()
 
 
+_LIQUID_RE = re.compile(
+    r'soap|shampoo|conditioner|body\s*wash|hand\s*sanitizer|sanitiser|lotion|dish\s*liquid',
+    re.I)
+
+def _extract_volume_oz(text):
+    """
+    Parse fluid ounces from a product title string.
+    Returns integer oz, or None if not found / not a liquid.
+    """
+    t = (text or "").lower()
+    # Gallons: "1 gallon", "1.25 gal", "5-gallon"
+    m = re.search(r'(\d+\.?\d*)\s*-?\s*gal(?:lon)?s?\b', t)
+    if m:
+        return round(float(m.group(1)) * 128)
+    # Fluid oz: "64 fl oz", "64oz", "32 fluid ounces", "32-oz"
+    m = re.search(r'(\d+\.?\d*)\s*-?\s*(?:fl\.?\s*oz|fluid\s*oz(?:s|ounce)?|oz\.?)\b', t)
+    if m:
+        val = round(float(m.group(1)))
+        if 1 < val <= 2560:   # sanity: 1 oz – 20 gallons
+            return val
+    return None
+
+
 def _clean_item_name(subject):
     """
     Strip Amazon boilerplate from a subject line, then extract a short
@@ -1117,6 +1140,11 @@ def _parse_amazon_email(msg_data):
     # Unit count — extract from original source text BEFORE canonicalization
     unit_count = _extract_unit_count(subject)
 
+    # Volume (oz) — only for liquid products
+    volume_oz = None
+    if _LIQUID_RE.search(subject) or _LIQUID_RE.search(item):
+        volume_oz = _extract_volume_oz(subject)
+
     # Order quantity — "Ordered: 4 'Product'" has qty before the product name
     qty = 1
     m_subj_qty = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
@@ -1141,6 +1169,7 @@ def _parse_amazon_email(msg_data):
         "price":         price,
         "quantity":      qty,
         "unit_count":    unit_count,
+        "volume_oz":     volume_oz,  # oz per bottle/container; None = count-based
         "date":          order_date,
         "prop_tag":      None,
         "excluded":      False,
@@ -1176,6 +1205,13 @@ def _reclean_inventory_store(store):
             # Skip auto-unit_count if the user has manually locked it
             if not it.get("unit_count_locked"):
                 it["unit_count"] = _extract_unit_count(subject)
+            # Auto-extract volume_oz for liquids if not user-locked
+            if not it.get("volume_oz_locked"):
+                item_name = it.get("item") or ""
+                if _LIQUID_RE.search(subject) or _LIQUID_RE.search(item_name):
+                    vol = _extract_volume_oz(subject)
+                    if vol:
+                        it["volume_oz"] = vol
             # Re-extract order quantity from "Ordered: 4 'Product'" pattern
             m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
             if m and it.get("quantity", 1) == 1:
@@ -1349,11 +1385,14 @@ def update_inventory():
             stop  = {"the","a","an","of","for","with","and","or","in","by","to","from"}
             words = re.sub(r"[^a-z0-9\s]", "", name.lower()).split()
             inv_key = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
+        vol_oz = item.get("volume_oz")
         inventory[iid] = {
             "id":            iid,
             "item":          name,
             "quantity":      item.get("quantity", 1),
             "unit_count":    item.get("unit_count", 1),
+            "volume_oz":     vol_oz,
+            "volume_oz_locked": vol_oz is not None,
             "price":         item.get("price"),
             "date":          item.get("date"),
             "order_num":     item.get("order_num", ""),
@@ -1457,6 +1496,7 @@ def edit_inventory_items():
     ids        = body.get("ids", [])
     item_name  = body.get("item_name")   # new canonical name (optional)
     unit_count = body.get("unit_count")  # new unit count integer (optional)
+    volume_oz  = body.get("volume_oz")   # oz per bottle; None clears it
 
     store     = load_store()
     inventory = store.get("inventory", {})
@@ -1474,6 +1514,9 @@ def edit_inventory_items():
         if unit_count is not None:
             it["unit_count"]        = max(1, int(unit_count))
             it["unit_count_locked"] = True   # prevent reclean from overwriting
+        if "volume_oz" in body:  # explicit key presence — allows clearing with null
+            it["volume_oz"]        = volume_oz  # None = revert to count-based
+            it["volume_oz_locked"] = (volume_oz is not None)
         updated += 1
 
     store["inventory"] = inventory

@@ -2110,7 +2110,7 @@ function App() {
   const [gmailConnected,   setGmailConnected]   = useState(false);
   const [gmailLastSync,    setGmailLastSync]    = useState(null);
   const [showAddItem,      setShowAddItem]      = useState(false);
-  const [addItemForm,      setAddItemForm]      = useState({item:"",quantity:1,unit_count:1,date:new Date().toISOString().slice(0,10),city_tag:null});
+  const [addItemForm,      setAddItemForm]      = useState({item:"",quantity:1,unit_count:1,volume_oz:null,date:new Date().toISOString().slice(0,10),city_tag:null});
   const [editRow,          setEditRow]          = useState(null); // null | {key, name, unitCount}
   const [citySettings,     setCitySettings]     = useState({});
   const [showCitySettings, setShowCitySettings] = useState(false);
@@ -2128,25 +2128,38 @@ function App() {
   const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
 
   // ── Consumption engine ─────────────────────────────────────
+  // perTurn  = fraction of a bottle consumed per guest turn (count-based fallback)
+  // perTurnOz = oz consumed per guest turn (used when volume_oz is set on an item)
   const ITEM_CATS = [
     {re:/toothbrush/i,                             perTurn:1,     label:"Toothbrush"},
     {re:/toilet\s*paper|bath\s*tissue|tp\b/i,      perTurn:1,     label:"Toilet Paper"},
     {re:/paper\s*towel/i,                          perTurn:0.5,   label:"Paper Towels"},
-    {re:/shampoo/i,                                perTurn:0.05,  label:"Shampoo"},
-    {re:/conditioner/i,                            perTurn:0.05,  label:"Conditioner"},
-    {re:/body\s*wash|bodywash/i,                   perTurn:0.05,  label:"Body Wash"},
+    {re:/shampoo/i,                                perTurn:0.05,  perTurnOz:2,  label:"Shampoo"},
+    {re:/conditioner/i,                            perTurn:0.05,  perTurnOz:2,  label:"Conditioner"},
+    {re:/body\s*wash|bodywash/i,                   perTurn:0.05,  perTurnOz:3,  label:"Body Wash"},
     {re:/trash\s*bag|garbage\s*bag|bin\s*liner/i,  perTurn:1,     label:"Trash Bags"},
-    {re:/hand\s*soap|dish\s*soap/i,                perTurn:0.15,  label:"Soap"},
+    {re:/hand\s*soap/i,                            perTurn:0.15,  perTurnOz:2,  label:"Hand Soap"},
+    {re:/dish\s*soap/i,                            perTurn:0.15,  perTurnOz:3,  label:"Dish Soap"},
     {re:/sponge|scrub/i,                           perTurn:0.25,  label:"Sponge"},
     {re:/coffee\s*pod|k-?cup|kcup/i,               perTurn:3,     label:"Coffee Pods"},
     {re:/dryer\s*sheet/i,                          perTurn:2,     label:"Dryer Sheets"},
     {re:/laundry/i,                                perTurn:0.1,   label:"Laundry"},
     {re:/dish\s*tab|dishwasher/i,                  perTurn:1,     label:"Dishwasher Tab"},
   ];
-  const getCatPerTurn = name => {
-    for(const c of ITEM_CATS) if(c.re.test(name)) return c.perTurn;
-    return 0.2;
-  };
+  const getCat       = name => ITEM_CATS.find(c => c.re.test(name||"")) || null;
+  const getCatPerTurn = name => { const c=getCat(name); return c ? c.perTurn : 0.2; };
+
+  const BOTTLE_SIZES = [
+    {label:"8 oz",     oz:8},
+    {label:"12 oz",    oz:12},
+    {label:"16 oz",    oz:16},
+    {label:"32 oz",    oz:32},
+    {label:"64 oz",    oz:64},
+    {label:"1 gal",    oz:128},
+    {label:"1.25 gal", oz:160},
+    {label:"5 gal",    oz:640},
+  ];
+  const isLiquidItem = name => /soap|shampoo|conditioner|body\s*wash|sanitizer|lotion/i.test(name||"");
   const normalizeItemKey = name => {
     const stop = new Set(["the","a","an","of","for","with","and","or","in","by","to","from","your","my","x"]);
     return (name||"").toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim()
@@ -2656,20 +2669,22 @@ function App() {
     } catch(e) { console.error("classifyItem:", e); await loadInventory(); }
   }, [loadInventory]);
 
-  const bulkEditRow = useCallback(async (ids, name, unitCount) => {
+  const bulkEditRow = useCallback(async (ids, name, unitCount, volumeOz) => {
     // Optimistic update: update all orders in this group
     setInventory(prev => prev.map(it => {
       if(!ids.includes(it.id)) return it;
       const updates = {};
-      if(name)      { updates.item = name; updates.inventory_key = normalizeItemKey(name); }
-      if(unitCount) { updates.unit_count = unitCount; }
+      if(name)               { updates.item = name; updates.inventory_key = normalizeItemKey(name); }
+      if(unitCount)          { updates.unit_count = unitCount; }
+      if(volumeOz !== undefined) { updates.volume_oz = volumeOz; }
       return {...it, ...updates};
     }));
     setEditRow(null);
     try {
       const body = {ids};
-      if(name)      body.item_name  = name;
-      if(unitCount) body.unit_count = unitCount;
+      if(name)               body.item_name  = name;
+      if(unitCount)          body.unit_count = unitCount;
+      if(volumeOz !== undefined) body.volume_oz = volumeOz; // null clears it
       await fetch(`${BACKEND}/api/inventory/edit`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify(body),
@@ -2716,6 +2731,7 @@ function App() {
           item:       form.item,
           quantity:   Number(form.quantity)||1,
           unit_count: Number(form.unit_count)||1,
+          volume_oz:  form.volume_oz||null,
           date:       form.date,
           prop_tag:   form.prop_tag,
           classified: form.city_tag ? "inventory" : null,
@@ -3431,23 +3447,43 @@ function App() {
               orders.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
               const latest=orders[0];
               const totalUnits=orders.reduce((sum,o)=>sum+(o.unit_count||1)*(o.quantity||1),0);
-              let remaining=null,daysLeft=null,status="unknown";
+              let remaining=null,daysLeft=null,status="unknown",isOz=false;
               if(s.turns_per_month&&s.active_units){
-                const perTurn=getCatPerTurn(latest.item||"");
-                const cpd=perTurn*s.turns_per_month*s.active_units/30;
-                if(cpd>0){
-                  let total=0;
-                  orders.forEach(o=>{
-                    const units=(o.unit_count||1)*(o.quantity||1);
-                    const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
-                    total+=Math.max(0,units-cpd*days);
-                  });
-                  remaining=Math.round(total*10)/10;
-                  daysLeft=Math.round(remaining/cpd);
-                  status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
+                const cat=getCat(latest.item||"");
+                const hasVol=orders.some(o=>o.volume_oz);
+                if(cat&&cat.perTurnOz&&hasVol){
+                  // ── Oz-based (liquid) consumption ──
+                  isOz=true;
+                  const cpdOz=cat.perTurnOz*s.turns_per_month*s.active_units/30;
+                  if(cpdOz>0){
+                    let totalOz=0;
+                    orders.forEach(o=>{
+                      const oz=(o.unit_count||1)*(o.quantity||1)*(o.volume_oz||12);
+                      const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
+                      totalOz+=Math.max(0,oz-cpdOz*days);
+                    });
+                    remaining=Math.round(totalOz);
+                    daysLeft=Math.round(totalOz/cpdOz);
+                    status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
+                  }
+                } else {
+                  // ── Count-based consumption ──
+                  const perTurn=cat?cat.perTurn:0.2;
+                  const cpd=perTurn*s.turns_per_month*s.active_units/30;
+                  if(cpd>0){
+                    let total=0;
+                    orders.forEach(o=>{
+                      const units=(o.unit_count||1)*(o.quantity||1);
+                      const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
+                      total+=Math.max(0,units-cpd*days);
+                    });
+                    remaining=Math.round(total*10)/10;
+                    daysLeft=Math.round(remaining/cpd);
+                    status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
+                  }
                 }
               }
-              return {key,name:latest.item,lastOrderDate:latest.date,lastOrderQty:(latest.unit_count||1)*(latest.quantity||1),totalUnits,remaining,daysLeft,status,orders};
+              return {key,name:latest.item,lastOrderDate:latest.date,lastOrderQty:(latest.unit_count||1)*(latest.quantity||1),totalUnits,remaining,daysLeft,status,isOz,orders};
             });
             rows.sort((a,b)=>({red:0,yellow:1,green:2,unknown:3})[a.status]-({red:0,yellow:1,green:2,unknown:3})[b.status]);
             const redC=rows.filter(r=>r.status==="red").length;
@@ -3716,7 +3752,7 @@ function App() {
                             return (
                               <div key={row.key} style={{borderBottom:i<detailCity.rows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
                                 {/* Summary row — tap to edit */}
-                                <div onClick={()=>setEditRow(isEditing?null:{key:row.key,name:row.name||"",unitCount:row.orders[0]?.unit_count||1})}
+                                <div onClick={()=>setEditRow(isEditing?null:{key:row.key,name:row.name||"",unitCount:row.orders[0]?.unit_count||1,volumeOz:row.orders[0]?.volume_oz||null})}
                                   style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"11px 14px",gap:0,alignItems:"center",cursor:"pointer"}}>
                                   <div style={{minWidth:0}}>
                                     <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
@@ -3734,7 +3770,9 @@ function App() {
                                       <div style={{fontSize:11,color:"var(--text-3)",textAlign:"center"}}>{row.totalUnits}u</div>
                                     )}
                                     {row.remaining!=null&&(
-                                      <div style={{fontSize:10,color:"var(--text-3)",textAlign:"center",marginTop:3}}>~{row.remaining} left</div>
+                                      <div style={{fontSize:10,color:"var(--text-3)",textAlign:"center",marginTop:3}}>
+                                        ~{row.isOz?(row.remaining>=128?`${(row.remaining/128).toFixed(1)} gal`:`${row.remaining} oz`):`${row.remaining}`} left
+                                      </div>
                                     )}
                                   </div>
                                   <div style={{textAlign:"right"}}>
@@ -3774,18 +3812,34 @@ function App() {
                                     ):(
                                       /* ── Edit fields ── */
                                       <>
-                                        <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:6,marginBottom:8}}>
+                                        <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:6,marginBottom:isLiquidItem(editRow.name)?6:8}}>
                                           <input value={editRow.name}
                                             onChange={e=>setEditRow(r=>({...r,name:e.target.value}))}
                                             placeholder="Item name"
                                             style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                                           <input type="number" min="1" value={editRow.unitCount}
                                             onChange={e=>setEditRow(r=>({...r,unitCount:parseInt(e.target.value)||1}))}
-                                            placeholder="Units"
+                                            placeholder="Bottles"
                                             style={{background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none",textAlign:"center"}}/>
                                         </div>
+                                        {isLiquidItem(editRow.name)&&(
+                                          <div style={{marginBottom:8}}>
+                                            <div style={{fontSize:10,color:"var(--text-3)",marginBottom:5}}>Bottle size</div>
+                                            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                                              {BOTTLE_SIZES.map(s=>(
+                                                <button key={s.oz} onClick={e=>{e.stopPropagation();setEditRow(r=>({...r,volumeOz:s.oz}));}}
+                                                  style={{fontSize:11,padding:"4px 9px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
+                                                    background:editRow.volumeOz===s.oz?"rgba(8,145,178,0.14)":"rgba(0,0,0,0.04)",
+                                                    color:editRow.volumeOz===s.oz?"var(--blue)":"var(--text-3)",
+                                                    border:`1px solid ${editRow.volumeOz===s.oz?"rgba(8,145,178,0.30)":"rgba(0,0,0,0.08)"}`}}>
+                                                  {s.label}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
                                         <div style={{display:"flex",gap:6}}>
-                                          <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount);}}
+                                          <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount,editRow.volumeOz);}}
                                             style={{flex:2,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Save</button>
                                           <button onClick={e=>{e.stopPropagation();setEditRow(r=>({...r,confirmDelete:true}));}}
                                             style={{flex:1,background:"rgba(220,38,38,0.08)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.18)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:600,cursor:"pointer",touchAction:"manipulation"}}>Delete</button>
@@ -3811,10 +3865,27 @@ function App() {
                           placeholder="Item name" style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
                           <input type="number" min="1" value={addItemForm.unit_count} onChange={e=>setAddItemForm(f=>({...f,unit_count:e.target.value}))}
-                            placeholder="Units (e.g. 36)" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                            placeholder={isLiquidItem(addItemForm.item)?"Bottles":"Units (e.g. 36)"}
+                            style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                           <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
                             style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
                         </div>
+                        {isLiquidItem(addItemForm.item)&&(
+                          <div style={{marginBottom:6}}>
+                            <div style={{fontSize:10,color:"var(--text-3)",marginBottom:5}}>Bottle size</div>
+                            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                              {BOTTLE_SIZES.map(s=>(
+                                <button key={s.oz} onClick={()=>setAddItemForm(f=>({...f,volume_oz:f.volume_oz===s.oz?null:s.oz}))}
+                                  style={{fontSize:11,padding:"4px 9px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
+                                    background:addItemForm.volume_oz===s.oz?"rgba(8,145,178,0.14)":"rgba(0,0,0,0.04)",
+                                    color:addItemForm.volume_oz===s.oz?"var(--blue)":"var(--text-3)",
+                                    border:`1px solid ${addItemForm.volume_oz===s.oz?"rgba(8,145,178,0.30)":"rgba(0,0,0,0.08)"}`}}>
+                                  {s.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div style={{display:"flex",gap:6,marginBottom:8}}>
                           {CITY_LIST.map(city=>(
                             <button key={city.id} onClick={()=>setAddItemForm(f=>({...f,city_tag:city.id}))}
@@ -3827,7 +3898,7 @@ function App() {
                           ))}
                         </div>
                         <div style={{display:"flex",gap:8}}>
-                          <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,date:new Date().toISOString().slice(0,10),city_tag:null});}}
+                          <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,volume_oz:null,date:new Date().toISOString().slice(0,10),city_tag:null});}}
                             style={{flex:1,background:"var(--blue)",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
                           <button onClick={()=>setShowAddItem(false)}
                             style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
