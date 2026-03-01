@@ -2136,7 +2136,8 @@ function App() {
   const [expandedProps,       setExpandedProps]       = useState(new Set(["lockwood","everton","bstreet","pierce","untagged"]));
   const [consumptionSettings, setConsumptionSettings] = useState({});
   const [showConsSetting,     setShowConsSetting]     = useState(false);
-  const gmailAuthPendingRef = useRef(false);
+  const gmailAuthPendingRef  = useRef(false);
+  const invRecleanedRef      = useRef(false);
 
   // ── City / property layout ─────────────────────────────────
   const CITIES = [
@@ -2613,6 +2614,13 @@ function App() {
   // ── Inventory helpers ──────────────────────────────────────
   const loadInventory = useCallback(async () => {
     try {
+      // One-time retroactive reclean for existing dirty data
+      if(!invRecleanedRef.current) {
+        invRecleanedRef.current = true;
+        fetch(`${BACKEND}/api/inventory/reclean`, {method:"POST"}).catch(()=>{});
+        // Small delay so reclean finishes before we fetch
+        await new Promise(r => setTimeout(r, 600));
+      }
       const [invR, statusR, consR] = await Promise.all([
         fetch(`${BACKEND}/api/inventory`),
         fetch(`${BACKEND}/api/gmail/status`),

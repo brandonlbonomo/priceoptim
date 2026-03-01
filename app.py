@@ -848,25 +848,27 @@ Copy the value below and add it as a Render environment variable named
 
 def _clean_item_name(subject):
     """Strip Amazon boilerplate from a subject line to get the product name."""
-    s = subject.strip()
-    # Remove enclosing quotes
-    s = s.strip('"').strip("'")
-    # Common prefixes to strip
+    s = subject.strip().strip('"').strip("'")
+    # Prefixes — order matters: strip "Delivered: 4 " before "Delivered: "
     prefixes = [
         r"your amazon\.com order of\s+",
         r"your order of\s+",
+        r"delivered:\s+\d+\s+",   # "Delivered: 4 'Product'" → strip "Delivered: 4 "
+        r"delivered:\s+",          # "Delivered: 'Product'"
+        r"ordered:\s+\d+\s+",     # "Ordered: 4 'Product'" → strip "Ordered: 4 "
         r"ordered:\s+",
         r"order confirmation:\s+",
         r"you ordered\s+",
+        r"shipped:\s+\d+\s+",
         r"shipped:\s+",
         r"your shipment of\s+",
     ]
     for p in prefixes:
         s = re.sub(p, "", s, flags=re.I)
-    # Common suffixes to strip
+    # Strip suffixes
     s = re.sub(r'\s+(?:has shipped|have shipped|has been shipped|and \d+ more item[s]?).*$', '', s, flags=re.I)
     s = re.sub(r'\s*\(order #[\w-]+\).*$', '', s, flags=re.I)
-    return s.strip('"').strip() or subject
+    return s.strip('"').strip("'").strip() or subject
 
 
 def _extract_unit_count(text):
@@ -941,11 +943,15 @@ def _parse_amazon_email(msg_data):
     # Unit count — how many units are in this product (e.g. 12-pack = 12)
     unit_count = _extract_unit_count(item)
 
-    # Order quantity — how many of this product were ordered
+    # Order quantity — "Ordered: 4 'Product'" has qty before the product name
     qty = 1
-    m4 = re.search(r'(?:Qty|Quantity|qty):\s*(\d+)', body, re.I)
-    if m4:
-        qty = int(m4.group(1))
+    m_subj_qty = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
+    if m_subj_qty:
+        qty = int(m_subj_qty.group(1))
+    else:
+        m4 = re.search(r'(?:Qty|Quantity|qty):\s*(\d+)', body, re.I)
+        if m4:
+            qty = int(m4.group(1))
 
     # Price — first dollar amount in body
     price = None
@@ -966,6 +972,31 @@ def _parse_amazon_email(msg_data):
         "excluded":   False,
         "source":     "amazon",
     }
+
+
+def _reclean_inventory_store(store):
+    """
+    Retroactively clean all stored inventory items:
+    - Re-apply _clean_item_name to the stored subject → update 'item'
+    - Re-extract unit_count and quantity-from-subject
+    - Auto-exclude untagged delivery notifications
+    """
+    inventory = store.get("inventory", {})
+    for it in inventory.values():
+        subject = it.get("subject") or it.get("item", "")
+        # Auto-exclude untagged delivery notifications
+        if re.match(r'^delivered:', subject.strip(), re.I) and not it.get("prop_tag"):
+            it["excluded"] = True
+        # Re-clean item name
+        it["item"] = _clean_item_name(subject)
+        # Re-extract unit count from cleaned name
+        it["unit_count"] = _extract_unit_count(it["item"])
+        # Re-extract order quantity from subject pattern "Ordered: 4 'Product'"
+        m = re.search(r'^(?:ordered|delivered|shipped):\s+(\d+)\s+["\']', subject.strip(), re.I)
+        if m and it.get("quantity", 1) == 1:
+            it["quantity"] = int(m.group(1))
+    store["inventory"] = inventory
+    return store
 
 
 def run_gmail_sync():
@@ -1017,6 +1048,8 @@ def run_gmail_sync():
     store["inventory"]           = inventory
     store["gmail_last_sync"]     = now_iso
     store["gmail_message_count"] = len(messages)
+    # Retroactively clean all items (names, unit counts, exclude delivery notifications)
+    store = _reclean_inventory_store(store)
     save_store(store)
     print(f"✅ Gmail sync done: {new_count} new, {errors} errors, "
           f"{len(inventory)} total (was {already}) | {len(messages)} matched query")
@@ -1158,6 +1191,20 @@ def bulk_inventory():
     store["inventory"] = inventory
     save_store(store)
     return jsonify({"ok": True, "updated": updated})
+
+
+# ── POST /api/inventory/reclean ──────────────────────────────
+@app.route("/api/inventory/reclean", methods=["POST"])
+def reclean_inventory():
+    """Retroactively clean all stored inventory item names and auto-exclude delivery notifications."""
+    store = load_store()
+    before = {iid: (it.get("item"), it.get("excluded")) for iid, it in store.get("inventory", {}).items()}
+    store = _reclean_inventory_store(store)
+    save_store(store)
+    after = store.get("inventory", {})
+    cleaned  = sum(1 for iid, it in after.items() if it.get("item") != before.get(iid, (None,))[0])
+    excluded = sum(1 for iid, it in after.items() if it.get("excluded") and not before.get(iid, (None, False))[1])
+    return jsonify({"ok": True, "total": len(after), "cleaned": cleaned, "excluded": excluded})
 
 
 # ── GET /api/consumption-settings ────────────────────────────
