@@ -846,16 +846,145 @@ Copy the value below and add it as a Render environment variable named
 
 # ── Email helpers ─────────────────────────────────────────────
 
+# Ordered from most-specific to least-specific.
+# Each entry: (regex_to_match_in_title, canonical_display_name)
+_PRODUCT_PATTERNS = [
+    # Bedding / pillows
+    (r'pillow\s*case|pillowcase',                      'Pillowcases'),
+    (r'bed\s*sheet|fitted\s*sheet|sheet\s*set',        'Bed Sheets'),
+    (r'duvet\s*cover',                                 'Duvet Cover'),
+    (r'duvet|comforter',                               'Comforter'),
+    (r'mattress\s*protector',                          'Mattress Protector'),
+    (r'mattress\s*pad|mattress\s*cover|mattress\s*topper', 'Mattress Pad'),
+    (r'bed\s*pillow|pillow',                           'Bed Pillows'),
+    # Bath linens
+    (r'bath\s*towel',                                  'Bath Towels'),
+    (r'hand\s*towel',                                  'Hand Towels'),
+    (r'washcloth|wash\s*cloth',                        'Washcloths'),
+    (r'bath\s*mat|bath\s*rug',                         'Bath Mat'),
+    (r'shower\s*curtain',                              'Shower Curtain'),
+    (r'bath\s*robe|bathrobe',                          'Bathrobes'),
+    # Paper goods
+    (r'toilet\s*paper|bath\s*tissue',                  'Toilet Paper'),
+    (r'paper\s*towel',                                 'Paper Towels'),
+    (r'facial\s*tissue|tissue\s*box|kleenex',          'Facial Tissue'),
+    (r'napkin',                                        'Napkins'),
+    (r'paper\s*plate',                                 'Paper Plates'),
+    (r'paper\s*cup',                                   'Paper Cups'),
+    # Trash bags
+    (r'trash\s*bag|garbage\s*bag|bin\s*liner|waste\s*bag|kitchen\s*bag', 'Trash Bags'),
+    (r'recycling\s*bag',                               'Recycling Bags'),
+    # Personal care — hair
+    (r'shampoo',                                       'Shampoo'),
+    (r'conditioner',                                   'Conditioner'),
+    (r'body\s*wash|bodywash|shower\s*gel',             'Body Wash'),
+    # Soap
+    (r'hand\s*soap|liquid\s*soap|foaming\s*soap',      'Hand Soap'),
+    (r'bar\s*soap|soap\s*bar',                         'Bar Soap'),
+    (r'dish\s*soap|dish\s*detergent|dishwashing\s+(?:soap|liquid)', 'Dish Soap'),
+    # Dental
+    (r'toothbrush',                                    'Toothbrushes'),
+    (r'toothpaste',                                    'Toothpaste'),
+    (r'dental\s*floss|floss\s*pick',                   'Dental Floss'),
+    (r'mouthwash',                                     'Mouthwash'),
+    # Skincare
+    (r'lotion|moisturizer',                            'Lotion'),
+    (r'deodorant|antiperspirant',                      'Deodorant'),
+    (r'razor',                                         'Razors'),
+    (r'cotton\s*ball',                                 'Cotton Balls'),
+    (r'cotton\s*swab|q.tip',                           'Cotton Swabs'),
+    # Laundry
+    (r'laundry\s*pod|detergent\s*pod|tide\s*pod',      'Laundry Pods'),
+    (r'laundry\s*detergent|washing\s*detergent',       'Laundry Detergent'),
+    (r'dryer\s*sheet',                                 'Dryer Sheets'),
+    (r'fabric\s*softener',                             'Fabric Softener'),
+    # Cleaning
+    (r'disinfect(?:ant|ing)\s*wipe|antibacterial\s*wipe|lysol\s*wipe', 'Disinfecting Wipes'),
+    (r'dishwasher\s*pod|dishwasher\s*tab|dish(?:washer)?\s*tab', 'Dishwasher Pods'),
+    (r'bathroom\s*cleaner|toilet\s*bowl\s*cleaner|toilet\s*cleaner', 'Bathroom Cleaner'),
+    (r'all.purpose\s*cleaner|multi.surface\s*cleaner|cleaning\s*spray', 'All-Purpose Cleaner'),
+    (r'glass\s*cleaner|window\s*cleaner',              'Glass Cleaner'),
+    (r'bleach',                                        'Bleach'),
+    (r'sponge|scrub\s*pad',                            'Sponges'),
+    (r'mop\s*pad|mop\s*head',                          'Mop Pads'),
+    (r'air\s*freshener|room\s*spray|plug.in',          'Air Freshener'),
+    (r'odor\s*elim|odor\s*remov|odor\s*absorb',        'Odor Eliminator'),
+    (r'wipe',                                          'Wipes'),
+    # Coffee / kitchen
+    (r'coffee\s*pod|k.?cup|kcup',                      'Coffee Pods'),
+    (r'coffee\s*filter',                               'Coffee Filters'),
+    (r'coffee',                                        'Coffee'),
+    (r'tea\s*bag',                                     'Tea Bags'),
+    (r'plastic\s*wrap|cling\s*wrap|saran\s*wrap',      'Plastic Wrap'),
+    (r'aluminum\s*foil|tin\s*foil',                    'Aluminum Foil'),
+    (r'zip.?lock|storage\s*bag|sandwich\s*bag|freezer\s*bag|gallon\s*bag', 'Storage Bags'),
+    (r'plastic\s*utensil|plastic\s*fork|plastic\s*knife|plastic\s*spoon', 'Plastic Utensils'),
+    (r'plastic\s*cup',                                 'Plastic Cups'),
+    # Guest toiletry sizes (small bottles)
+    (r'mini\s*shampoo|travel\s*shampoo',               'Mini Shampoo'),
+    (r'mini\s*conditioner|travel\s*conditioner',       'Mini Conditioner'),
+    (r'mini\s*body\s*wash|travel\s*body\s*wash',       'Mini Body Wash'),
+    (r'amenity|toiletry\s*set|guest\s*amenity',        'Guest Amenities'),
+    # Miscellaneous
+    (r'hand\s*sanitizer',                              'Hand Sanitizer'),
+    (r'bandage|band.aid',                              'Bandages'),
+    (r'ibuprofen|tylenol|acetaminophen|advil',         'Pain Reliever'),
+]
+
+# Stop words for fallback name extraction
+_NAME_STOP = {
+    'and','the','for','with','of','in','by','to','from','a','an','or','on','at',
+    'as','is','it','its','into','via','per','pack','pcs','pieces','piece','count',
+    'ct','bulk','premium','quality','hotel','disposable','ultra','extra','super',
+    'soft','strong','fresh','clean','quick','easy','new','best','high','plus',
+    'size','big','small','large','mini','travel','value','family','mega','jumbo',
+    'regular','standard','comfortable','natural','organic','gentle','original',
+    'advanced','professional','multi','all','purpose','use','set','lot','box',
+    'case','bag','roll','pack','bottle','gallon','oz','lb','inch','inches',
+    'double','triple','single','twin','full','queen','king','thread',
+    'alternatives','alternative','grade','certified','approved','free','non',
+    'down','white','black','blue','green','gray','grey','beige','brown',
+}
+
+def _extract_canonical_name(raw_title):
+    """
+    Given a raw product title (after stripping Amazon prefix boilerplate),
+    return a short canonical product name.
+
+    Strategy:
+    1. Try keyword matching against _PRODUCT_PATTERNS → return canonical label
+    2. Fall back: strip brand words, numbers, fluff, return first 3 useful words
+    """
+    t = raw_title.lower()
+
+    # 1. Keyword match
+    for pattern, canonical in _PRODUCT_PATTERNS:
+        if re.search(pattern, t, re.I):
+            return canonical
+
+    # 2. Fallback: remove numbers and units, keep first 3 meaningful words
+    words = re.sub(r'\b\d+\b', '', raw_title)            # strip bare numbers
+    words = re.sub(r'[,.()\[\]"\'!?]+', ' ', words)     # strip punctuation
+    tokens = [w for w in words.split()
+              if w.lower() not in _NAME_STOP and len(w) > 1]
+    if tokens:
+        return " ".join(tokens[:3]).title()
+    return raw_title.strip()
+
+
 def _clean_item_name(subject):
-    """Strip Amazon boilerplate from a subject line to get the product name."""
+    """
+    Strip Amazon boilerplate from a subject line, then extract a short
+    canonical product name (e.g. "Bed Pillows", "Toilet Paper").
+    """
     s = subject.strip().strip('"').strip("'")
     # Prefixes — order matters: strip "Delivered: 4 " before "Delivered: "
     prefixes = [
         r"your amazon\.com order of\s+",
         r"your order of\s+",
-        r"delivered:\s+\d+\s+",   # "Delivered: 4 'Product'" → strip "Delivered: 4 "
-        r"delivered:\s+",          # "Delivered: 'Product'"
-        r"ordered:\s+\d+\s+",     # "Ordered: 4 'Product'" → strip "Ordered: 4 "
+        r"delivered:\s+\d+\s+",
+        r"delivered:\s+",
+        r"ordered:\s+\d+\s+",
         r"ordered:\s+",
         r"order confirmation:\s+",
         r"you ordered\s+",
@@ -868,7 +997,10 @@ def _clean_item_name(subject):
     # Strip suffixes
     s = re.sub(r'\s+(?:has shipped|have shipped|has been shipped|and \d+ more item[s]?).*$', '', s, flags=re.I)
     s = re.sub(r'\s*\(order #[\w-]+\).*$', '', s, flags=re.I)
-    return s.strip('"').strip("'").strip() or subject
+    s = s.strip('"').strip("'").strip()
+    if not s:
+        return subject
+    return _extract_canonical_name(s)
 
 
 def _extract_unit_count(text):

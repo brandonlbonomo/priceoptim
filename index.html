@@ -9,35 +9,35 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Pigeon"/>
   <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#1a1a2e"/>
+  <meta name="theme-color" content="#f0f2f5"/>
   <link rel="apple-touch-icon" href="/icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <style>
     :root {
-      /* ── Dark-first palette ── */
-      --bg: #06091a;
-      --bg2: #0d1124;
-      --glass: rgba(255,255,255,0.09);
-      --glass-border: rgba(255,255,255,0.13);
-      --green: #32d74b;
-      --green-dim: rgba(50,215,75,0.18);
-      --red: #ff453a;
-      --red-dim: rgba(255,69,58,0.18);
-      --blue: #0a84ff;
-      --blue-dim: rgba(10,132,255,0.18);
-      --purple: #bf5af2;
-      --yellow: #ffd60a;
-      --text: #f2f4ff;
-      --text-2: rgba(242,244,255,0.58);
-      --text-3: rgba(242,244,255,0.34);
-      --card-bg: rgba(255,255,255,0.09);
-      --header-bg: rgba(6,9,26,0.72);
-      --radius: 20px;
+      /* ── Light glass palette ── */
+      --bg: #f0f2f5;
+      --bg2: #e8eaed;
+      --glass: rgba(255,255,255,0.72);
+      --glass-border: rgba(0,0,0,0.08);
+      --green: #16a34a;
+      --green-dim: rgba(22,163,74,0.12);
+      --red: #dc2626;
+      --red-dim: rgba(220,38,38,0.10);
+      --blue: #0891b2;
+      --blue-dim: rgba(8,145,178,0.12);
+      --purple: #7c3aed;
+      --yellow: #d97706;
+      --text: #111827;
+      --text-2: #374151;
+      --text-3: #9ca3af;
+      --card-bg: rgba(255,255,255,0.85);
+      --header-bg: rgba(240,242,245,0.88);
+      --radius: 16px;
       --radius-sm: 12px;
-      --specular: inset 0 1px 0 rgba(255,255,255,0.16);
-      --card-shadow: 0 4px 40px rgba(0,0,0,0.55), 0 1px 6px rgba(0,0,0,0.30);
+      --specular: inset 0 1px 0 rgba(255,255,255,0.90);
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,43 +60,21 @@
       touch-action: manipulation;
     }
 
-    /* ── Deep dark background with vivid color orbs ── */
+    /* ── Light background with soft color washes ── */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       z-index: 0;
       background:
-        radial-gradient(ellipse 72% 65% at 6% 8%,    rgba(108,55,240,0.45) 0%, transparent 52%),
-        radial-gradient(ellipse 65% 58% at 96% 6%,   rgba(20,90,255,0.38) 0%, transparent 52%),
-        radial-gradient(ellipse 68% 60% at 90% 94%,  rgba(20,180,110,0.30) 0%, transparent 52%),
-        radial-gradient(ellipse 55% 55% at 6% 95%,   rgba(210,40,150,0.28) 0%, transparent 52%),
-        radial-gradient(ellipse 50% 46% at 50% 50%,  rgba(80,60,180,0.14) 0%, transparent 58%),
-        linear-gradient(168deg, #06091a 0%, #080c22 35%, #060917 65%, #09061c 100%);
+        radial-gradient(ellipse 70% 60% at 10% 5%,  rgba(8,145,178,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 55% at 92% 8%,  rgba(124,58,237,0.05) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 58% at 88% 92%, rgba(22,163,74,0.05) 0%, transparent 55%),
+        linear-gradient(160deg, #f0f2f5 0%, #eef0f4 50%, #f2f0f5 100%);
       pointer-events: none;
     }
 
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background:
-        radial-gradient(circle 680px at 18% 48%, rgba(80,100,255,0.22) 0%, transparent 62%),
-        radial-gradient(circle 560px at 82% 22%, rgba(30,180,130,0.18) 0%, transparent 62%),
-        radial-gradient(circle 500px at 58% 88%, rgba(160,80,255,0.20) 0%, transparent 58%),
-        radial-gradient(circle 340px at 40% 14%, rgba(255,110,60,0.10) 0%, transparent 52%);
-      animation: driftOrbs 26s ease-in-out infinite alternate;
-      pointer-events: none;
-    }
-
-    @keyframes driftOrbs {
-      0%   { transform: translate(0, 0) scale(1); }
-      25%  { transform: translate(28px, -16px) scale(1.04); }
-      50%  { transform: translate(-10px, 26px) scale(0.97); }
-      75%  { transform: translate(20px, 8px) scale(1.02); }
-      100% { transform: translate(-6px, -12px) scale(1.01); }
-    }
+    body::after { display: none; }
 
     #root { position: relative; z-index: 1; }
 
@@ -106,19 +84,19 @@
 
     /* ── Glass card base classes ── */
     .glass {
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.80);
+      border: 1px solid rgba(0,0,0,0.07);
       border-radius: var(--radius);
-      backdrop-filter: blur(48px) saturate(1.8);
-      -webkit-backdrop-filter: blur(48px) saturate(1.8);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
       box-shadow: var(--card-shadow), var(--specular);
     }
     .glass-sm {
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.80);
+      border: 1px solid rgba(0,0,0,0.07);
       border-radius: var(--radius-sm);
-      backdrop-filter: blur(32px) saturate(1.6);
-      -webkit-backdrop-filter: blur(32px) saturate(1.6);
+      backdrop-filter: blur(28px) saturate(1.3);
+      -webkit-backdrop-filter: blur(28px) saturate(1.3);
       box-shadow: var(--card-shadow), var(--specular);
     }
 
@@ -126,11 +104,11 @@
     .top-header {
       position: sticky; top: 0; z-index: 100;
       padding: 12px 16px 10px;
-      background: rgba(6,9,26,0.68);
-      backdrop-filter: blur(56px) saturate(1.9);
-      -webkit-backdrop-filter: blur(56px) saturate(1.9);
-      border-bottom: 0.5px solid rgba(255,255,255,0.10);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.07);
+      background: rgba(240,242,245,0.88);
+      backdrop-filter: blur(48px) saturate(1.5);
+      -webkit-backdrop-filter: blur(48px) saturate(1.5);
+      border-bottom: 0.5px solid rgba(0,0,0,0.08);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
       display: flex; align-items: center; justify-content: space-between;
     }
 
@@ -141,12 +119,12 @@
       align-items: center;
       justify-content: center;
       padding: 6px 0 10px;
-      background: rgba(6,9,26,0.68);
-      backdrop-filter: blur(56px) saturate(1.9);
-      -webkit-backdrop-filter: blur(56px) saturate(1.9);
+      background: rgba(240,242,245,0.88);
+      backdrop-filter: blur(48px) saturate(1.5);
+      -webkit-backdrop-filter: blur(48px) saturate(1.5);
       overflow: hidden;
-      border-bottom: 0.5px solid rgba(255,255,255,0.09);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.24);
+      border-bottom: 0.5px solid rgba(0,0,0,0.07);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.04);
       height: 52px;
     }
     .top-nav.has-subnav {
@@ -163,7 +141,7 @@
     .top-nav-pill {
       background: transparent;
       border: none;
-      color: var(--text-2);
+      color: var(--text-3);
       font-size: 15px;
       font-weight: 500;
       padding: 7px 22px;
@@ -176,20 +154,20 @@
                   box-shadow 0.3s cubic-bezier(0.34,1.3,0.64,1),
                   color 0.3s cubic-bezier(0.34,1.3,0.64,1);
       flex-shrink: 0;
-      opacity: 0.38;
+      opacity: 0.45;
       transform: scale(0.82);
     }
     .top-nav-pill.active {
-      background: rgba(255,255,255,0.18);
-      color: #ffffff;
+      background: rgba(255,255,255,0.90);
+      color: var(--text);
       font-weight: 700;
       font-size: 15px;
       opacity: 1;
       transform: scale(1);
-      backdrop-filter: blur(24px) saturate(1.8);
-      -webkit-backdrop-filter: blur(24px) saturate(1.8);
-      border: 0.5px solid rgba(255,255,255,0.26);
-      box-shadow: 0 2px 16px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.42);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 0.5px solid rgba(0,0,0,0.09);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
     }
 
     /* ── Property sub-nav ── */
@@ -199,17 +177,17 @@
       justify-content: center;
       padding: 2px 16px 10px;
       gap: 8px;
-      background: rgba(6,9,26,0.68);
-      backdrop-filter: blur(56px) saturate(1.9);
-      -webkit-backdrop-filter: blur(56px) saturate(1.9);
-      border-bottom: 0.5px solid rgba(255,255,255,0.09);
+      background: rgba(240,242,245,0.88);
+      backdrop-filter: blur(48px) saturate(1.5);
+      -webkit-backdrop-filter: blur(48px) saturate(1.5);
+      border-bottom: 0.5px solid rgba(0,0,0,0.07);
       overflow-x: auto;
       flex-wrap: nowrap;
     }
     .sub-nav-pill {
       background: transparent;
       border: none;
-      color: var(--text-2);
+      color: var(--text-3);
       font-size: 13px;
       font-weight: 500;
       padding: 5px 16px;
@@ -218,15 +196,15 @@
       white-space: nowrap;
       flex-shrink: 0;
       transition: all 0.28s cubic-bezier(0.34,1.3,0.64,1);
-      opacity: 0.46;
+      opacity: 0.55;
     }
     .sub-nav-pill.active {
-      background: rgba(255,255,255,0.16);
-      color: #ffffff;
+      background: rgba(255,255,255,0.90);
+      color: var(--text);
       font-weight: 700;
       opacity: 1;
-      border: 0.5px solid rgba(255,255,255,0.24);
-      box-shadow: 0 1px 12px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.38);
+      border: 0.5px solid rgba(0,0,0,0.09);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.95);
     }
 
     /* ── Property jump pills (Portfolio tab only) ── */
@@ -240,17 +218,17 @@
       justify-content: center;
       gap: 8px;
       padding: 6px 16px 10px;
-      background: rgba(6,9,26,0.68);
-      backdrop-filter: blur(56px) saturate(1.9);
-      -webkit-backdrop-filter: blur(56px) saturate(1.9);
-      border-bottom: 0.5px solid rgba(255,255,255,0.08);
+      background: rgba(240,242,245,0.88);
+      backdrop-filter: blur(48px) saturate(1.5);
+      -webkit-backdrop-filter: blur(48px) saturate(1.5);
+      border-bottom: 0.5px solid rgba(0,0,0,0.07);
       overflow-x: auto;
       flex-wrap: nowrap;
       animation: propPillsSlideIn 0.30s cubic-bezier(0.34,1.28,0.64,1) forwards;
     }
     .prop-pill {
-      background: rgba(255,255,255,0.10);
-      border: 0.5px solid rgba(255,255,255,0.20);
+      background: rgba(255,255,255,0.85);
+      border: 0.5px solid rgba(0,0,0,0.09);
       color: var(--text-2);
       font-size: 12px;
       font-weight: 600;
@@ -259,9 +237,9 @@
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
-      backdrop-filter: blur(20px) saturate(1.6);
-      -webkit-backdrop-filter: blur(20px) saturate(1.6);
-      box-shadow: 0 1px 8px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.22);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
       touch-action: manipulation;
       transition: opacity 0.15s ease, transform 0.15s ease;
     }
@@ -276,21 +254,21 @@
       z-index: 2;
       pointer-events: none;
     }
-    .top-nav::before { left: 0; background: linear-gradient(to right, rgba(6,9,26,0.68), transparent); }
-    .top-nav::after  { right: 0; background: linear-gradient(to left, rgba(6,9,26,0.68), transparent); }
+    .top-nav::before { left: 0; background: linear-gradient(to right, rgba(240,242,245,0.88), transparent); }
+    .top-nav::after  { right: 0; background: linear-gradient(to left, rgba(240,242,245,0.88), transparent); }
 
     .nav-tab {
       background: transparent; color: var(--text-3); border: none;
       padding: 7px 16px; border-radius: 20px; font-size: 13px;
       font-weight: 500; transition: all 0.2s; position: relative;
     }
-    .nav-tab.active { background: rgba(255,255,255,0.10); color: var(--text); font-weight: 600; }
+    .nav-tab.active { background: rgba(255,255,255,0.85); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
     /* ── Pills ── */
     .pill {
       display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.80);
+      border: 1px solid rgba(0,0,0,0.08);
       border-radius: 20px;
       padding: 4px 12px;
       font-size: 11px;
@@ -319,19 +297,19 @@
     /* ── Chart tooltip ── */
     .chart-tooltip {
       position: absolute;
-      background: rgba(8,12,32,0.90);
-      border: 0.5px solid rgba(255,255,255,0.18);
+      background: rgba(30,30,30,0.92);
+      border: 0.5px solid rgba(255,255,255,0.10);
       border-radius: 14px;
       padding: 10px 14px;
       font-size: 12px;
-      color: var(--text);
+      color: #ffffff;
       pointer-events: none;
-      backdrop-filter: blur(48px) saturate(1.6);
-      -webkit-backdrop-filter: blur(48px) saturate(1.6);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
       white-space: nowrap;
       z-index: 50;
       transform: translateX(-50%);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.12);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.22);
     }
 
     /* ── Direction badges ── */
@@ -352,8 +330,8 @@
     /* ── Segment control ── */
     .seg-ctrl {
       display: inline-flex;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.07);
       border-radius: 10px;
       padding: 3px;
       gap: 2px;
@@ -369,15 +347,16 @@
       transition: all 0.18s;
     }
     .seg-btn.active {
-      background: rgba(255,255,255,0.13);
+      background: rgba(255,255,255,0.90);
       color: var(--text);
       font-weight: 600;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
 
     /* ── Action buttons ── */
     .btn-ghost {
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.80);
+      border: 1px solid rgba(0,0,0,0.09);
       color: var(--text-2);
       border-radius: 10px;
       padding: 7px 14px;
@@ -385,25 +364,25 @@
       font-weight: 500;
       transition: all 0.18s;
     }
-    .btn-ghost:hover { background: rgba(255,255,255,0.18); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255,255,255,0.95); color: var(--text); }
     .btn-primary {
-      background: var(--green);
+      background: var(--blue);
       border: none;
-      color: #000;
+      color: #fff;
       border-radius: 10px;
       padding: 8px 16px;
       font-size: 12px;
       font-weight: 700;
       transition: all 0.18s;
     }
-    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-primary:hover { filter: brightness(1.08); }
 
     /* ── Modal overlay ── */
     .modal-overlay {
       position: fixed; inset: 0; z-index: 200;
-      background: rgba(0,0,0,0.60);
-      backdrop-filter: blur(28px) saturate(1.4);
-      -webkit-backdrop-filter: blur(28px) saturate(1.4);
+      background: rgba(0,0,0,0.30);
+      backdrop-filter: blur(20px) saturate(1.3);
+      -webkit-backdrop-filter: blur(20px) saturate(1.3);
       display: flex; align-items: center; justify-content: center;
     }
 
@@ -412,13 +391,13 @@
       display: grid;
       grid-template-columns: 76px 28px 1fr 100px 96px 120px;
       padding: 11px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
       align-items: center;
       gap: 8px;
       cursor: pointer;
       transition: background 0.15s;
     }
-    .tx-row:hover { background: rgba(255,255,255,0.04); }
+    .tx-row:hover { background: rgba(0,0,0,0.02); }
     .tx-row:last-child { border-bottom: none; }
 
     /* ── Swipe container ── */
@@ -443,16 +422,16 @@
       align-items: center;
       justify-content: center;
       padding: 6px;
-      background: rgba(255,255,255,0.12);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.90);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-radius: 50%;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.40);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
     }
     .sync-spinner {
       width: 20px; height: 20px;
-      border: 2px solid rgba(255,255,255,0.12);
-      border-top-color: rgba(255,255,255,0.85);
+      border: 2px solid rgba(0,0,0,0.10);
+      border-top-color: var(--blue);
       border-radius: 50%;
       animation: spinClear 0.65s linear infinite;
     }
@@ -486,8 +465,8 @@
       transform: translateX(-50%);
       width: 24px;
       height: 24px;
-      border: 2.5px solid rgba(255,255,255,0.12);
-      border-top-color: rgba(255,255,255,0.60);
+      border: 2.5px solid rgba(0,0,0,0.08);
+      border-top-color: var(--blue);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       z-index: 50;
@@ -503,14 +482,14 @@
       margin-bottom: 10px; margin-top: 22px;
     }
 
-    /* ── Cards — frosted glass on dark ── */
+    /* ── Cards — frosted glass on light ── */
     .card {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 20px;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 16px;
       overflow: hidden;
-      backdrop-filter: blur(56px) saturate(2.0);
-      -webkit-backdrop-filter: blur(56px) saturate(2.0);
+      backdrop-filter: blur(40px) saturate(1.5);
+      -webkit-backdrop-filter: blur(40px) saturate(1.5);
       box-shadow: var(--card-shadow), var(--specular);
     }
     .card-padded { padding: 16px 18px; }
@@ -527,12 +506,12 @@
 
     /* ── Metric card ── */
     .metric-card {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(0,0,0,0.06);
       border-radius: var(--radius);
       padding: 16px 18px;
-      backdrop-filter: blur(48px) saturate(1.9);
-      -webkit-backdrop-filter: blur(48px) saturate(1.9);
+      backdrop-filter: blur(40px) saturate(1.5);
+      -webkit-backdrop-filter: blur(40px) saturate(1.5);
       box-shadow: var(--card-shadow), var(--specular);
     }
 
@@ -548,13 +527,13 @@
     .sub-nav-pill:active  { transform: scale(0.92) !important; opacity: 0.6 !important;
       transition: transform 0.08s ease, opacity 0.08s ease !important; }
     .btn-ghost:active     { transform: scale(0.96) !important; opacity: 0.72; }
-    .btn-primary:active   { transform: scale(0.96) !important; filter: brightness(0.88); }
+    .btn-primary:active   { transform: scale(0.96) !important; filter: brightness(0.92); }
     button:active:not(:disabled):not(.top-nav-pill):not(.sub-nav-pill):not(.btn-ghost):not(.btn-primary) {
-      opacity: 0.68;
+      opacity: 0.65;
     }
     .drawer-row           { transition: background 0.14s, color 0.14s; }
-    .drawer-row:active    { background: rgba(255,255,255,0.13) !important; }
-    .tx-row-wrap:active   { background: rgba(255,255,255,0.07) !important; }
+    .drawer-row:active    { background: rgba(0,0,0,0.05) !important; }
+    .tx-row-wrap:active   { background: rgba(0,0,0,0.03) !important; }
 
     /* ── Skeleton shimmer ── */
     @keyframes shimmer {
@@ -563,9 +542,9 @@
     }
     .skeleton {
       background: linear-gradient(90deg,
-        rgba(255,255,255,0.04) 0%,
-        rgba(255,255,255,0.11) 45%,
-        rgba(255,255,255,0.04) 100%);
+        rgba(0,0,0,0.04) 0%,
+        rgba(0,0,0,0.08) 45%,
+        rgba(0,0,0,0.04) 100%);
       background-size: 300% 100%;
       animation: shimmer 1.6s ease-in-out infinite;
       border-radius: 8px;
@@ -587,8 +566,8 @@
 
     /* ── Tag row pulse ── */
     @keyframes rowPulse {
-      0%   { background: rgba(50,215,75,0.22); }
-      60%  { background: rgba(50,215,75,0.06); }
+      0%   { background: rgba(22,163,74,0.14); }
+      60%  { background: rgba(22,163,74,0.04); }
       100% { background: transparent; }
     }
     .row-pulse { animation: rowPulse 0.65s ease-out forwards !important; }
@@ -617,13 +596,13 @@
       position: fixed; top: 20px; left: 50%; z-index: 2000; pointer-events: none;
     }
     .toast-pill {
-      background: rgba(12,16,42,0.97);
-      backdrop-filter: blur(32px) saturate(1.8);
-      -webkit-backdrop-filter: blur(32px) saturate(1.8);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(30,30,30,0.94);
+      backdrop-filter: blur(28px) saturate(1.5);
+      -webkit-backdrop-filter: blur(28px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.10);
       border-radius: 28px; padding: 10px 20px;
-      font-size: 13px; font-weight: 600; color: var(--text);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.10);
+      font-size: 13px; font-weight: 600; color: #ffffff;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08);
       white-space: nowrap;
       animation: toastIn 0.44s cubic-bezier(0.34,1.28,0.64,1) forwards;
       display: flex; align-items: center; gap: 8px;
@@ -672,6 +651,7 @@ const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"
 const fmtPct = n => (n==null||isNaN(n)||!isFinite(n))?"—":`${n.toFixed(1)}%`;
 const fmtDate = d => { try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}); } catch { return d||""; } };
 const moLabel = s => { try { if(s&&/^\d{4}-Q\d$/.test(s)){const[y,q]=s.split("-");return `${q} '${y.slice(2)}`;} const [y,m]=s.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]+" '"+y.slice(2); } catch { return s; } };
+const fmtItem = (name, unit_count) => unit_count > 1 ? `${name||""} × ${unit_count}` : (name||"");
 
 // ── Properties ────────────────────────────────────────────────
 const BASE_PROPERTIES = [
@@ -870,10 +850,10 @@ function MonthDrillDown({ mo, type, txs, onClose, doTag, doDelete, doBulkTag, do
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div className="sheet-enter" style={{background:"rgba(10,14,36,0.96)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRadius:"28px 28px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -2px 0 rgba(255,255,255,0.08), 0 -12px 60px rgba(0,0,0,0.50)",border:"0.5px solid rgba(255,255,255,0.12)"}}>
-        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
+      <div className="sheet-enter" style={{background:"rgba(248,249,251,0.97)",backdropFilter:"blur(48px) saturate(1.5)",WebkitBackdropFilter:"blur(48px) saturate(1.5)",borderRadius:"24px 24px 0 0",width:"100%",height:"88vh",display:"flex",flexDirection:"column",overflow:"hidden",boxShadow:"0 -4px 40px rgba(0,0,0,0.12)",border:"0.5px solid rgba(0,0,0,0.08)"}}>
+        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,margin:"10px auto 0",flexShrink:0,cursor:"pointer"}} onClick={onClose}/>
         {/* Header */}
-        <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div>
             <div style={{fontSize:12,color:"var(--text-3)",marginBottom:2}}>{title||moLabel(mo)} · {typeLabel}</div>
             <div style={{fontSize:22,fontWeight:700,letterSpacing:"-0.02em",color:total>=0?"var(--green)":"var(--red)"}}>{fmt$(Math.abs(total))}</div>
@@ -1128,13 +1108,13 @@ function ManualIncomeModal({ manual, onSave, onClose }) {
                 placeholder="0"
                 value={vals[mo]||""}
                 onChange={e=>setVals(v=>({...v,[mo]:parseFloat(e.target.value)||0}))}
-                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.14)",fontSize:13,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",background:"rgba(255,255,255,0.08)",color:"var(--text)",boxSizing:"border-box"}}
+                style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.09)",fontSize:13,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",background:"rgba(0,0,0,0.04)",color:"var(--text)",boxSizing:"border-box"}}
               />
             </div>
           ))}
         </div>
         <div style={{display:"flex",gap:8,marginTop:20,justifyContent:"flex-end"}}>
-          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.14)",background:"transparent",color:"var(--text-2)",cursor:"pointer",fontSize:13}}>Cancel</button>
+          <button onClick={onClose} style={{padding:"8px 16px",borderRadius:10,border:"1px solid rgba(0,0,0,0.09)",background:"rgba(0,0,0,0.04)",color:"var(--text-2)",cursor:"pointer",fontSize:13}}>Cancel</button>
           <button onClick={()=>{onSave(vals);onClose();}} className="btn-primary">Save</button>
         </div>
       </div>
@@ -1158,7 +1138,7 @@ function InvestModal({ invest, onSave, onClose }) {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)",fontSize:14}}>$</span>
               <input type="number" value={vals[p.id]||""} onChange={e=>setVals(v=>({...v,[p.id]:+e.target.value}))}
                 placeholder="0"
-                style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",outline:"none"}}/>
+                style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:10,padding:"10px 12px 10px 26px",color:"var(--text)",fontSize:15,fontWeight:600,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",outline:"none"}}/>
             </div>
           </div>
         ))}
@@ -1195,7 +1175,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
   const handleBulkDel = ()  => { doBulkDelete([...selected]); clearSel(); };
 
   const Checkbox = ({id, checked, onToggle}) => (
-    <div onClick={e=>{e.stopPropagation(); onToggle ? onToggle() : toggle(id,e);}} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"rgba(255,255,255,0.70)":"rgba(255,255,255,0.22)"}`,background:checked?"rgba(255,255,255,0.18)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
+    <div onClick={e=>{e.stopPropagation(); onToggle ? onToggle() : toggle(id,e);}} style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${checked?"var(--blue)":"rgba(0,0,0,0.18)"}`,background:checked?"var(--blue)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.12s"}}>
       {checked&&<span style={{color:"white",fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
     </div>
   );
@@ -1216,15 +1196,15 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             <span style={{fontSize:11,fontWeight:700,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",color:"var(--text-2)",marginRight:2}}>{selCount} selected —</span>
             {PROPERTIES.filter(p=>p.id!=="transfer").map(p=>(
               <button key={p.id} onClick={()=>handleBulkTag(p.id)}
-                style={{background:"rgba(255,255,255,0.08)",color:"var(--text)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer"}}>
+                style={{background:"rgba(0,0,0,0.05)",color:"var(--text)",border:"1px solid rgba(0,0,0,0.10)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:600,cursor:"pointer"}}>
                 {p.label}
               </button>
             ))}
             <button onClick={handleBulkDel}
-              style={{background:"rgba(255,69,58,0.1)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,cursor:"pointer"}}>
+              style={{background:"rgba(220,38,38,0.08)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.20)",borderRadius:8,padding:"4px 10px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,cursor:"pointer"}}>
               Delete {selCount}
             </button>
-            <button onClick={clearSel} style={{background:"rgba(255,255,255,0.07)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
+            <button onClick={clearSel} style={{background:"rgba(0,0,0,0.05)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"4px 8px",fontSize:10,cursor:"pointer"}}>✕</button>
           </div>
         )}
       </div>
@@ -1233,7 +1213,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
 
       {sorted.length>0&&(
         <div className="glass" style={{overflow:"hidden"}}>
-          <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",gap:8,alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",gap:8,alignItems:"center",background:"rgba(0,0,0,0.02)"}}>
             <Checkbox id="__all__" checked={allSel} onToggle={toggleAll}/>
             {["DATE","","PAYEE","AMOUNT","PROPERTY"].map(h=>(
               <span key={h} style={{fontSize:9,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",textTransform:"uppercase",letterSpacing:"0.1em"}}>{h}</span>
@@ -1243,9 +1223,9 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
             const isSel = selected.has(tx.id);
             return (
               <div key={tx.id}>
-                <div className={pulsedId===tx.id?"row-pulse":""} style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(10,132,255,0.06)":"transparent"}}
+                <div className={pulsedId===tx.id?"row-pulse":""} style={{display:"grid",gridTemplateColumns:"36px 72px 22px 1fr 100px 120px",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.05)",gap:8,alignItems:"center",cursor:"pointer",transition:"background 0.1s",background:isSel?"rgba(8,145,178,0.06)":"transparent"}}
                   onClick={()=>{ if(selCount>0){toggle(tx.id);return;} setTagging(t=>t===tx.id?null:tx.id); }}
-                  onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(255,255,255,0.04)";}}
+                  onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(0,0,0,0.02)";}}
                   onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                   <div onClick={e=>toggle(tx.id,e)}><Checkbox id={tx.id} checked={isSel}/></div>
                   <span style={{fontSize:11,color:"var(--text-3)",fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace"}}>{fmtDate(tx.date)}</span>
@@ -1254,7 +1234,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                     <div style={{fontSize:13,fontWeight:500,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tx.payee}</div>
                     {tx.account&&<div style={{fontSize:10,color:"var(--text-3)",marginTop:1}}>{tx.account}</div>}
                   </div>
-                  <span style={{fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"#30d158":"#ff453a"}}>
+                  <span style={{fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",fontWeight:700,fontSize:13,color:tx.type==="in"?"var(--green)":"var(--red)"}}>
                     {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                   </span>
                   <div onClick={e=>e.stopPropagation()} style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
@@ -1271,7 +1251,7 @@ function TxList({ txs, tagging, setTagging, doTag, doDelete, doBulkTag, doBulkDe
                   </div>
                 </div>
                 {tagging===tx.id&&(
-                  <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                  <div style={{padding:"0 14px 12px",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
                     <TagMenu tx={tx} onTag={handleTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                   </div>
                 )}
@@ -1295,8 +1275,8 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.4)",backdropFilter:"blur(8px)"}}>
-      <div className="sheet-enter" style={{background:"rgba(16,20,48,0.96)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
-        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
+      <div className="sheet-enter" style={{background:"rgba(248,249,251,0.97)",backdropFilter:"blur(40px) saturate(1.4)",WebkitBackdropFilter:"blur(40px) saturate(1.4)",border:"0.5px solid rgba(0,0,0,0.09)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onSkip}/>
         <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
           textTransform:"uppercase",marginBottom:4}}>TAG CHANGED</div>
@@ -1304,19 +1284,19 @@ function RulePromptModal({ payee, propId, onApplyAll, onApplyName, onSkip }) {
           Do you want to tag everything from <b>"{payee}"</b> as <b>{label}</b>?
         </div>
         <button onClick={onApplyAll} style={{width:"100%",padding:"15px",textAlign:"left",
-          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.07)",
           fontSize:15,color:"var(--text)",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
           <span>Tag all "{payee}" transactions</span>
           <span style={{color:"var(--text-3)"}}>›</span>
         </button>
         <button onClick={onApplyName} style={{width:"100%",padding:"15px",textAlign:"left",
-          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.07)",
           fontSize:15,color:"var(--text)",cursor:"pointer",display:"flex",justifyContent:"space-between"}}>
           <span>Create rule for "{payee}" going forward</span>
           <span style={{color:"var(--text-3)"}}>›</span>
         </button>
         <button onClick={onSkip} style={{width:"100%",padding:"15px",textAlign:"center",
-          background:"none",border:"none",borderTop:"1px solid rgba(255,255,255,0.08)",
+          background:"none",border:"none",borderTop:"1px solid rgba(0,0,0,0.07)",
           fontSize:15,color:"var(--text-2)",cursor:"pointer"}}>
           No thanks
         </button>
@@ -1334,8 +1314,8 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   const PROP_LABEL = {lockwood:"Lockwood",everton:"Everton",bstreet:"B Street",
     pierce:"Pierce Ave",llc:"General LLC",transfer:"Internal Transfer",deleted:"Deleted"};
   const ROW_STYLE = {display:"flex",justifyContent:"space-between",alignItems:"center",
-    padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",cursor:"pointer",
-    background:"rgba(255,255,255,0.06)"};
+    padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",cursor:"pointer",
+    background:"rgba(255,255,255,0.70)"};
   const row = (label, right, onClick) => (
     <div onClick={onClick} style={{...ROW_STYLE,cursor:onClick?"pointer":"default"}}>
       <span style={{fontSize:15,color:onClick?"var(--text)":"var(--text-2)"}}>{label}</span>
@@ -1349,7 +1329,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
         {desc&&<div style={{fontSize:12,color:"var(--text-3)",marginTop:2}}>{desc}</div>}
       </div>
       <div onClick={()=>onSaveSettings({...settings,[key]:!settings[key]})}
-        style={{width:48,height:28,borderRadius:14,background:settings[key]?"#32d74b":"rgba(255,255,255,0.18)",
+        style={{width:48,height:28,borderRadius:14,background:settings[key]?"#16a34a":"rgba(0,0,0,0.15)",
           position:"relative",cursor:"pointer",transition:"background 0.2s",flexShrink:0}}>
         <div style={{position:"absolute",top:2,left:settings[key]?20:2,width:24,height:24,
           borderRadius:12,background:"#fff",transition:"left 0.2s",
@@ -1359,11 +1339,11 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
   );
 
   return (
-    <div className="settings-enter" style={{position:"fixed",inset:0,zIndex:400,background:"#06091a",
+    <div className="settings-enter" style={{position:"fixed",inset:0,zIndex:400,background:"var(--bg)",
       overflowY:"auto",display:"flex",flexDirection:"column"}}>
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"56px 20px 12px",background:"#06091a"}}>
+        padding:"56px 20px 12px",background:"var(--bg)"}}>
         {section!=="main"
           ? <button onClick={()=>setSection("main")} style={{background:"none",border:"none",
               fontSize:16,color:"var(--blue)",cursor:"pointer",padding:0}}>‹ Back</button>
@@ -1386,7 +1366,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           padding:"8px 20px 6px"}}>Data</div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-            padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
+            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(255,255,255,0.70)"}}>
             <div>
               <span style={{fontSize:15,color:"var(--text)"}}>Sync Transactions</span>
               {lastSync&&<div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
@@ -1394,13 +1374,13 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
               </div>}
             </div>
             <button onClick={onSync} disabled={syncing} className={shakeSync?"shake":""}
-              style={{background:syncing?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,
-                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--text)",cursor:syncing?"default":"pointer"}}>
+              style={{background:syncing?"rgba(0,0,0,0.04)":"rgba(8,145,178,0.10)",border:"1px solid rgba(8,145,178,0.22)",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--blue)",cursor:syncing?"default":"pointer"}}>
               {syncing?"Syncing…":"Sync Now"}
             </button>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-            padding:"14px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
+            padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(255,255,255,0.70)"}}>
             <div>
               <span style={{fontSize:15,color:"var(--text)"}}>Pull Full History</span>
               <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
@@ -1410,8 +1390,8 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
               </div>
             </div>
             <button onClick={onPullHistory} disabled={syncing}
-              style={{background:syncing?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.10)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,
-                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--text)",cursor:syncing?"default":"pointer"}}>
+              style={{background:syncing?"rgba(0,0,0,0.04)":"rgba(8,145,178,0.10)",border:"1px solid rgba(8,145,178,0.22)",borderRadius:8,
+                padding:"6px 14px",fontSize:12,fontWeight:600,color:syncing?"var(--text-3)":"var(--blue)",cursor:syncing?"default":"pointer"}}>
               {syncing?"Pulling…":"Pull History"}
             </button>
           </div>
@@ -1430,7 +1410,7 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
             {customProps.map(p=>(
               <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
+                padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(255,255,255,0.70)"}}>
                 <div>
                   <div style={{fontSize:15,color:"var(--text)",fontWeight:500}}>{p.label}</div>
                   <div style={{fontSize:12,color:"var(--text-3)"}}>{p.isAirbnb?"Airbnb property":"Non-Airbnb property"}</div>
@@ -1455,11 +1435,11 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           These rules auto-tag transactions from matching payees.
         </div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {Object.keys(rules).length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.06)",
+          {Object.keys(rules).length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.70)",
             textAlign:"center",color:"var(--text-3)",fontSize:14}}>No rules yet — tag a transaction to create one.</div>}
           {Object.entries(rules).map(([payee,propId])=>(
             <div key={payee} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
+              padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(255,255,255,0.70)"}}>
               <div>
                 <div style={{fontSize:14,color:"var(--text)",fontWeight:500,textTransform:"capitalize"}}>
                   {payee.charAt(0)+payee.slice(1).toLowerCase()}
@@ -1478,11 +1458,11 @@ function SettingsPage({ onClose, autoTags, rules, onDeleteRule, settings, onSave
           Deleted & internal transfers. Tap Restore to bring back.
         </div>
         <div style={{borderRadius:12,overflow:"hidden",margin:"0 16px 16px"}}>
-          {archived.length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.06)",
+          {archived.length===0&&<div style={{padding:"20px",background:"rgba(255,255,255,0.70)",
             textAlign:"center",color:"var(--text-3)",fontSize:14}}>Nothing archived.</div>}
           {archived.map(tx=>(
             <div key={tx.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"12px 20px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.06)"}}>
+              padding:"12px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(255,255,255,0.70)"}}>
               <div style={{flex:1,minWidth:0,marginRight:12}}>
                 <div style={{fontSize:14,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",
                   whiteSpace:"nowrap"}}>{tx.payee||tx.name}</div>
@@ -1517,8 +1497,8 @@ function AddPropertyModal({ onSave, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",
       justifyContent:"flex-end",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(8px)"}}>
-      <div className="sheet-enter" style={{background:"rgba(14,18,44,0.97)",backdropFilter:"blur(48px) saturate(1.8)",WebkitBackdropFilter:"blur(48px) saturate(1.8)",border:"1px solid rgba(255,255,255,0.12)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
-        <div style={{width:36,height:4,background:"rgba(255,255,255,0.18)",borderRadius:2,
+      <div className="sheet-enter" style={{background:"rgba(248,249,251,0.97)",backdropFilter:"blur(40px) saturate(1.4)",WebkitBackdropFilter:"blur(40px) saturate(1.4)",border:"0.5px solid rgba(0,0,0,0.09)",borderBottom:"none",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{width:36,height:4,background:"rgba(0,0,0,0.15)",borderRadius:2,
           margin:"0 auto 20px",cursor:"pointer"}} onClick={onClose}/>
         <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--text-3)",
           textTransform:"uppercase",marginBottom:8}}>Add Property</div>
@@ -1528,29 +1508,29 @@ function AddPropertyModal({ onSave, onClose }) {
           onKeyDown={e=>{ if(e.key==="Enter") handleSave(); }}
           placeholder="Property name"
           style={{width:"100%",boxSizing:"border-box",fontSize:17,padding:"12px 14px",
-            border:"1px solid rgba(255,255,255,0.14)",borderRadius:12,outline:"none",marginBottom:16,
-            fontFamily:"inherit",color:"var(--text)",background:"rgba(255,255,255,0.08)"}}
+            border:"1px solid rgba(0,0,0,0.10)",borderRadius:12,outline:"none",marginBottom:16,
+            fontFamily:"inherit",color:"var(--text)",background:"rgba(0,0,0,0.04)"}}
         />
         <div style={{display:"flex",gap:8,marginBottom:name.trim()&&isAirbnb?8:16}}>
           {[{v:false,l:"Non-Airbnb"},{v:true,l:"Airbnb"}].map(opt=>(
             <button key={String(opt.v)} onClick={()=>setIsAirbnb(opt.v)}
-              style={{flex:1,padding:"10px",border:`1.5px solid ${isAirbnb===opt.v?"var(--blue)":"rgba(255,255,255,0.16)"}`,
+              style={{flex:1,padding:"10px",border:`1.5px solid ${isAirbnb===opt.v?"var(--blue)":"rgba(0,0,0,0.12)"}`,
                 borderRadius:10,fontSize:14,fontWeight:isAirbnb===opt.v?600:400,
                 color:isAirbnb===opt.v?"var(--blue)":"var(--text-2)",
-                background:isAirbnb===opt.v?"rgba(10,132,255,0.12)":"rgba(255,255,255,0.06)",cursor:"pointer"}}>
+                background:isAirbnb===opt.v?"rgba(8,145,178,0.10)":"rgba(0,0,0,0.04)",cursor:"pointer"}}>
               {opt.l}
             </button>
           ))}
         </div>
         {isAirbnb&&<div style={{fontSize:12,color:"var(--text-3)",marginBottom:16,padding:"8px 12px",
-          background:"rgba(255,255,255,0.06)",borderRadius:8}}>
+          background:"rgba(0,0,0,0.04)",borderRadius:8}}>
           No separate tab — rolled into Airbnb aggregate
         </div>}
         <button onClick={handleSave} disabled={!name.trim()}
           style={{width:"100%",padding:"15px",borderRadius:12,fontSize:16,fontWeight:600,
             border:"none",cursor:name.trim()?"pointer":"default",
-            background:name.trim()?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.06)",
-            color:name.trim()?"var(--text)":"var(--text-3)"}}>
+            background:name.trim()?"var(--blue)":"rgba(0,0,0,0.06)",
+            color:name.trim()?"#fff":"var(--text-3)"}}>
           Add Property
         </button>
         <button onClick={onClose} style={{width:"100%",marginTop:8,padding:"12px",background:"none",
@@ -2135,6 +2115,8 @@ function App() {
   const [showCitySettings, setShowCitySettings] = useState(false);
   const [classifyCity,     setClassifyCity]     = useState({});   // {[itemId]: "houston"|"niagara"}
   const [showHiddenItems,  setShowHiddenItems]  = useState(false);
+  const [invView,          setInvView]          = useState("dashboard"); // "dashboard" | "history"
+  const [selectedCity,     setSelectedCity]     = useState(null);        // null | "houston" | "niagara"
   const gmailAuthPendingRef = useRef(false);
   const invRecleanedRef     = useRef(false);
 
@@ -3407,9 +3389,10 @@ function App() {
           const unclassified = inventory.filter(it=>!it.excluded&&(it.classified==null||it.classified===undefined));
           const consistent   = inventory.filter(it=>it.classified==="inventory");
           const hidden       = inventory.filter(it=>it.excluded||it.classified==="not_inventory");
-          const STATUS_COLOR = {green:"#30d158",yellow:"#ff9f0a",red:"#ff453a",unknown:"rgba(255,255,255,0.3)"};
+          const STATUS_COL   = {green:"#16a34a",yellow:"#d97706",red:"#dc2626",unknown:"#d1d5db"};
+          const STATUS_BG    = {green:"rgba(22,163,74,0.10)",yellow:"rgba(217,119,6,0.10)",red:"rgba(220,38,38,0.10)",unknown:"rgba(0,0,0,0.04)"};
 
-          // Build city dashboard: group consistent items by city + inventory_key
+          // Build city dashboard data
           const cityDashboard = CITY_LIST.map(city=>{
             const cityItems=consistent.filter(it=>it.city_tag===city.id);
             const s=citySettings[city.id]||{};
@@ -3439,45 +3422,57 @@ function App() {
                   status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
                 }
               }
-              return {key,name:latest.item,lastOrderDate:latest.date,totalUnits,remaining,daysLeft,status,orders};
+              return {key,name:latest.item,lastOrderDate:latest.date,lastOrderQty:(latest.unit_count||1)*(latest.quantity||1),totalUnits,remaining,daysLeft,status,orders};
             });
             rows.sort((a,b)=>({red:0,yellow:1,green:2,unknown:3})[a.status]-({red:0,yellow:1,green:2,unknown:3})[b.status]);
-            return {...city,rows,alertCount:rows.filter(r=>r.status==="red").length,hasSettings:!!(s.turns_per_month&&s.active_units)};
+            const redC=rows.filter(r=>r.status==="red").length;
+            const yelC=rows.filter(r=>r.status==="yellow").length;
+            const grnC=rows.filter(r=>r.status==="green").length;
+            return {...city,rows,redC,yelC,grnC,hasSettings:!!(s.turns_per_month&&s.active_units)};
           });
+
+          // City detail view
+          const detailCity = selectedCity ? cityDashboard.find(c=>c.id===selectedCity) : null;
 
           return (
           <div style={{minHeight:"100%"}}>
 
-            {/* Header */}
+            {/* ── Top bar: header + view toggle ── */}
             <div className="page-header" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
               <div>
                 <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4}}>Inventory · Supplies</div>
                 <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
-                  <div className="big-num" style={{fontSize:32}}>{consistent.length}</div>
+                  <div className="big-num" style={{fontSize:28,color:"var(--text)"}}>{consistent.length}</div>
                   <div style={{fontSize:13,color:"var(--text-3)"}}>tracked</div>
                   {unclassified.length>0&&(
-                    <div style={{fontSize:12,fontWeight:700,background:"rgba(255,149,0,0.15)",color:"#ff9f0a",border:"1px solid rgba(255,149,0,0.3)",borderRadius:12,padding:"2px 9px"}}>
+                    <div style={{fontSize:12,fontWeight:700,background:"rgba(217,119,6,0.12)",color:"#d97706",border:"1px solid rgba(217,119,6,0.22)",borderRadius:12,padding:"2px 9px"}}>
                       {unclassified.length} new
                     </div>
                   )}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,marginTop:4,flexShrink:0}}>
-                <button onClick={()=>setShowCitySettings(v=>!v)}
-                  style={{fontSize:12,fontWeight:600,background:showCitySettings?"rgba(0,122,255,0.15)":"rgba(255,255,255,0.08)",color:showCitySettings?"#007aff":"var(--text-2)",border:`1px solid ${showCitySettings?"rgba(0,122,255,0.3)":"rgba(255,255,255,0.14)"}`,borderRadius:10,padding:"7px 12px",cursor:"pointer",touchAction:"manipulation"}}>
-                  ⚙ Settings
-                </button>
-                <button onClick={syncGmail} disabled={invSyncing}
-                  style={{fontSize:12,fontWeight:600,background:"rgba(0,122,255,0.12)",color:"#007aff",border:"1px solid rgba(0,122,255,0.2)",borderRadius:10,padding:"7px 12px",cursor:"pointer",opacity:invSyncing?0.5:1,touchAction:"manipulation"}}>
-                  {invSyncing?"Syncing…":"⟳ Gmail"}
-                </button>
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",marginTop:4,flexShrink:0}}>
+                <div className="seg-ctrl">
+                  <button className={`seg-btn${invView==="dashboard"?" active":""}`} onClick={()=>{setInvView("dashboard");setSelectedCity(null);}}>Dashboard</button>
+                  <button className={`seg-btn${invView==="history"?" active":""}`} onClick={()=>setInvView("history")}>History</button>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>setShowCitySettings(v=>!v)}
+                    style={{fontSize:11,fontWeight:600,background:showCitySettings?"rgba(8,145,178,0.12)":"rgba(0,0,0,0.05)",color:showCitySettings?"var(--blue)":"var(--text-3)",border:`1px solid ${showCitySettings?"rgba(8,145,178,0.25)":"rgba(0,0,0,0.09)"}`,borderRadius:8,padding:"5px 10px",cursor:"pointer",touchAction:"manipulation"}}>
+                    ⚙ Settings
+                  </button>
+                  <button onClick={syncGmail} disabled={invSyncing}
+                    style={{fontSize:11,fontWeight:600,background:"rgba(8,145,178,0.10)",color:"var(--blue)",border:"1px solid rgba(8,145,178,0.22)",borderRadius:8,padding:"5px 10px",cursor:"pointer",opacity:invSyncing?0.5:1,touchAction:"manipulation"}}>
+                    {invSyncing?"Syncing…":"⟳ Gmail"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Occupancy settings */}
+            {/* Occupancy settings panel */}
             {showCitySettings&&(
-              <div className="card card-padded" style={{marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"var(--text-2)"}}>Occupancy Settings — drives depletion estimates</div>
+              <div className="card card-padded" style={{marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"var(--text-2)"}}>Occupancy — drives depletion estimates</div>
                 {CITY_LIST.map(city=>{
                   const s=citySettings[city.id]||{};
                   return (
@@ -3493,7 +3488,7 @@ function App() {
                             <input type="number" min="0" step="any" value={s[k]||""}
                               onChange={e=>{const n={...citySettings,[city.id]:{...(citySettings[city.id]||{}),[k]:parseFloat(e.target.value)||0}};saveCitySettings(n);}}
                               placeholder={p}
-                              style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
+                              style={{width:"100%",boxSizing:"border-box",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.10)",borderRadius:8,padding:"7px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
                           </div>
                         ))}
                       </div>
@@ -3501,71 +3496,36 @@ function App() {
                   );
                 })}
                 <button onClick={()=>setShowCitySettings(false)}
-                  style={{width:"100%",background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Done</button>
+                  style={{width:"100%",background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Done</button>
               </div>
             )}
 
-            {/* Manual add form */}
-            {showAddItem&&(
-              <div className="card card-padded" style={{marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item Manually</div>
-                <input value={addItemForm.item} onChange={e=>setAddItemForm(f=>({...f,item:e.target.value}))}
-                  placeholder="Item name" style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
-                  <input type="number" min="1" value={addItemForm.quantity} onChange={e=>setAddItemForm(f=>({...f,quantity:e.target.value}))}
-                    placeholder="Qty" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                  <input type="number" step="0.01" value={addItemForm.price} onChange={e=>setAddItemForm(f=>({...f,price:e.target.value}))}
-                    placeholder="Price $" style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                  <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
-                    style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
-                </div>
-                <div style={{display:"flex",gap:6,marginBottom:8}}>
-                  {CITY_LIST.map(city=>(
-                    <button key={city.id} onClick={()=>setAddItemForm(f=>({...f,city_tag:city.id}))}
-                      style={{flex:1,fontSize:12,padding:"8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
-                        background:addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}20`:"rgba(255,255,255,0.06)",
-                        color:addItemForm.city_tag===city.id?CITY_COLOR[city.id]:"var(--text-3)",
-                        border:`1px solid ${addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}40`:"rgba(255,255,255,0.10)"}`}}>
-                      {city.id==="houston"?"Houston TX":"Niagara NY"}
-                    </button>
-                  ))}
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});}}
-                    style={{flex:1,background:"#007aff",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
-                  <button onClick={()=>setShowAddItem(false)}
-                    style={{flex:1,background:"rgba(255,255,255,0.08)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Unclassified Inbox ─────────────────────────── */}
+            {/* ── Unclassified Inbox (shown in both views) ──── */}
             {unclassified.length>0&&(
               <div style={{marginBottom:16}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#ff9f0a",display:"flex",alignItems:"center",gap:6}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:"#ff9f0a",boxShadow:"0 0 6px #ff9f0a"}}/>
-                    {unclassified.length} Unclassified
+                  <div style={{fontSize:12,fontWeight:700,color:"#d97706",display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:"#d97706"}}/>
+                    {unclassified.length} to classify
                   </div>
                   <div style={{display:"flex",gap:5}}>
                     <button onClick={()=>{const m={};unclassified.forEach(it=>m[it.id]="houston");setClassifyCity(p=>({...p,...m}));}}
-                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(0,122,255,0.10)",color:"#007aff",border:"1px solid rgba(0,122,255,0.2)"}}>All→Houston</button>
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(8,145,178,0.08)",color:"var(--blue)",border:"1px solid rgba(8,145,178,0.18)"}}>All→HOU</button>
                     <button onClick={()=>{const m={};unclassified.forEach(it=>m[it.id]="niagara");setClassifyCity(p=>({...p,...m}));}}
-                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(191,90,242,0.10)",color:"#bf5af2",border:"1px solid rgba(191,90,242,0.2)"}}>All→Niagara</button>
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(124,58,237,0.08)",color:"var(--purple)",border:"1px solid rgba(124,58,237,0.18)"}}>All→NIA</button>
                     <button onClick={()=>Promise.all(unclassified.map(it=>classifyItem(it.id,"not_inventory",null)))}
-                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.18)"}}>Skip all</button>
+                      style={{fontSize:10,padding:"3px 8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",background:"rgba(220,38,38,0.06)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.14)"}}>Skip all</button>
                   </div>
                 </div>
                 <div className="card" style={{overflow:"hidden"}}>
                   {unclassified.map((it,i)=>{
                     const selCity=classifyCity[it.id];
                     return (
-                      <div key={it.id} style={{borderBottom:i<unclassified.length-1?"1px solid rgba(255,255,255,0.07)":"none",padding:"12px 14px"}}>
+                      <div key={it.id} style={{borderBottom:i<unclassified.length-1?"1px solid rgba(0,0,0,0.05)":"none",padding:"12px 14px"}}>
                         <div style={{marginBottom:8}}>
-                          <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{it.item}</div>
+                          <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{fmtItem(it.item,it.unit_count)}</div>
                           <div style={{fontSize:11,color:"var(--text-3)",marginTop:2,display:"flex",gap:8}}>
                             {it.date&&<span>{it.date}</span>}
-                            {it.unit_count>1&&<span>{it.unit_count}-pack</span>}
                             {it.price!=null&&<span>{fmt$(it.price)}</span>}
                           </div>
                         </div>
@@ -3573,23 +3533,23 @@ function App() {
                           {CITY_LIST.map(city=>(
                             <button key={city.id} onClick={()=>setClassifyCity(p=>({...p,[it.id]:city.id}))}
                               style={{fontSize:11,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                                background:selCity===city.id?`${CITY_COLOR[city.id]}18`:"rgba(255,255,255,0.05)",
+                                background:selCity===city.id?`${CITY_COLOR[city.id]}15`:"rgba(0,0,0,0.04)",
                                 color:selCity===city.id?CITY_COLOR[city.id]:"var(--text-3)",
-                                border:`1px solid ${selCity===city.id?`${CITY_COLOR[city.id]}35`:"rgba(255,255,255,0.10)"}`}}>
+                                border:`1px solid ${selCity===city.id?`${CITY_COLOR[city.id]}30`:"rgba(0,0,0,0.08)"}`}}>
                               {city.id==="houston"?"Houston TX":"Niagara NY"}
                             </button>
                           ))}
                           <div style={{marginLeft:"auto",display:"flex",gap:6}}>
                             <button disabled={!selCity} onClick={()=>selCity&&classifyItem(it.id,"inventory",selCity)}
                               style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:selCity?"pointer":"default",touchAction:"manipulation",
-                                background:selCity?"rgba(48,209,88,0.14)":"rgba(255,255,255,0.04)",
-                                color:selCity?"#30d158":"rgba(255,255,255,0.2)",
-                                border:`1px solid ${selCity?"rgba(48,209,88,0.25)":"rgba(255,255,255,0.08)"}`}}>
-                              ✓ Inventory
+                                background:selCity?"rgba(22,163,74,0.12)":"rgba(0,0,0,0.04)",
+                                color:selCity?"var(--green)":"var(--text-3)",
+                                border:`1px solid ${selCity?"rgba(22,163,74,0.22)":"rgba(0,0,0,0.07)"}`}}>
+                              ✓ Add
                             </button>
                             <button onClick={()=>classifyItem(it.id,"not_inventory",null)}
                               style={{fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",
-                                background:"rgba(255,69,58,0.08)",color:"#ff453a",border:"1px solid rgba(255,69,58,0.18)"}}>
+                                background:"rgba(220,38,38,0.07)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.14)"}}>
                               ✗ Skip
                             </button>
                           </div>
@@ -3601,108 +3561,267 @@ function App() {
               </div>
             )}
 
-            {/* ── Consistent Inventory Dashboard ──────────────── */}
-            {consistent.length===0&&unclassified.length===0?(
-              <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
-                No items yet. Tap <strong>⟳ Gmail</strong> to import Amazon orders.
-              </div>
-            ):consistent.length>0&&(
+            {/* ════════════════════════════════════
+                DASHBOARD VIEW
+                ════════════════════════════════════ */}
+            {invView==="dashboard"&&(
               <>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--text-2)",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-                  Consistent Inventory
-                  <button onClick={()=>setShowAddItem(v=>!v)} style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:10,cursor:"pointer",touchAction:"manipulation",background:"rgba(255,255,255,0.08)",color:"var(--text-3)",border:"1px solid rgba(255,255,255,0.12)",marginLeft:"auto"}}>+ Manual</button>
-                </div>
-                {cityDashboard.map(city=>{
-                  if(city.rows.length===0) return null;
-                  return (
-                    <div key={city.id} style={{marginBottom:16}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <div style={{width:8,height:8,borderRadius:"50%",background:CITY_COLOR[city.id]}}/>
-                          <span style={{fontSize:12,fontWeight:700,color:"var(--text-2)"}}>{city.label}</span>
-                          <span style={{fontSize:11,color:"var(--text-3)"}}>{city.rows.length} items</span>
-                        </div>
-                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                          {city.alertCount>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff453a"}}>● {city.alertCount} low</span>}
-                          {!city.hasSettings&&(
-                            <button onClick={()=>setShowCitySettings(true)}
-                              style={{fontSize:11,color:"#007aff",background:"none",border:"none",cursor:"pointer",padding:0,touchAction:"manipulation"}}>
-                              + set occupancy
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="card" style={{overflow:"hidden"}}>
-                        {city.rows.map((row,i)=>{
-                          const col=STATUS_COLOR[row.status];
+                {consistent.length===0&&unclassified.length===0?(
+                  <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
+                    No items yet. Tap <strong>⟳ Gmail</strong> to import Amazon orders.
+                  </div>
+                ):(
+                  <>
+                    {/* ── City summary cards ── */}
+                    {!selectedCity&&(
+                      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+                        {cityDashboard.map(city=>{
+                          if(city.rows.length===0) return null;
+                          const total=city.rows.length;
+                          const redW=city.redC/total, yelW=city.yelC/total, grnW=city.grnC/total;
                           return (
-                            <div key={row.key} style={{display:"flex",alignItems:"center",padding:"12px 14px",gap:12,
-                              borderBottom:i<city.rows.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
-                              <div style={{width:9,height:9,borderRadius:"50%",background:col,flexShrink:0,
-                                boxShadow:row.status!=="unknown"?`0 0 7px ${col}`:"none"}}/>
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:13,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
-                                <div style={{fontSize:11,color:"var(--text-3)",marginTop:2}}>
-                                  {row.orders.length>1?`${row.orders.length} orders · `:""}ordered {row.lastOrderDate}
+                            <button key={city.id} onClick={()=>setSelectedCity(city.id)}
+                              style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:0,cursor:"pointer",touchAction:"manipulation"}}>
+                              <div className="card card-padded" style={{border:`1px solid rgba(0,0,0,0.07)`}}>
+                                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                    <div style={{width:10,height:10,borderRadius:"50%",background:CITY_COLOR[city.id]}}/>
+                                    <span style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{city.label}</span>
+                                  </div>
+                                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                                    <span style={{fontSize:12,color:"var(--text-3)"}}>{total} items</span>
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="var(--text-3)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </div>
                                 </div>
-                              </div>
-                              <div style={{flexShrink:0,textAlign:"right"}}>
-                                {row.daysLeft!=null?(
-                                  <>
-                                    <div style={{fontSize:14,fontWeight:700,color:col}}>{row.daysLeft}d</div>
-                                    <div style={{fontSize:10,color:"var(--text-3)"}}>~{row.remaining} left</div>
-                                  </>
-                                ):(
-                                  <div style={{fontSize:12,color:"var(--text-3)"}}>{row.totalUnits}u</div>
+                                {/* Health bar */}
+                                <div style={{display:"flex",height:6,borderRadius:4,overflow:"hidden",marginBottom:10,background:"rgba(0,0,0,0.06)"}}>
+                                  {city.redC>0&&<div style={{flex:redW,background:"#dc2626",borderRadius:4}}/>}
+                                  {city.yelC>0&&<div style={{flex:yelW,background:"#d97706",borderRadius:0}}/>}
+                                  {city.grnC>0&&<div style={{flex:grnW,background:"#16a34a",borderRadius:4}}/>}
+                                </div>
+                                {/* Status counts */}
+                                <div style={{display:"flex",gap:16}}>
+                                  {city.redC>0&&<div style={{fontSize:12,color:"#dc2626",fontWeight:600}}>{city.redC} low</div>}
+                                  {city.yelC>0&&<div style={{fontSize:12,color:"#d97706",fontWeight:600}}>{city.yelC} watch</div>}
+                                  {city.grnC>0&&<div style={{fontSize:12,color:"#16a34a",fontWeight:600}}>{city.grnC} good</div>}
+                                  {city.rows.filter(r=>r.status==="unknown").length>0&&(
+                                    <div style={{fontSize:12,color:"var(--text-3)"}}>{city.rows.filter(r=>r.status==="unknown").length} untracked</div>
+                                  )}
+                                </div>
+                                {!city.hasSettings&&(
+                                  <div style={{fontSize:11,color:"var(--blue)",marginTop:8}}>Tap ⚙ Settings to enable depletion tracking</div>
                                 )}
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
+                        <button onClick={()=>setShowAddItem(v=>!v)}
+                          style={{fontSize:12,fontWeight:600,padding:"10px",borderRadius:12,cursor:"pointer",touchAction:"manipulation",background:"rgba(0,0,0,0.04)",color:"var(--text-3)",border:"1px solid rgba(0,0,0,0.08)"}}>
+                          + Add Item Manually
+                        </button>
                       </div>
-                    </div>
-                  );
-                })}
+                    )}
+
+                    {/* ── City drill-down: inventory table ── */}
+                    {selectedCity&&detailCity&&(
+                      <div style={{marginBottom:16}}>
+                        {/* Back + city header */}
+                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                          <button onClick={()=>setSelectedCity(null)}
+                            style={{display:"flex",alignItems:"center",gap:4,fontSize:13,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:0,touchAction:"manipulation",fontWeight:600}}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            All Cities
+                          </button>
+                          <div style={{width:8,height:8,borderRadius:"50%",background:CITY_COLOR[selectedCity]}}/>
+                          <span style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{detailCity.label}</span>
+                          <span style={{fontSize:12,color:"var(--text-3)",marginLeft:"auto"}}>{detailCity.rows.length} items</span>
+                        </div>
+
+                        {/* Item table */}
+                        <div className="card" style={{overflow:"hidden"}}>
+                          {/* Table header */}
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"8px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"rgba(0,0,0,0.02)"}}>
+                            <div style={{fontSize:10,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Item</div>
+                            <div style={{fontSize:10,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"center"}}>Stock</div>
+                            <div style={{fontSize:10,fontWeight:600,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"right"}}>Days</div>
+                          </div>
+                          {detailCity.rows.map((row,i)=>{
+                            const col=STATUS_COL[row.status];
+                            const bg=STATUS_BG[row.status];
+                            // Bar fill: 0-14d = 0-33%, 14-30d = 33-66%, 30+d = 66-100%
+                            const barPct=row.daysLeft!=null?Math.min(100,Math.round((row.daysLeft/60)*100)):null;
+                            return (
+                              <div key={row.key} style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"11px 14px",gap:0,
+                                borderBottom:i<detailCity.rows.length-1?"1px solid rgba(0,0,0,0.05)":"none",
+                                alignItems:"center"}}>
+                                {/* Item name + last order */}
+                                <div style={{minWidth:0}}>
+                                  <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
+                                  <div style={{fontSize:10,color:"var(--text-3)",marginTop:2}}>
+                                    {row.lastOrderDate}{row.lastOrderQty>1?` · ×${row.lastOrderQty}`:""}
+                                    {row.orders.length>1&&<span> · {row.orders.length} orders</span>}
+                                  </div>
+                                </div>
+                                {/* Battery-style stock bar */}
+                                <div style={{padding:"0 8px"}}>
+                                  {barPct!=null?(
+                                    <div style={{position:"relative",height:8,borderRadius:4,background:"rgba(0,0,0,0.07)",overflow:"hidden"}}>
+                                      <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${barPct}%`,background:col,borderRadius:4,transition:"width 0.3s ease"}}/>
+                                    </div>
+                                  ):(
+                                    <div style={{fontSize:11,color:"var(--text-3)",textAlign:"center"}}>{row.totalUnits}u</div>
+                                  )}
+                                  {row.remaining!=null&&(
+                                    <div style={{fontSize:10,color:"var(--text-3)",textAlign:"center",marginTop:3}}>~{row.remaining} left</div>
+                                  )}
+                                </div>
+                                {/* Days badge */}
+                                <div style={{textAlign:"right"}}>
+                                  {row.daysLeft!=null?(
+                                    <div style={{display:"inline-block",background:bg,color:col,fontSize:12,fontWeight:700,borderRadius:8,padding:"3px 8px",border:`1px solid ${col}30`}}>
+                                      {row.daysLeft}d
+                                    </div>
+                                  ):(
+                                    <div style={{fontSize:11,color:"var(--text-3)"}}>—</div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Manual add form (shown when + Add Item clicked) */}
+                    {showAddItem&&(
+                      <div className="card card-padded" style={{marginBottom:12}}>
+                        <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item Manually</div>
+                        <input value={addItemForm.item} onChange={e=>setAddItemForm(f=>({...f,item:e.target.value}))}
+                          placeholder="Item name" style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
+                          <input type="number" min="1" value={addItemForm.quantity} onChange={e=>setAddItemForm(f=>({...f,quantity:e.target.value}))}
+                            placeholder="Qty" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                          <input type="number" step="0.01" value={addItemForm.price} onChange={e=>setAddItemForm(f=>({...f,price:e.target.value}))}
+                            placeholder="Price $" style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                          <input type="date" value={addItemForm.date} onChange={e=>setAddItemForm(f=>({...f,date:e.target.value}))}
+                            style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",outline:"none"}}/>
+                        </div>
+                        <div style={{display:"flex",gap:6,marginBottom:8}}>
+                          {CITY_LIST.map(city=>(
+                            <button key={city.id} onClick={()=>setAddItemForm(f=>({...f,city_tag:city.id}))}
+                              style={{flex:1,fontSize:12,padding:"8px",borderRadius:8,cursor:"pointer",touchAction:"manipulation",
+                                background:addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}15`:"rgba(0,0,0,0.04)",
+                                color:addItemForm.city_tag===city.id?CITY_COLOR[city.id]:"var(--text-3)",
+                                border:`1px solid ${addItemForm.city_tag===city.id?`${CITY_COLOR[city.id]}30`:"rgba(0,0,0,0.08)"}`}}>
+                              {city.id==="houston"?"Houston TX":"Niagara NY"}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={async()=>{if(!addItemForm.item.trim())return;await addManualItem(addItemForm);setShowAddItem(false);setAddItemForm({item:"",quantity:1,unit_count:1,price:"",date:new Date().toISOString().slice(0,10),city_tag:null});}}
+                            style={{flex:1,background:"var(--blue)",color:"#fff",border:"none",borderRadius:10,padding:"9px",fontSize:13,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Add</button>
+                          <button onClick={()=>setShowAddItem(false)}
+                            style={{flex:1,background:"rgba(0,0,0,0.05)",color:"var(--text-2)",border:"none",borderRadius:10,padding:"9px",fontSize:13,cursor:"pointer",touchAction:"manipulation"}}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hidden items toggle */}
+                    {hidden.length>0&&(
+                      <div style={{marginBottom:16}}>
+                        <button onClick={()=>setShowHiddenItems(v=>!v)}
+                          style={{fontSize:12,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"4px 0",touchAction:"manipulation",width:"100%",textAlign:"left"}}>
+                          {showHiddenItems?"▾":"▸"} {hidden.length} hidden item{hidden.length!==1?"s":""} — {showHiddenItems?"collapse":"show"}
+                        </button>
+                        {showHiddenItems&&(
+                          <div className="card" style={{overflow:"hidden",marginTop:4}}>
+                            {hidden.map((it,i)=>(
+                              <div key={it.id} style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:10,
+                                borderBottom:i<hidden.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontSize:12,color:"var(--text-3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtItem(it.item,it.unit_count)}</div>
+                                  <div style={{fontSize:10,color:"var(--text-3)",opacity:0.6,marginTop:1}}>{it.date}</div>
+                                </div>
+                                <button onClick={()=>{
+                                  setInventory(prev=>prev.map(x=>x.id===it.id?{...x,classified:null,excluded:false,city_tag:null,inventory_key:null}:x));
+                                  fetch(`${BACKEND}/api/inventory/classify`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:it.id,classified:null,city_tag:null})}).catch(()=>{});
+                                }}
+                                  style={{fontSize:11,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:"2px 0",flexShrink:0,touchAction:"manipulation"}}>
+                                  Reclassify
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
 
-            {/* ── Hidden items ────────────────────────────────── */}
-            {hidden.length>0&&(
-              <div style={{marginBottom:16}}>
-                <button onClick={()=>setShowHiddenItems(v=>!v)}
-                  style={{fontSize:12,color:"var(--text-3)",background:"none",border:"none",cursor:"pointer",padding:"4px 0",touchAction:"manipulation",width:"100%",textAlign:"left"}}>
-                  {showHiddenItems?"▾":"▸"} {hidden.length} hidden item{hidden.length!==1?"s":""} — {showHiddenItems?"collapse":"view"}
-                </button>
-                {showHiddenItems&&(
-                  <div className="card" style={{overflow:"hidden",marginTop:4}}>
-                    {hidden.map((it,i)=>(
-                      <div key={it.id} style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:10,
-                        borderBottom:i<hidden.length-1?"1px solid rgba(255,255,255,0.07)":"none"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,color:"var(--text-3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.item}</div>
-                          <div style={{fontSize:10,color:"var(--text-3)",opacity:0.6,marginTop:1}}>{it.date}</div>
-                        </div>
-                        <button onClick={()=>{
-                          setInventory(prev=>prev.map(x=>x.id===it.id?{...x,classified:null,excluded:false,city_tag:null,inventory_key:null}:x));
-                          fetch(`${BACKEND}/api/inventory/classify`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:it.id,classified:null,city_tag:null})}).catch(()=>{});
-                        }}
-                          style={{fontSize:11,color:"#007aff",background:"none",border:"none",cursor:"pointer",padding:"2px 0",flexShrink:0,touchAction:"manipulation"}}>
-                          Reclassify
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* ════════════════════════════════════
+                ORDER HISTORY VIEW
+                ════════════════════════════════════ */}
+            {invView==="history"&&(()=>{
+              const histItems=[...inventory].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+              return (
+                <div style={{marginBottom:16}}>
+                  {histItems.length===0?(
+                    <div className="card card-padded" style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>
+                      No orders yet. Tap <strong>⟳ Gmail</strong> to import.
+                    </div>
+                  ):(
+                    <div className="card" style={{overflow:"hidden"}}>
+                      {histItems.map((it,i)=>{
+                        const isInv=it.classified==="inventory";
+                        const isSkip=it.excluded||it.classified==="not_inventory";
+                        const isUnclass=!isInv&&!isSkip;
+                        return (
+                          <div key={it.id} style={{display:"flex",alignItems:"center",padding:"11px 14px",gap:10,
+                            borderBottom:i<histItems.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                            {/* Status dot */}
+                            <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,
+                              background:isInv?CITY_COLOR[it.city_tag]||"#16a34a":isSkip?"#d1d5db":"#d97706"}}/>
+                            {/* Item info */}
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                                color:isSkip?"var(--text-3)":"var(--text)"}}>{fmtItem(it.item,it.unit_count)}</div>
+                              <div style={{fontSize:10,color:"var(--text-3)",marginTop:1,display:"flex",gap:8}}>
+                                {it.date&&<span>{it.date}</span>}
+                                {it.city_tag&&<span style={{color:CITY_COLOR[it.city_tag],fontWeight:600}}>{it.city_tag==="houston"?"HOU":"NIA"}</span>}
+                                {it.price!=null&&<span>{fmt$(it.price)}</span>}
+                              </div>
+                            </div>
+                            {/* Classification badge + reclassify */}
+                            <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                              {isInv&&<div style={{fontSize:10,fontWeight:600,color:"#16a34a",background:"rgba(22,163,74,0.10)",borderRadius:6,padding:"2px 7px"}}>tracked</div>}
+                              {isSkip&&<div style={{fontSize:10,fontWeight:600,color:"var(--text-3)",background:"rgba(0,0,0,0.05)",borderRadius:6,padding:"2px 7px"}}>hidden</div>}
+                              {isUnclass&&<div style={{fontSize:10,fontWeight:600,color:"#d97706",background:"rgba(217,119,6,0.10)",borderRadius:6,padding:"2px 7px"}}>new</div>}
+                              <button onClick={()=>{
+                                setInventory(prev=>prev.map(x=>x.id===it.id?{...x,classified:null,excluded:false,city_tag:null,inventory_key:null}:x));
+                                fetch(`${BACKEND}/api/inventory/classify`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:it.id,classified:null,city_tag:null})}).catch(()=>{});
+                              }}
+                                style={{fontSize:10,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",padding:0,touchAction:"manipulation"}}>
+                                reclassify
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Gmail status card */}
-            <div className="card card-padded" style={{marginTop:8,marginBottom:16}}>
+            <div className="card card-padded" style={{marginTop:4,marginBottom:16}}>
               {gmailConnected ? (
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 2px 8px rgba(48,209,88,0.35)"}}>
-                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                      <polyline points="2.5,7.5 6.2,11.2 12.5,3.8" stroke="white" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(22,163,74,0.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1px solid rgba(22,163,74,0.22)"}}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <polyline points="2,7 5.8,10.5 12,3.5" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
@@ -3715,7 +3834,7 @@ function App() {
                   </div>
                   <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
                     onClick={()=>{ gmailAuthPendingRef.current = true; }}
-                    style={{fontSize:11,color:"#007aff",textDecoration:"none",fontWeight:600,flexShrink:0,touchAction:"manipulation"}}>
+                    style={{fontSize:11,color:"var(--blue)",textDecoration:"none",fontWeight:600,flexShrink:0,touchAction:"manipulation"}}>
                     Reconnect
                   </a>
                 </div>
@@ -3724,7 +3843,7 @@ function App() {
                   <div style={{fontSize:13,color:"var(--text-3)",marginBottom:10}}>Connect Gmail to automatically import Amazon orders</div>
                   <a href={`${BACKEND}/api/gmail/auth`} target="_blank" rel="noopener"
                     onClick={()=>{ gmailAuthPendingRef.current = true; }}
-                    style={{display:"inline-block",background:"#007aff",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
+                    style={{display:"inline-block",background:"var(--blue)",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,textDecoration:"none",touchAction:"manipulation"}}>
                     Connect Gmail
                   </a>
                 </div>
@@ -3843,22 +3962,22 @@ function App() {
                         {tx.type==="in"?"+":"-"}{fmtD(tx.amount)}
                       </span>
                       <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
+                        <button onClick={()=>doRestore(tx.id)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600,whiteSpace:"nowrap"}}>
                           Restore
                         </button>
                         {tx.type==="in"?(
-                          <button onClick={()=>{const p=PROPERTIES.find(x=>x.id!=="transfer"&&x.id!=="deleted"&&x.id!=="llc"&&x.group!=="airbnb"||x.id==="airbnb");doTag(tx.id,"airbnb");}} style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"#30d158",fontWeight:600}}>
+                          <button onClick={()=>{const p=PROPERTIES.find(x=>x.id!=="transfer"&&x.id!=="deleted"&&x.id!=="llc"&&x.group!=="airbnb"||x.id==="airbnb");doTag(tx.id,"airbnb");}} style={{background:"rgba(22,163,74,0.08)",border:"1px solid rgba(22,163,74,0.18)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--green)",fontWeight:600}}>
                             → Airbnb
                           </button>
                         ):(
-                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
+                          <button onClick={()=>setTagging(tagging===tx.id?null:tx.id)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:7,padding:"4px 8px",fontSize:10,fontFamily:"ui-monospace,'SF Mono',SFMono-Regular,monospace",cursor:"pointer",color:"var(--text-2)",fontWeight:600}}>
                             Re-tag
                           </button>
                         )}
                       </div>
                     </div>
                     {tagging===tx.id&&(
-                      <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+                      <div style={{padding:"0 14px 12px",borderTop:"1px solid rgba(0,0,0,0.05)"}}>
                         <TagMenu tx={tx} onTag={doTag} onClose={()=>setTagging(null)} onDelete={doDelete}/>
                       </div>
                     )}
@@ -3927,15 +4046,15 @@ function App() {
 
 
       {/* SIDE DRAWER */}
-      {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:288,background:"rgba(10,14,36,0.94)",backdropFilter:"blur(60px) saturate(1.9)",WebkitBackdropFilter:"blur(60px) saturate(1.9)",borderRight:"0.5px solid rgba(255,255,255,0.10)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.44s cubic-bezier(0.34,1.28,0.64,1)",boxShadow:showDrawer?"6px 0 48px rgba(0,0,0,0.50), inset -1px 0 0 rgba(255,255,255,0.06)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      {showDrawer&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.25)",zIndex:500}} onClick={()=>setShowDrawer(false)}/>}
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:288,background:"rgba(248,249,251,0.96)",backdropFilter:"blur(48px) saturate(1.5)",WebkitBackdropFilter:"blur(48px) saturate(1.5)",borderRight:"0.5px solid rgba(0,0,0,0.09)",zIndex:501,transform:showDrawer?"translateX(0)":"translateX(-100%)",transition:"transform 0.44s cubic-bezier(0.34,1.28,0.64,1)",boxShadow:showDrawer?"4px 0 32px rgba(0,0,0,0.12)":"none",display:"flex",flexDirection:"column",overflowY:"auto"}}>
         {/* Drawer header */}
-        <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.12)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="rgba(255,255,255,0.9)"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#06091a"/><circle cx="16" cy="13" r="2" fill="rgba(255,255,255,0.9)"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="rgba(255,255,255,0.9)"/></svg>
-            <span style={{fontWeight:700,fontSize:14,letterSpacing:"-0.01em"}}>Property Pigeon</span>
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="13" rx="8" ry="7" fill="#374151"/><ellipse cx="16" cy="13" rx="5" ry="4.5" fill="#f0f2f5"/><circle cx="16" cy="13" r="2" fill="#374151"/><path d="M12 19c0 0-4 3-4 7h16c0-4-4-7-4-7" fill="#374151"/></svg>
+            <span style={{fontWeight:700,fontSize:14,letterSpacing:"-0.01em",color:"var(--text)"}}>Property Pigeon</span>
           </div>
-          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>
+          <button onClick={()=>setShowDrawer(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,width:30,height:30,fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-2)"}}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
           </button>
         </div>
