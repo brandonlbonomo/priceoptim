@@ -1387,24 +1387,28 @@ def update_inventory():
             stop  = {"the","a","an","of","for","with","and","or","in","by","to","from"}
             words = re.sub(r"[^a-z0-9\s]", "", name.lower()).split()
             inv_key = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
-        vol_oz = item.get("volume_oz")
+        vol_oz    = item.get("volume_oz")
+        unit_cnt  = item.get("unit_count", 1)
         inventory[iid] = {
-            "id":            iid,
-            "item":          name,
-            "quantity":      item.get("quantity", 1),
-            "unit_count":    item.get("unit_count", 1),
-            "volume_oz":     vol_oz,
+            "id":               iid,
+            "item":             name,
+            "quantity":         item.get("quantity", 1),
+            "unit_count":       unit_cnt,
+            "user_unit_count":  unit_cnt,   # user-set; reclean never touches user_* fields
+            "volume_oz":        vol_oz,
+            "user_volume_oz":   vol_oz,     # user-set
             "volume_oz_locked": vol_oz is not None,
-            "price":         item.get("price"),
-            "date":          item.get("date"),
-            "order_num":     item.get("order_num", ""),
-            "subject":       name,
-            "prop_tag":      item.get("prop_tag"),
-            "excluded":      classified == "not_inventory",
-            "source":        "manual",
-            "classified":    classified,
-            "city_tag":      city_tag,
-            "inventory_key": inv_key,
+            "unit_count_locked": True,       # prevent reclean from overwriting
+            "price":            item.get("price"),
+            "date":             item.get("date"),
+            "order_num":        item.get("order_num", ""),
+            "subject":          name,
+            "prop_tag":         item.get("prop_tag"),
+            "excluded":         classified == "not_inventory",
+            "source":           "manual",
+            "classified":       classified,
+            "city_tag":         city_tag,
+            "inventory_key":    inv_key,
         }
     store["inventory"] = inventory
     save_store(store)
@@ -1515,16 +1519,22 @@ def edit_inventory_items():
             it["inventory_key"] = " ".join(w for w in words if len(w) > 2 and w not in stop)[:60]
         if unit_count is not None:
             it["unit_count"]        = max(1, int(unit_count))
+            it["user_unit_count"]   = max(1, int(unit_count))  # user-set; survives reclean
             it["unit_count_locked"] = True   # prevent reclean from overwriting
         if "volume_oz" in body:  # explicit key presence — allows clearing with null
             it["volume_oz"]        = volume_oz  # None = revert to count-based
+            it["user_volume_oz"]   = volume_oz  # user-set; survives reclean
             it["volume_oz_locked"] = (volume_oz is not None)
         if "per_stay" in body:
             per_stay_val = body.get("per_stay")
             if per_stay_val is None:
                 it.pop("per_stay", None)
+                it.pop("user_per_stay", None)
             else:
-                it["per_stay"] = float(per_stay_val)
+                it["per_stay"]      = float(per_stay_val)
+                it["user_per_stay"] = float(per_stay_val)  # user-set; survives reclean
+        if "date" in body and body["date"] is not None:
+            it["date"] = body["date"]  # allow date override from client
         updated += 1
 
     store["inventory"] = inventory

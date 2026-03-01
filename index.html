@@ -2120,6 +2120,7 @@ function App() {
   const [selectedCity,     setSelectedCity]     = useState(null);        // null | "houston" | "niagara"
   const gmailAuthPendingRef = useRef(false);
   const invRecleanedRef     = useRef(false);
+  const addFormRef          = useRef(null);
 
   // ── City / property layout ─────────────────────────────────
   const CITY_LIST  = [{id:"houston", label:"Houston, TX"},{id:"niagara", label:"Niagara Falls, NY"}];
@@ -2128,26 +2129,39 @@ function App() {
   const PROP_COLOR = {lockwood:"#30d158",everton:"#007aff",bstreet:"#ff9f0a",pierce:"#bf5af2"};
 
   // ── Consumption engine ─────────────────────────────────────
-  // perTurn  = fraction of a bottle consumed per guest turn (count-based fallback)
-  // perTurnOz = oz consumed per guest turn (used when volume_oz is set on an item)
+  // cycleMonths = durable linen lifespan in months per active_unit
+  // perTurnOz   = oz consumed per guest turn (liquids with volume_oz set)
+  // perTurn     = units consumed per guest turn (count-based disposables)
   const ITEM_CATS = [
-    {re:/toothbrush/i,                             perTurn:1,     label:"Toothbrush"},
-    {re:/toilet\s*paper|bath\s*tissue|tp\b/i,      perTurn:1,     label:"Toilet Paper"},
-    {re:/paper\s*towel/i,                          perTurn:0.5,   label:"Paper Towels"},
-    {re:/shampoo/i,                                perTurn:0.05,  perTurnOz:2,  label:"Shampoo"},
-    {re:/conditioner/i,                            perTurn:0.05,  perTurnOz:2,  label:"Conditioner"},
-    {re:/body\s*wash|bodywash/i,                   perTurn:0.05,  perTurnOz:3,  label:"Body Wash"},
-    {re:/trash\s*bag|garbage\s*bag|bin\s*liner/i,  perTurn:1,     label:"Trash Bags"},
-    {re:/hand\s*soap/i,                            perTurn:0.15,  perTurnOz:2,  label:"Hand Soap"},
-    {re:/dish\s*soap/i,                            perTurn:0.15,  perTurnOz:3,  label:"Dish Soap"},
-    {re:/sponge|scrub/i,                           perTurn:0.25,  label:"Sponge"},
-    {re:/coffee\s*pod|k-?cup|kcup/i,               perTurn:3,     label:"Coffee Pods"},
-    {re:/dryer\s*sheet/i,                          perTurn:2,     label:"Dryer Sheets"},
-    {re:/laundry/i,                                perTurn:0.1,   label:"Laundry"},
-    {re:/dish\s*tab|dishwasher/i,                  perTurn:1,     label:"Dishwasher Tab"},
+    // ── Linens (durable — cycleMonths path) ──────────────────
+    {re:/bed\s*sheet|fitted\s*sheet|sheet\s*set/i,           cycleMonths:6,   label:"Bed Sheets"},
+    {re:/pillowcase/i,                                        cycleMonths:6,   label:"Pillowcases"},
+    {re:/hand\s*towel/i,                                      cycleMonths:4,   label:"Hand Towels"},
+    {re:/pillow\s*protector/i,                                cycleMonths:12,  label:"Pillow Protectors"},
+    {re:/bed\s*pillow|(?<!\w)pillow(?!\s*case|\s*protector)/i, cycleMonths:12, label:"Bed Pillows"},
+    // ── Disposables (count-based) ─────────────────────────────
+    {re:/toothbrush/i,                                        perTurn:2,       label:"Toothbrush"},
+    {re:/trash\s*bag|garbage\s*bag|bin\s*liner/i,             perTurn:1,       label:"Trash Bags"},
+    {re:/water\s*bottle/i,                                    perTurn:2,       label:"Water Bottles"},
+    {re:/chip|snack/i,                                        perTurn:2,       label:"Chips/Snacks"},
+    // ── Paper goods (count-based) ─────────────────────────────
+    {re:/toilet\s*paper|bath\s*tissue|tp\b/i,                 perTurn:2,       label:"Toilet Paper"},
+    {re:/paper\s*towel/i,                                     perTurn:0.5,     label:"Paper Towels"},
+    // ── Liquids (oz-based) ───────────────────────────────────
+    {re:/3.?in.?1|three.?in.?one/i,                           perTurnOz:3.2,   label:"3-in-1"},
+    {re:/shampoo/i,                                           perTurnOz:3.2,   label:"Shampoo"},
+    {re:/conditioner/i,                                       perTurnOz:3.2,   label:"Conditioner"},
+    {re:/body\s*wash|bodywash/i,                              perTurnOz:3.2,   label:"Body Wash"},
+    {re:/hand\s*soap/i,                                       perTurnOz:0.15,  label:"Hand Soap"},
+    {re:/laundry/i,                                           perTurnOz:2.13,  label:"Laundry Detergent"},
+    {re:/dish\s*soap/i,                                       perTurnOz:3,     label:"Dish Soap"},
+    // ── Other ────────────────────────────────────────────────
+    {re:/sponge|scrub/i,                                      perTurn:0.25,    label:"Sponge"},
+    {re:/coffee\s*pod|k-?cup|kcup/i,                          perTurn:3,       label:"Coffee Pods"},
+    {re:/dryer\s*sheet/i,                                     perTurn:2,       label:"Dryer Sheets"},
+    {re:/dish\s*tab|dishwasher/i,                             perTurn:1,       label:"Dishwasher Tab"},
   ];
-  const getCat       = name => ITEM_CATS.find(c => c.re.test(name||"")) || null;
-  const getCatPerTurn = name => { const c=getCat(name); return c ? c.perTurn : 0.2; };
+  const getCat = name => ITEM_CATS.find(c => c.re.test(name||"")) || null;
 
   const BOTTLE_SIZES = [
     {label:"8 oz",     oz:8},
@@ -2669,14 +2683,18 @@ function App() {
     } catch(e) { console.error("classifyItem:", e); await loadInventory(); }
   }, [loadInventory]);
 
-  const bulkEditRow = useCallback(async (ids, name, unitCount, volumeOz, perStay) => {
+  const bulkEditRow = useCallback(async (ids, name, unitCount, volumeOz, perStay, date) => {
     setInventory(prev => prev.map(it => {
       if(!ids.includes(it.id)) return it;
       const updates = {};
       if(name)                   { updates.item = name; updates.inventory_key = normalizeItemKey(name); }
-      if(unitCount)              { updates.unit_count = unitCount; }
-      if(volumeOz !== undefined) { updates.volume_oz = volumeOz; }
-      if(perStay  !== undefined) { updates.per_stay  = perStay===''||perStay===null ? undefined : Number(perStay); }
+      if(unitCount)              { updates.unit_count = unitCount; updates.user_unit_count = unitCount; }
+      if(volumeOz !== undefined) { updates.volume_oz = volumeOz; updates.user_volume_oz = volumeOz; }
+      if(perStay  !== undefined) {
+        const ps = perStay===''||perStay===null ? undefined : Number(perStay);
+        updates.per_stay = ps; updates.user_per_stay = ps;
+      }
+      if(date) updates.date = date;
       return {...it, ...updates};
     }));
     setEditRow(null);
@@ -2686,6 +2704,7 @@ function App() {
       if(unitCount)              body.unit_count = unitCount;
       if(volumeOz !== undefined) body.volume_oz  = volumeOz;
       if(perStay  !== undefined) body.per_stay   = (perStay===''||perStay===null) ? null : Number(perStay);
+      if(date)                   body.date        = date;
       await fetch(`${BACKEND}/api/inventory/edit`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify(body),
@@ -3447,22 +3466,31 @@ function App() {
             const rows=Object.entries(groups).map(([key,orders])=>{
               orders.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
               const latest=orders[0];
-              const totalUnits=orders.reduce((sum,o)=>sum+(o.unit_count||1)*(o.quantity||1),0);
+              // user_* fields take priority over email-parsed fields (survive reclean)
+              const totalUnits=orders.reduce((sum,o)=>sum+(o.user_unit_count||o.unit_count||1)*(o.quantity||1),0);
               let remaining=null,daysLeft=null,status="unknown",isOz=false;
               if(s.turns_per_month&&s.active_units){
                 const cat=getCat(latest.item||"");
-                const hasVol=orders.some(o=>o.volume_oz);
-                const perStayOverride = latest.per_stay!=null ? Number(latest.per_stay) : null;
-                if(hasVol||(cat&&cat.perTurnOz&&isLiquidItem(latest.item||""))){
-                  // ── Oz-based (liquid) consumption ──
+                const hasVol=orders.some(o=>o.user_volume_oz||o.volume_oz);
+                const perStayOverride = latest.user_per_stay!=null ? Number(latest.user_per_stay)
+                                       : latest.per_stay!=null    ? Number(latest.per_stay) : null;
+                if(cat&&cat.cycleMonths){
+                  // ── Path 1: Durable linens (cycleMonths) ──
+                  // daysLeft = how long totalUnits lasts before all need replacing
+                  daysLeft=Math.round(totalUnits*cat.cycleMonths*30/s.active_units);
+                  remaining=totalUnits;
+                  status=daysLeft>90?"green":daysLeft>30?"yellow":"red";
+                } else if(hasVol||(cat&&cat.perTurnOz&&isLiquidItem(latest.item||""))){
+                  // ── Path 2: Oz-based (liquid) consumption ──
                   isOz=true;
-                  const rateOz = perStayOverride!=null ? perStayOverride
-                                 : cat&&cat.perTurnOz ? cat.perTurnOz : 2;
+                  const rateOz=perStayOverride!=null?perStayOverride:cat&&cat.perTurnOz?cat.perTurnOz:2;
                   const cpdOz=rateOz*s.turns_per_month*s.active_units/30;
                   if(cpdOz>0){
                     let totalOz=0;
                     orders.forEach(o=>{
-                      const oz=(o.unit_count||1)*(o.quantity||1)*(o.volume_oz||12);
+                      const unitCnt=(o.user_unit_count||o.unit_count||1);
+                      const volOz=(o.user_volume_oz||o.volume_oz||12);
+                      const oz=unitCnt*(o.quantity||1)*volOz;
                       const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
                       totalOz+=Math.max(0,oz-cpdOz*days);
                     });
@@ -3471,14 +3499,14 @@ function App() {
                     status=daysLeft>30?"green":daysLeft>14?"yellow":"red";
                   }
                 } else {
-                  // ── Count-based consumption ──
-                  const rate = perStayOverride!=null ? perStayOverride
-                               : cat ? cat.perTurn : 0.2;
+                  // ── Path 3: Count-based consumption ──
+                  const rate=perStayOverride!=null?perStayOverride:cat?cat.perTurn:0.2;
                   const cpd=rate*s.turns_per_month*s.active_units/30;
                   if(cpd>0){
                     let total=0;
                     orders.forEach(o=>{
-                      const units=(o.unit_count||1)*(o.quantity||1);
+                      const unitCnt=(o.user_unit_count||o.unit_count||1);
+                      const units=unitCnt*(o.quantity||1);
                       const days=o.date?(Date.now()-new Date(o.date))/86400000:0;
                       total+=Math.max(0,units-cpd*days);
                     });
@@ -3488,7 +3516,7 @@ function App() {
                   }
                 }
               }
-              return {key,name:latest.item,lastOrderDate:latest.date,lastOrderQty:(latest.unit_count||1)*(latest.quantity||1),totalUnits,remaining,daysLeft,status,isOz,orders};
+              return {key,name:latest.item,lastOrderDate:latest.date,lastOrderQty:(latest.user_unit_count||latest.unit_count||1)*(latest.quantity||1),totalUnits,remaining,daysLeft,status,isOz,orders};
             });
             rows.sort((a,b)=>({red:0,yellow:1,green:2,unknown:3})[a.status]-({red:0,yellow:1,green:2,unknown:3})[b.status]);
             const redC=rows.filter(r=>r.status==="red").length;
@@ -3738,7 +3766,7 @@ function App() {
                           <div style={{width:8,height:8,borderRadius:"50%",background:CITY_COLOR[selectedCity]}}/>
                           <span style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{detailCity.label}</span>
                           <span style={{fontSize:12,color:"var(--text-3)",marginLeft:"auto"}}>{detailCity.rows.length} items</span>
-                          <button onClick={()=>{setAddItemForm(f=>({...f,city_tag:selectedCity}));setShowAddItem(true);}}
+                          <button onClick={()=>{setAddItemForm(f=>({...f,city_tag:selectedCity}));setShowAddItem(true);setTimeout(()=>addFormRef.current?.scrollIntoView({behavior:'smooth',block:'nearest'}),120);}}
                             style={{fontSize:13,fontWeight:700,color:"var(--blue)",background:"rgba(8,145,178,0.10)",border:"1px solid rgba(8,145,178,0.22)",borderRadius:8,padding:"4px 10px",cursor:"pointer",touchAction:"manipulation"}}>
                             + Add
                           </button>
@@ -3761,7 +3789,7 @@ function App() {
                             return (
                               <div key={row.key} style={{borderBottom:i<detailCity.rows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
                                 {/* Summary row — tap to edit */}
-                                <div onClick={()=>setEditRow(isEditing?null:{key:row.key,name:row.name||"",unitCount:row.orders[0]?.unit_count||1,volumeOz:row.orders[0]?.volume_oz||null,perStay:row.orders[0]?.per_stay??""})}
+                                <div onClick={()=>setEditRow(isEditing?null:{key:row.key,name:row.name||"",unitCount:row.orders[0]?.user_unit_count||row.orders[0]?.unit_count||1,volumeOz:row.orders[0]?.user_volume_oz||row.orders[0]?.volume_oz||null,perStay:row.orders[0]?.user_per_stay??row.orders[0]?.per_stay??"",date:row.orders[0]?.date||""})}
                                   style={{display:"grid",gridTemplateColumns:"1fr 90px 60px",padding:"11px 14px",gap:0,alignItems:"center",cursor:"pointer"}}>
                                   <div style={{minWidth:0}}>
                                     <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--text)"}}>{row.name}</div>
@@ -3855,19 +3883,28 @@ function App() {
                                             </div>
                                           </div>
                                         )}
-                                        <div style={{marginBottom:8}}>
-                                          <div style={{fontSize:10,color:"var(--text-3)",marginBottom:4}}>Used per stay <span style={{fontStyle:"italic"}}>(overrides algorithm)</span></div>
-                                          <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                            <input type="number" min="0" step="0.5" value={editRow.perStay}
-                                              onChange={e=>setEditRow(r=>({...r,perStay:e.target.value}))}
-                                              placeholder="e.g. 2"
+                                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+                                          <div>
+                                            <div style={{fontSize:10,color:"var(--text-3)",marginBottom:4}}>Used per stay <span style={{fontStyle:"italic"}}>(overrides algorithm)</span></div>
+                                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                              <input type="number" min="0" step="0.5" value={editRow.perStay}
+                                                onChange={e=>setEditRow(r=>({...r,perStay:e.target.value}))}
+                                                placeholder="e.g. 2"
+                                                onClick={e=>e.stopPropagation()}
+                                                style={{width:70,background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"5px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
+                                              <span style={{fontSize:11,color:"var(--text-3)"}}>{isLiquidItem(editRow.name)&&editRow.volumeOz?"oz":"units"}/stay</span>
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div style={{fontSize:10,color:"var(--text-3)",marginBottom:4}}>Purchase date</div>
+                                            <input type="date" value={editRow.date||""}
+                                              onChange={e=>setEditRow(r=>({...r,date:e.target.value}))}
                                               onClick={e=>e.stopPropagation()}
-                                              style={{width:70,background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"5px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
-                                            <span style={{fontSize:11,color:"var(--text-3)"}}>{isLiquidItem(editRow.name)&&editRow.volumeOz?"oz":"units"} used per guest stay</span>
+                                              style={{width:"100%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,padding:"5px 8px",fontSize:12,color:"var(--text)",outline:"none"}}/>
                                           </div>
                                         </div>
                                         <div style={{display:"flex",gap:6}}>
-                                          <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount,editRow.volumeOz,editRow.perStay);}}
+                                          <button onClick={e=>{e.stopPropagation();bulkEditRow(rowIds,editRow.name,editRow.unitCount,editRow.volumeOz,editRow.perStay,editRow.date);}}
                                             style={{flex:2,background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",touchAction:"manipulation"}}>Save</button>
                                           <button onClick={e=>{e.stopPropagation();setEditRow(r=>({...r,confirmDelete:true}));}}
                                             style={{flex:1,background:"rgba(220,38,38,0.08)",color:"var(--red)",border:"1px solid rgba(220,38,38,0.18)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:600,cursor:"pointer",touchAction:"manipulation"}}>Delete</button>
@@ -3887,7 +3924,7 @@ function App() {
 
                     {/* Manual add form (shown when + Add Item clicked) */}
                     {showAddItem&&(
-                      <div className="card card-padded" style={{marginBottom:12}}>
+                      <div ref={addFormRef} className="card card-padded" style={{marginBottom:12}}>
                         <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"var(--text-2)"}}>Add Item Manually</div>
                         <input value={addItemForm.item} onChange={e=>setAddItemForm(f=>({...f,item:e.target.value}))}
                           placeholder="Item name" style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.09)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"var(--text)",boxSizing:"border-box",marginBottom:6,outline:"none"}}/>
