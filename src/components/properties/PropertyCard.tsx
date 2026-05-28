@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BedDouble, Bath, Users } from "lucide-react";
+import { BedDouble, Bath, Users, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Property } from "@/types/property";
 
@@ -12,46 +12,45 @@ export function PropertyCard({ property }: PropertyCardProps) {
   return (
     <Link
       href={`/properties/${property.slug}`}
-      className="glass-card group block overflow-hidden rounded-3xl transition-all duration-300"
+      className="glass-card group block overflow-hidden rounded-[28px]"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
           src={property.images[0]}
           alt={property.name}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover transition-all duration-700 group-hover:scale-110"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
           unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-        <div className="absolute bottom-3 right-3">
-          <span className="glass-dark rounded-full px-3 py-1.5 text-sm font-bold text-white">
-            {formatCurrency(property.pricing.baseNight)}
-            <span className="font-normal text-gray-300"> / night</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
+        <div className="absolute bottom-4 left-4">
+          <span className="glass-dark rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-white">
+            From {formatCurrency(property.pricing.baseNight)}/night
           </span>
         </div>
       </div>
 
       <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-accent-dark">
-          {property.location.area}
-        </p>
-        <h3 className="mt-1.5 text-lg font-semibold text-foreground transition-colors duration-200 group-hover:text-primary">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-muted">
+          <MapPin className="h-3 w-3" />
+          {property.location.city}, {property.location.state}
+        </div>
+        <h3 className="mt-2 text-[17px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
           {property.name}
         </h3>
-        <p className="mt-1 text-sm text-muted line-clamp-2">{property.tagline}</p>
 
-        <div className="mt-4 flex items-center gap-3 text-sm text-muted">
-          <span className="flex items-center gap-1.5 rounded-full bg-muted-light/80 px-3 py-1">
-            <BedDouble className="h-3.5 w-3.5 text-primary" />
+        <div className="mt-4 flex items-center gap-4 border-t border-black/[0.04] pt-4 text-[13px] text-muted">
+          <span className="flex items-center gap-1.5">
+            <BedDouble className="h-3.5 w-3.5" />
             {property.details.bedrooms}
           </span>
-          <span className="flex items-center gap-1.5 rounded-full bg-muted-light/80 px-3 py-1">
-            <Bath className="h-3.5 w-3.5 text-primary" />
+          <span className="flex items-center gap-1.5">
+            <Bath className="h-3.5 w-3.5" />
             {property.details.bathrooms}
           </span>
-          <span className="flex items-center gap-1.5 rounded-full bg-muted-light/80 px-3 py-1">
-            <Users className="h-3.5 w-3.5 text-primary" />
+          <span className="flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" />
             {property.details.maxGuests}
           </span>
         </div>

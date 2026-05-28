@@ -3,18 +3,21 @@ import { EmailForm } from "@/components/ui/EmailForm";
 
 export function EmailSignupCTA() {
   return (
-    <section className="mesh-gradient relative overflow-hidden py-16 sm:py-24">
-      <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
-      <Container>
-        <div className="glass-dark mx-auto max-w-2xl rounded-3xl px-8 py-12 text-center sm:px-12">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+    <section className="hero-gradient noise relative overflow-hidden py-20 sm:py-28">
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[100px]" />
+      <Container className="relative z-10">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
+            Insider Access
+          </p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Get Exclusive Deals
           </h2>
-          <p className="mt-3 text-lg text-gray-300">
-            Join our mailing list for special rates, last-minute openings, and
-            seasonal promotions.
+          <p className="mt-4 text-[15px] font-light leading-relaxed text-white/50">
+            Special rates, last-minute openings, and seasonal promotions
+            delivered to your inbox.
           </p>
-          <div className="mt-8">
+          <div className="mt-10">
             <EmailForm source="homepage-cta" compact />
           </div>
         </div>

@@ -9,9 +9,9 @@ export function HospitableWidget({ widgetId, propertyId }: HospitableWidgetProps
   const src = `https://booking.hospitable.com/widget/${widgetId}/${propertyId}`;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-gray-200/60 bg-white/70 backdrop-blur-sm">
-      <div className="mesh-gradient px-5 py-3.5">
-        <h3 className="text-sm font-semibold text-white">Check Availability &amp; Book</h3>
+    <div className="glass-card overflow-hidden rounded-[28px]">
+      <div className="hero-gradient px-6 py-4">
+        <h3 className="text-[13px] font-semibold text-white/90">Check Availability &amp; Book</h3>
       </div>
       <iframe
         id="booking-iframe"

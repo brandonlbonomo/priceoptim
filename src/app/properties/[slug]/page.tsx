@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BedDouble, Bath, Users, Clock, ClipboardList } from "lucide-react";
+import { BedDouble, Bath, Users, Clock, ClipboardList, MapPin } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { PhotoGallery } from "@/components/properties/PhotoGallery";
 import { AmenityList } from "@/components/properties/AmenityList";
@@ -52,75 +52,75 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         {/* Photo Gallery */}
         <PhotoGallery images={property.images} alt={property.name} />
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        <div className="mt-10 grid gap-10 lg:grid-cols-3">
           {/* Main content */}
           <div className="lg:col-span-2">
-            <p className="text-sm font-semibold uppercase tracking-wider text-accent-dark">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+              <MapPin className="h-3 w-3" />
               {property.location.area} &middot; {property.location.city !== "TBD" ? `${property.location.city}, ${property.location.state}` : "Location details coming soon"}
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-[40px] sm:leading-tight">
               {property.name}
             </h1>
-            <p className="mt-2 text-lg text-muted">{property.tagline}</p>
+            <p className="mt-3 text-[17px] text-muted">{property.tagline}</p>
 
             {/* Quick stats */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
-                <BedDouble className="h-4 w-4 text-primary" />
+            <div className="mt-8 flex flex-wrap gap-3">
+              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
+                <BedDouble className="h-4 w-4 text-muted" />
                 {property.details.bedrooms} {property.details.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
               </span>
-              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
-                <Bath className="h-4 w-4 text-primary" />
+              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
+                <Bath className="h-4 w-4 text-muted" />
                 {property.details.bathrooms} {property.details.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
               </span>
-              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
-                <Users className="h-4 w-4 text-primary" />
+              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
+                <Users className="h-4 w-4 text-muted" />
                 Up to {property.details.maxGuests} Guests
               </span>
             </div>
 
             {/* Description */}
-            <div className="mt-8">
-              <h2 className="text-xl font-semibold text-foreground">About This Property</h2>
-              <p className="mt-3 leading-relaxed text-muted">{property.description}</p>
+            <div className="mt-10">
+              <h2 className="text-[19px] font-semibold text-foreground">About This Property</h2>
+              <p className="mt-4 text-[15px] leading-[1.8] text-muted">{property.description}</p>
             </div>
 
             {/* Amenities */}
-            <div className="mt-10">
-              <h2 className="mb-6 text-xl font-semibold text-foreground">Amenities</h2>
+            <div className="mt-12">
+              <h2 className="mb-6 text-[19px] font-semibold text-foreground">Amenities</h2>
               <AmenityList amenities={property.amenities} />
             </div>
 
             {/* Check-in / Check-out */}
-            <div className="mt-10">
-              <h2 className="mb-4 text-xl font-semibold text-foreground">Check-in &amp; Check-out</h2>
-              <div className="flex flex-wrap gap-4">
-                <div className="glass-card flex items-center gap-2 rounded-2xl px-5 py-3 text-sm">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>
-                    <strong className="text-foreground">Check-in:</strong>{" "}
-                    <span className="text-muted">{property.checkIn}</span>
-                  </span>
+            <div className="mt-12">
+              <h2 className="mb-5 text-[19px] font-semibold text-foreground">Check-in &amp; Check-out</h2>
+              <div className="flex flex-wrap gap-3">
+                <div className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px]">
+                  <Clock className="h-4 w-4 text-muted" />
+                  <span className="font-medium text-foreground">Check-in</span>
+                  <span className="text-muted">{property.checkIn}</span>
                 </div>
-                <div className="glass-card flex items-center gap-2 rounded-2xl px-5 py-3 text-sm">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>
-                    <strong className="text-foreground">Check-out:</strong>{" "}
-                    <span className="text-muted">{property.checkOut}</span>
-                  </span>
+                <div className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px]">
+                  <Clock className="h-4 w-4 text-muted" />
+                  <span className="font-medium text-foreground">Check-out</span>
+                  <span className="text-muted">{property.checkOut}</span>
                 </div>
               </div>
             </div>
 
             {/* House Rules */}
-            <div className="mt-10">
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
-                <ClipboardList className="h-5 w-5 text-primary" />
+            <div className="mt-12">
+              <h2 className="mb-5 flex items-center gap-2 text-[19px] font-semibold text-foreground">
+                <ClipboardList className="h-5 w-5 text-muted" />
                 House Rules
               </h2>
-              <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">
+              <ul className="space-y-2 pl-1 text-[15px] text-muted">
                 {property.houseRules.map((rule) => (
-                  <li key={rule}>{rule}</li>
+                  <li key={rule} className="flex items-center gap-3">
+                    <span className="h-1 w-1 rounded-full bg-accent" />
+                    {rule}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -128,16 +128,17 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
           {/* Sidebar: Booking widget + pricing */}
           <div className="lg:col-span-1">
-            <div className="sticky top-20 space-y-6">
+            <div className="sticky top-20 space-y-5">
               {/* Price card */}
-              <div className="glass-card rounded-3xl p-6">
+              <div className="glass-card rounded-[28px] p-7">
                 <div className="text-center">
-                  <span className="text-3xl font-bold text-primary">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Starting from</p>
+                  <span className="mt-1 block text-[36px] font-semibold tracking-tight text-foreground">
                     {formatCurrency(property.pricing.baseNight)}
                   </span>
-                  <span className="text-muted"> / night</span>
+                  <span className="text-[15px] text-muted">per night</span>
                 </div>
-                <p className="mt-1 text-center text-xs text-muted">
+                <p className="mt-3 text-center text-[12px] text-muted">
                   + {formatCurrency(property.pricing.cleaningFee)} cleaning fee
                 </p>
               </div>
@@ -149,9 +150,9 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               />
 
               {/* Email CTA */}
-              <div className="glass-card rounded-3xl p-6">
-                <h3 className="text-sm font-semibold text-foreground">Get Deal Alerts</h3>
-                <p className="mt-1 mb-4 text-xs text-muted">
+              <div className="glass-card rounded-[28px] p-7">
+                <h3 className="text-[15px] font-semibold text-foreground">Get Deal Alerts</h3>
+                <p className="mt-2 mb-5 text-[13px] text-muted">
                   Be the first to know about special rates for this property.
                 </p>
                 <EmailForm source={`property-${property.slug}`} />

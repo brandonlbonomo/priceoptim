@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EmailFormProps {
@@ -46,7 +46,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
 
   if (status === "success") {
     return (
-      <div className={cn("flex items-center gap-2 text-sm", compact ? "text-green-300" : "text-green-600", className)}>
+      <div className={cn("flex items-center justify-center gap-2 text-[15px]", compact ? "text-green-400" : "text-green-600", className)}>
         <CheckCircle className="h-4 w-4" />
         <span>{message}</span>
       </div>
@@ -65,32 +65,32 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         placeholder="Enter your email"
         required
         className={cn(
-          "flex-1 rounded-2xl border px-5 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2",
+          "flex-1 rounded-full px-6 py-3.5 text-[15px] transition-all duration-300 focus:outline-none focus:ring-2",
           compact
-            ? "border-white/10 bg-white/10 text-white placeholder-gray-400 focus:border-accent/50 focus:ring-accent/20"
-            : "border-gray-200 bg-white text-foreground placeholder-muted focus:border-primary/50 focus:ring-primary/20",
+            ? "border-0 bg-white/[0.08] text-white placeholder-white/30 focus:bg-white/[0.12] focus:ring-accent/30"
+            : "border border-black/[0.06] bg-white text-foreground placeholder-muted focus:border-transparent focus:ring-accent/30",
         )}
       />
       <button
         type="submit"
         disabled={status === "loading"}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-300",
+          "inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-medium transition-all duration-300 active:scale-[0.97]",
           compact
-            ? "bg-accent text-primary-dark shadow-lg shadow-accent/20 hover:bg-accent-light hover:-translate-y-0.5"
-            : "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-light hover:-translate-y-0.5",
-          status === "loading" && "cursor-not-allowed opacity-70",
+            ? "bg-accent text-white hover:bg-accent-light"
+            : "bg-foreground text-white hover:bg-primary-light",
+          status === "loading" && "cursor-not-allowed opacity-60",
         )}
       >
         {status === "loading" ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Send className="h-4 w-4" />
+          <ArrowRight className="h-4 w-4" />
         )}
         Subscribe
       </button>
       {status === "error" && (
-        <p className="text-sm text-red-400">{message}</p>
+        <p className="text-[13px] text-red-400">{message}</p>
       )}
     </form>
   );

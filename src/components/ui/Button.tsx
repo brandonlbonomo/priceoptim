@@ -21,18 +21,18 @@ type ButtonProps = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-light hover:shadow-xl hover:shadow-primary/25 hover:-translate-y-0.5 active:translate-y-0",
+    "bg-foreground text-white hover:bg-primary-light active:scale-[0.97]",
   secondary:
-    "bg-accent text-primary-dark shadow-lg shadow-accent/20 hover:bg-accent-light hover:shadow-xl hover:shadow-accent/25 hover:-translate-y-0.5 active:translate-y-0",
+    "bg-accent text-white hover:bg-accent-light active:scale-[0.97]",
   outline:
-    "border border-primary/20 text-primary bg-white/50 backdrop-blur-sm hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5 active:translate-y-0",
-  ghost: "text-primary hover:bg-primary/5",
+    "border border-black/10 text-foreground bg-white/60 backdrop-blur-sm hover:bg-white active:scale-[0.97]",
+  ghost: "text-foreground hover:bg-black/[0.03] active:scale-[0.97]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "px-5 py-2.5 text-sm",
-  md: "px-7 py-3 text-base",
-  lg: "px-9 py-4 text-lg",
+  sm: "px-5 py-2 text-[13px]",
+  md: "px-7 py-2.5 text-[15px]",
+  lg: "px-9 py-3.5 text-[17px]",
 };
 
 export function Button({
@@ -43,7 +43,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const classes = cn(
-    "inline-flex items-center justify-center font-semibold rounded-2xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2",
+    "inline-flex items-center justify-center font-medium rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2",
     variantStyles[variant],
     sizeStyles[size],
     className,

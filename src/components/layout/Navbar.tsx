@@ -17,18 +17,18 @@ export function Navbar() {
   return (
     <header className="glass sticky top-0 z-50">
       <Container>
-        <nav className="flex h-16 items-center justify-between">
-          <Link href="/" className="text-xl font-bold tracking-tight text-primary">
-            Properties By BLB
+        <nav className="flex h-14 items-center justify-between">
+          <Link href="/" className="text-[15px] font-semibold tracking-tight text-foreground">
+            Experiences by BLB
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden items-center gap-8 md:flex">
+          <div className="hidden items-center gap-10 md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-muted transition-colors duration-200 hover:text-primary"
+                className="text-[13px] font-normal text-muted transition-colors duration-300 hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -44,25 +44,25 @@ export function Navbar() {
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {mobileOpen ? <X className="h-5 w-5 text-foreground" /> : <Menu className="h-5 w-5 text-foreground" />}
           </button>
         </nav>
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="border-t border-white/20 pb-4 md:hidden">
-            <div className="flex flex-col gap-2 pt-4">
+          <div className="border-t border-black/5 pb-5 md:hidden">
+            <div className="flex flex-col gap-1 pt-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-2xl px-4 py-2.5 text-sm font-medium text-muted transition-all duration-200 hover:bg-white/40 hover:text-primary"
+                  className="rounded-2xl px-4 py-3 text-[15px] text-muted transition-all duration-300 hover:bg-black/[0.03] hover:text-foreground"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="px-4 pt-2">
+              <div className="px-4 pt-3">
                 <Button href="/properties" size="sm" className="w-full">
                   Book Now
                 </Button>
