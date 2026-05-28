@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <section className="py-20 sm:py-28">
       <Container>
-        <div className="mx-auto max-w-lg text-center">
+        <div className="glass-card mx-auto max-w-lg rounded-3xl p-12 text-center">
           <p className="text-6xl font-bold text-primary">404</p>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
             Page Not Found

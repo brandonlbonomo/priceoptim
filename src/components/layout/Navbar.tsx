@@ -15,11 +15,11 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
+    <header className="glass sticky top-0 z-50">
       <Container>
         <nav className="flex h-16 items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight text-primary">
-            BLB REALTY
+            Properties By BLB
           </Link>
 
           {/* Desktop nav */}
@@ -28,7 +28,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-muted transition-colors hover:text-primary"
+                className="text-sm font-medium text-muted transition-colors duration-200 hover:text-primary"
               >
                 {link.label}
               </Link>
@@ -50,13 +50,13 @@ export function Navbar() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="border-t border-gray-100 pb-4 md:hidden">
+          <div className="border-t border-white/20 pb-4 md:hidden">
             <div className="flex flex-col gap-2 pt-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-muted-light hover:text-primary"
+                  className="rounded-2xl px-4 py-2.5 text-sm font-medium text-muted transition-all duration-200 hover:bg-white/40 hover:text-primary"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}

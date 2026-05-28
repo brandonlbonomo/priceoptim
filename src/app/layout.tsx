@@ -11,15 +11,15 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "BLB Realty | Vacation Rentals – Book Direct & Save",
-    template: "%s | BLB Realty",
+    default: "Properties By BLB | Vacation Rentals – Book Direct & Save",
+    template: "%s | Properties By BLB",
   },
   description:
-    "Book directly with BLB Realty for the best rates on premium vacation rentals. Skip the platform fees and enjoy a better experience.",
+    "Book directly with Properties By BLB for the best rates on premium vacation rentals. Skip the platform fees and enjoy a better experience.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
-    siteName: "BLB Realty",
+    siteName: "Properties By BLB",
   },
 };
 

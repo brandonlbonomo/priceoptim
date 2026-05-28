@@ -65,20 +65,20 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         placeholder="Enter your email"
         required
         className={cn(
-          "flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2",
+          "flex-1 rounded-2xl border px-5 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2",
           compact
-            ? "border-gray-500 bg-white/10 text-white placeholder-gray-400 focus:border-accent focus:ring-accent/20"
-            : "border-gray-300 text-foreground placeholder-muted focus:border-primary focus:ring-primary/20",
+            ? "border-white/10 bg-white/10 text-white placeholder-gray-400 focus:border-accent/50 focus:ring-accent/20"
+            : "border-gray-200 bg-white text-foreground placeholder-muted focus:border-primary/50 focus:ring-primary/20",
         )}
       />
       <button
         type="submit"
         disabled={status === "loading"}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors",
+          "inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-300",
           compact
-            ? "bg-accent text-primary-dark hover:bg-accent-light"
-            : "bg-primary text-white hover:bg-primary-light",
+            ? "bg-accent text-primary-dark shadow-lg shadow-accent/20 hover:bg-accent-light hover:-translate-y-0.5"
+            : "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-light hover:-translate-y-0.5",
           status === "loading" && "cursor-not-allowed opacity-70",
         )}
       >
@@ -90,7 +90,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         Subscribe
       </button>
       {status === "error" && (
-        <p className="text-sm text-red-500">{message}</p>
+        <p className="text-sm text-red-400">{message}</p>
       )}
     </form>
   );

@@ -18,7 +18,7 @@ export default function HomePage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "LodgingBusiness",
-            name: "BLB Realty",
+            name: "Properties By BLB",
             description:
               "Premium vacation rentals with the best direct booking rates.",
             url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",

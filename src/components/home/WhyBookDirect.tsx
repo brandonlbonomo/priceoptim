@@ -25,23 +25,26 @@ const benefits = [
 
 export function WhyBookDirect() {
   return (
-    <section className="bg-muted-light py-16 sm:py-20">
+    <section className="py-16 sm:py-24">
       <Container>
         <SectionHeading
           title="Why Book Direct?"
           subtitle="Three great reasons to skip the big platforms"
         />
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-3">
+        <div className="mt-14 grid gap-6 sm:grid-cols-3">
           {benefits.map((benefit) => (
-            <div key={benefit.title} className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white">
-                <benefit.icon className="h-6 w-6" />
+            <div
+              key={benefit.title}
+              className="glass-card group rounded-3xl p-8 text-center transition-all duration-300"
+            >
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/20">
+                <benefit.icon className="h-7 w-7" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
+              <h3 className="mt-5 text-lg font-semibold text-foreground">
                 {benefit.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
+              <p className="mt-3 text-sm leading-relaxed text-muted">
                 {benefit.description}
               </p>
             </div>

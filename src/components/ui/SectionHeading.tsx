@@ -19,7 +19,7 @@ export function SectionHeading({
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-3 text-lg text-muted">{subtitle}</p>
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{subtitle}</p>
       )}
     </div>
   );

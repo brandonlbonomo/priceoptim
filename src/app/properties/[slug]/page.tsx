@@ -55,25 +55,25 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           {/* Main content */}
           <div className="lg:col-span-2">
-            <p className="text-sm font-medium uppercase tracking-wider text-muted">
+            <p className="text-sm font-semibold uppercase tracking-wider text-accent-dark">
               {property.location.area} &middot; {property.location.city !== "TBD" ? `${property.location.city}, ${property.location.state}` : "Location details coming soon"}
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {property.name}
             </h1>
-            <p className="mt-2 text-lg text-accent-dark">{property.tagline}</p>
+            <p className="mt-2 text-lg text-muted">{property.tagline}</p>
 
             {/* Quick stats */}
-            <div className="mt-6 flex flex-wrap gap-4">
-              <span className="flex items-center gap-2 rounded-full bg-muted-light px-4 py-2 text-sm font-medium text-foreground">
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
                 <BedDouble className="h-4 w-4 text-primary" />
                 {property.details.bedrooms} {property.details.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
               </span>
-              <span className="flex items-center gap-2 rounded-full bg-muted-light px-4 py-2 text-sm font-medium text-foreground">
+              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
                 <Bath className="h-4 w-4 text-primary" />
                 {property.details.bathrooms} {property.details.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
               </span>
-              <span className="flex items-center gap-2 rounded-full bg-muted-light px-4 py-2 text-sm font-medium text-foreground">
+              <span className="glass-card flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium text-foreground">
                 <Users className="h-4 w-4 text-primary" />
                 Up to {property.details.maxGuests} Guests
               </span>
@@ -94,17 +94,19 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             {/* Check-in / Check-out */}
             <div className="mt-10">
               <h2 className="mb-4 text-xl font-semibold text-foreground">Check-in &amp; Check-out</h2>
-              <div className="flex flex-wrap gap-6">
-                <div className="flex items-center gap-2 text-sm text-muted">
+              <div className="flex flex-wrap gap-4">
+                <div className="glass-card flex items-center gap-2 rounded-2xl px-5 py-3 text-sm">
                   <Clock className="h-4 w-4 text-primary" />
                   <span>
-                    <strong className="text-foreground">Check-in:</strong> {property.checkIn}
+                    <strong className="text-foreground">Check-in:</strong>{" "}
+                    <span className="text-muted">{property.checkIn}</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted">
+                <div className="glass-card flex items-center gap-2 rounded-2xl px-5 py-3 text-sm">
                   <Clock className="h-4 w-4 text-primary" />
                   <span>
-                    <strong className="text-foreground">Check-out:</strong> {property.checkOut}
+                    <strong className="text-foreground">Check-out:</strong>{" "}
+                    <span className="text-muted">{property.checkOut}</span>
                   </span>
                 </div>
               </div>
@@ -116,7 +118,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                 <ClipboardList className="h-5 w-5 text-primary" />
                 House Rules
               </h2>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+              <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">
                 {property.houseRules.map((rule) => (
                   <li key={rule}>{rule}</li>
                 ))}
@@ -128,7 +130,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           <div className="lg:col-span-1">
             <div className="sticky top-20 space-y-6">
               {/* Price card */}
-              <div className="rounded-xl border border-gray-200 p-5">
+              <div className="glass-card rounded-3xl p-6">
                 <div className="text-center">
                   <span className="text-3xl font-bold text-primary">
                     {formatCurrency(property.pricing.baseNight)}
@@ -147,9 +149,9 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               />
 
               {/* Email CTA */}
-              <div className="rounded-xl border border-gray-200 p-5">
+              <div className="glass-card rounded-3xl p-6">
                 <h3 className="text-sm font-semibold text-foreground">Get Deal Alerts</h3>
-                <p className="mt-1 mb-3 text-xs text-muted">
+                <p className="mt-1 mb-4 text-xs text-muted">
                   Be the first to know about special rates for this property.
                 </p>
                 <EmailForm source={`property-${property.slug}`} />

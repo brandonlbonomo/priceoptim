@@ -25,12 +25,12 @@ export function PropertyFilters() {
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <SlidersHorizontal className="h-5 w-5 text-muted" />
+    <div className="glass-card inline-flex flex-wrap items-center gap-4 rounded-2xl px-5 py-3">
+      <SlidersHorizontal className="h-4 w-4 text-muted" />
       <select
         value={guests}
         onChange={(e) => updateParams("guests", e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="appearance-none rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm text-foreground backdrop-blur-sm transition-all duration-200 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
       >
         <option value="">Any guests</option>
         <option value="2">2+ guests</option>
@@ -41,7 +41,7 @@ export function PropertyFilters() {
       <select
         value={bedrooms}
         onChange={(e) => updateParams("bedrooms", e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="appearance-none rounded-xl border border-gray-200 bg-white/80 px-4 py-2 text-sm text-foreground backdrop-blur-sm transition-all duration-200 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
       >
         <option value="">Any bedrooms</option>
         <option value="1">1+ bedrooms</option>
@@ -52,9 +52,9 @@ export function PropertyFilters() {
       {(guests || bedrooms) && (
         <button
           onClick={() => router.push("/properties")}
-          className="text-sm text-primary underline hover:text-primary-light"
+          className="rounded-xl px-3 py-1.5 text-sm font-medium text-primary transition-all duration-200 hover:bg-primary/5"
         >
-          Clear filters
+          Clear
         </button>
       )}
     </div>

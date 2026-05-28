@@ -31,7 +31,7 @@ export default function SubscribePage() {
   return (
     <section className="py-16 sm:py-24">
       <Container>
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="glass-card mx-auto max-w-2xl rounded-3xl px-8 py-12 text-center sm:px-12">
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Get Exclusive Deals
           </h1>
@@ -45,14 +45,14 @@ export default function SubscribePage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-16 grid max-w-3xl gap-8 sm:grid-cols-3">
+        <div className="mx-auto mt-14 grid max-w-3xl gap-6 sm:grid-cols-3">
           {perks.map((perk) => (
-            <div key={perk.title} className="text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white">
-                <perk.icon className="h-5 w-5" />
+            <div key={perk.title} className="glass-card group rounded-3xl p-6 text-center transition-all duration-300">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/20">
+                <perk.icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-3 text-sm font-semibold text-foreground">{perk.title}</h3>
-              <p className="mt-1 text-sm text-muted">{perk.description}</p>
+              <h3 className="mt-4 text-sm font-semibold text-foreground">{perk.title}</h3>
+              <p className="mt-2 text-sm text-muted">{perk.description}</p>
             </div>
           ))}
         </div>
