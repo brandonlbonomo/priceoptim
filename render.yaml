@@ -3,7 +3,7 @@ services:
     name: blb-realty
     runtime: node
     plan: starter
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public
     startCommand: node .next/standalone/server.js
     envVars:
       - key: STRIPE_SECRET_KEY
