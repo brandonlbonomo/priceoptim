@@ -33,7 +33,7 @@ export const properties: Property[] = [
       state: "NY",
       area: "Niagara Falls State Park",
     },
-    images: buildImageArray("unit-1", 8, 32),
+    images: buildImageArray("unit-1", 0, 32),
     pricing: {
       baseNight: 120,
       cleaningFee: 65,
