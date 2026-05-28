@@ -23,8 +23,8 @@ function buildImageArray(
 export const properties: Property[] = [
   {
     id: "unit-1",
-    name: "The Gorge Getaway",
-    slug: "niagara-gorge-getaway",
+    name: "Riverstone Retreat",
+    slug: "niagara-riverstone-retreat",
     tagline: "Cozy 2-bedroom townhouse minutes from Niagara Falls",
     description:
       "A cozy 2-bedroom Niagara Falls townhouse, just minutes from the State Park. Designed for a stress-free getaway with hotel-level comfort and the privacy of a home. Features a fully equipped kitchen, fast Wi-Fi, free parking, and a quiet neighborhood location. The perfect base for your Niagara Falls sightseeing adventure — close to Clifton Hill, casinos, and all major attractions.",
@@ -134,8 +134,8 @@ export const properties: Property[] = [
   },
   {
     id: "unit-3",
-    name: "Niagara Falls Retreat – 26B",
-    slug: "niagara-falls-retreat-26b",
+    name: "The Gorge Getaway",
+    slug: "niagara-gorge-getaway-26b",
     tagline: "Newly updated 2-bed, 2-bath near the Falls",
     description:
       "A newly updated 2-bed, 2-bath house perfect for families or couples near Niagara Falls. This modern, clean space features a full kitchen, fast Wi-Fi, free parking, and a quiet neighborhood location. Minutes from Niagara Falls, Clifton Hill, and casinos — designed for a stress-free getaway.",
