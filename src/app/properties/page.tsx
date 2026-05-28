@@ -9,7 +9,7 @@ import { getActiveProperties } from "@/data/properties";
 export const metadata: Metadata = {
   title: "All Properties",
   description:
-    "Browse all BLB Realty vacation rentals. Find your perfect getaway and book directly for the best rates.",
+    "Browse all Properties By BLB vacation rentals. Find your perfect getaway and book directly for the best rates.",
 };
 
 interface PropertiesPageProps {

@@ -6,7 +6,7 @@ import { Mail, Tag, Bell } from "lucide-react";
 export const metadata: Metadata = {
   title: "Get Exclusive Deals",
   description:
-    "Sign up for special rates, last-minute openings, and seasonal promotions from BLB Realty.",
+    "Sign up for special rates, last-minute openings, and seasonal promotions from Properties By BLB.",
 };
 
 const perks = [
