@@ -2,11 +2,22 @@ import { Property } from "@/types/property";
 
 const WIDGET_ID = "a1e23bdb-9260-4616-a9ed-890372317719";
 
-function buildImageArray(unit: string, count: number, pngIndices: number[] = []): string[] {
-  return Array.from({ length: count }, (_, i) => {
-    const ext = pngIndices.includes(i + 1) ? "png" : "jpg";
+function buildImageArray(
+  unit: string,
+  airbnbCount: number,
+  localCount: number,
+  airbnbPngIndices: number[] = [],
+  localPngIndices: number[] = [],
+): string[] {
+  const airbnb = Array.from({ length: airbnbCount }, (_, i) => {
+    const ext = airbnbPngIndices.includes(i + 1) ? "png" : "jpg";
+    return `/images/properties/${unit}/airbnb-${i + 1}.${ext}`;
+  });
+  const local = Array.from({ length: localCount }, (_, i) => {
+    const ext = localPngIndices.includes(i + 1) ? "png" : "jpg";
     return `/images/properties/${unit}/${i + 1}.${ext}`;
   });
+  return [...airbnb, ...local];
 }
 
 export const properties: Property[] = [
@@ -22,7 +33,7 @@ export const properties: Property[] = [
       state: "NY",
       area: "Niagara Falls State Park",
     },
-    images: buildImageArray("unit-1", 32),
+    images: buildImageArray("unit-1", 8, 32),
     pricing: {
       baseNight: 120,
       cleaningFee: 65,
@@ -78,7 +89,7 @@ export const properties: Property[] = [
       state: "NY",
       area: "Niagara Falls",
     },
-    images: buildImageArray("unit-2", 44, [1]),
+    images: buildImageArray("unit-2", 0, 44, [], [1]),
     pricing: {
       baseNight: 110,
       cleaningFee: 60,
@@ -133,7 +144,7 @@ export const properties: Property[] = [
       state: "NY",
       area: "Niagara Falls",
     },
-    images: buildImageArray("unit-3", 27),
+    images: buildImageArray("unit-3", 8, 27),
     pricing: {
       baseNight: 115,
       cleaningFee: 60,
@@ -188,7 +199,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-4", 55, [1, 2]),
+    images: buildImageArray("unit-4", 8, 55, [4], [1, 2]),
     pricing: {
       baseNight: 175,
       cleaningFee: 85,
@@ -246,7 +257,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-5", 37, [1, 2, 3, 4]),
+    images: buildImageArray("unit-5", 8, 37, [], [1, 2, 3, 4]),
     pricing: {
       baseNight: 85,
       cleaningFee: 50,
@@ -303,7 +314,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-6", 34, [1, 2]),
+    images: buildImageArray("unit-6", 8, 34, [3], [1, 2]),
     pricing: {
       baseNight: 85,
       cleaningFee: 50,
@@ -358,7 +369,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-7", 33, [1, 2]),
+    images: buildImageArray("unit-7", 8, 33, [], [1, 2]),
     pricing: {
       baseNight: 85,
       cleaningFee: 50,
@@ -414,7 +425,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-8", 34, [1, 2]),
+    images: buildImageArray("unit-8", 8, 34, [3], [1, 2]),
     pricing: {
       baseNight: 85,
       cleaningFee: 50,
