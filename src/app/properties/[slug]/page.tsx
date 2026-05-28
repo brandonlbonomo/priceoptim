@@ -7,7 +7,6 @@ import { AmenityList } from "@/components/properties/AmenityList";
 import { HospitableWidget } from "@/components/properties/HospitableWidget";
 import { EmailForm } from "@/components/ui/EmailForm";
 import { getPropertyBySlug, getActiveProperties } from "@/data/properties";
-import { formatCurrency } from "@/lib/utils";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
@@ -129,20 +128,6 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
           {/* Sidebar: Booking widget + pricing */}
           <div className="lg:col-span-1">
             <div className="sticky top-20 space-y-5">
-              {/* Price card */}
-              <div className="glass-card rounded-[28px] p-7">
-                <div className="text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Starting from</p>
-                  <span className="mt-1 block text-[36px] font-semibold tracking-tight text-foreground">
-                    {formatCurrency(property.pricing.baseNight)}
-                  </span>
-                  <span className="text-[15px] text-muted">per night</span>
-                </div>
-                <p className="mt-3 text-center text-[12px] text-muted">
-                  + {formatCurrency(property.pricing.cleaningFee)} cleaning fee
-                </p>
-              </div>
-
               {/* Hospitable widget */}
               <HospitableWidget
                 widgetId={property.hospitable.widgetId}

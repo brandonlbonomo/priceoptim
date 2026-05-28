@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s | Experiences by BLB",
   },
   description:
-    "Book directly with Experiences by BLB for the best rates on premium vacation rentals. Skip the platform fees and enjoy a better experience.",
+    "Book vacation rentals in Houston EaDo and Niagara Falls directly with Experiences by BLB. Skip Airbnb fees — best rates near Minute Maid Park, Toyota Center, and Niagara Falls State Park.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",

@@ -20,10 +20,21 @@ export default function HomePage() {
             "@type": "LodgingBusiness",
             name: "Experiences by BLB",
             description:
-              "Premium vacation rentals with the best direct booking rates.",
+              "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates — no Airbnb or Vrbo fees. Properties near Minute Maid Park, Toyota Center, Niagara Falls State Park, and more.",
             url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
             numberOfRooms: 8,
-            priceRange: "$120 - $195 per night",
+            areaServed: [
+              {
+                "@type": "City",
+                name: "Houston",
+                containedInPlace: { "@type": "State", name: "Texas" },
+              },
+              {
+                "@type": "City",
+                name: "Niagara Falls",
+                containedInPlace: { "@type": "State", name: "New York" },
+              },
+            ],
           }),
         }}
       />

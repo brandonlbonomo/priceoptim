@@ -25,20 +25,15 @@ export const properties: Property[] = [
     id: "unit-1",
     name: "Riverstone Retreat",
     slug: "niagara-riverstone-retreat",
-    tagline: "Cozy 2-bedroom townhouse minutes from Niagara Falls",
+    tagline: "Cozy 2-bedroom vacation rental near Niagara Falls State Park",
     description:
-      "A cozy 2-bedroom Niagara Falls townhouse, just minutes from the State Park. Designed for a stress-free getaway with hotel-level comfort and the privacy of a home. Features a fully equipped kitchen, fast Wi-Fi, free parking, and a quiet neighborhood location. The perfect base for your Niagara Falls sightseeing adventure — close to Clifton Hill, casinos, and all major attractions.",
+      "Stay in this cozy 2-bedroom Niagara Falls vacation rental, just minutes from Niagara Falls State Park. The Riverstone Retreat offers hotel-level comfort with the privacy of a full townhouse — ideal for families, couples, or small groups visiting Niagara Falls, New York. Walk to the Niagara Gorge Trail, explore Clifton Hill attractions, or visit Seneca Niagara Casino. Inside you'll find a fully equipped kitchen, fast Wi-Fi, in-unit washer and dryer, free parking, and fresh linens. Book direct with Experiences by BLB and skip the Airbnb fees.",
     location: {
       city: "Niagara Falls",
       state: "NY",
       area: "Niagara Falls State Park",
     },
     images: buildImageArray("unit-1", 0, 32),
-    pricing: {
-      baseNight: 120,
-      cleaningFee: 65,
-      currency: "USD",
-    },
     details: {
       bedrooms: 2,
       bathrooms: 2,
@@ -81,20 +76,15 @@ export const properties: Property[] = [
     id: "unit-2",
     name: "Niagara Falls Retreat – 24B",
     slug: "niagara-falls-retreat-24b",
-    tagline: "Newly updated home near the Falls",
+    tagline: "Newly updated Niagara Falls home — walk to attractions",
     description:
-      "A newly updated 2-bedroom home in Niagara Falls, perfect for families or couples seeking a comfortable and convenient base. Enjoy a modern, clean space with a fully equipped kitchen, fast Wi-Fi, free parking, and a quiet neighborhood setting — all just minutes from Niagara Falls, Clifton Hill, and local attractions.",
+      "This newly renovated 2-bedroom Niagara Falls vacation rental is perfect for families or couples looking for a comfortable home base. Located in a quiet residential neighborhood, you're just minutes from the Maid of the Mist, Cave of the Winds, Rainbow Bridge, and Niagara Falls State Park. The home features modern furnishings, a fully equipped kitchen, high-speed Wi-Fi, free parking, and a pet-friendly policy. Save on your next Niagara Falls trip by booking directly with Experiences by BLB — no platform fees, no middleman.",
     location: {
       city: "Niagara Falls",
       state: "NY",
       area: "Niagara Falls",
     },
     images: buildImageArray("unit-2", 8, 44, [], [1]),
-    pricing: {
-      baseNight: 110,
-      cleaningFee: 60,
-      currency: "USD",
-    },
     details: {
       bedrooms: 2,
       bathrooms: 1,
@@ -136,20 +126,15 @@ export const properties: Property[] = [
     id: "unit-3",
     name: "The Gorge Getaway",
     slug: "niagara-gorge-getaway-26b",
-    tagline: "Newly updated 2-bed, 2-bath near the Falls",
+    tagline: "2-bed, 2-bath Niagara Falls rental near State Park & casinos",
     description:
-      "A newly updated 2-bed, 2-bath house perfect for families or couples near Niagara Falls. This modern, clean space features a full kitchen, fast Wi-Fi, free parking, and a quiet neighborhood location. Minutes from Niagara Falls, Clifton Hill, and casinos — designed for a stress-free getaway.",
+      "The Gorge Getaway is a freshly updated 2-bedroom, 2-bathroom vacation home in Niagara Falls, New York. Perfect for families visiting Niagara Falls State Park, Whirlpool State Park, and the Niagara Gorge Discovery Center. This clean, modern space offers a full kitchen, laundry, fast Wi-Fi, free parking, and a quiet neighborhood setting — all within a short drive of Clifton Hill, Seneca Niagara Casino, and the Outlet Collection at Niagara. Book your Niagara Falls vacation rental directly with Experiences by BLB for the best rate guaranteed.",
     location: {
       city: "Niagara Falls",
       state: "NY",
       area: "Niagara Falls",
     },
     images: buildImageArray("unit-3", 8, 27),
-    pricing: {
-      baseNight: 115,
-      cleaningFee: 60,
-      currency: "USD",
-    },
     details: {
       bedrooms: 2,
       bathrooms: 2,
@@ -191,20 +176,15 @@ export const properties: Property[] = [
     id: "unit-4",
     name: "Luxury 3BR Home | Private Yard | Near Stadiums",
     slug: "houston-everton-luxury-3br",
-    tagline: "Full house with a real backyard in the heart of EaDo",
+    tagline: "Spacious Houston vacation rental in EaDo with private backyard",
     description:
-      "A full house with a real backyard in the heart of EaDo, Houston's most vibrant neighborhood. This newly renovated luxury 3-bedroom home puts you minutes from Minute Maid Park, Toyota Center, and 713 Music Hall. Featuring modern interiors, a fully equipped kitchen, fast WiFi, washer/dryer, dedicated parking, and self check-in. Perfect for families, groups, or anyone wanting the full Houston experience.",
+      "This luxury 3-bedroom Houston vacation rental sits in the heart of EaDo (East Downtown), Houston's most vibrant neighborhood for dining, sports, and nightlife. You're minutes from Minute Maid Park (home of the Houston Astros), Toyota Center (Houston Rockets), and 713 Music Hall. The home features a private fenced backyard, modern renovated interiors, a fully equipped kitchen with dishwasher, in-unit laundry, dedicated parking, and keyless self check-in. Ideal for families, groups attending Houston Astros games, or anyone seeking a full-house experience near downtown Houston. Book direct with Experiences by BLB and pay less than Airbnb or Vrbo.",
     location: {
       city: "Houston",
       state: "TX",
       area: "EaDo (East Downtown)",
     },
     images: buildImageArray("unit-4", 8, 55, [4], [1, 2]),
-    pricing: {
-      baseNight: 175,
-      cleaningFee: 85,
-      currency: "USD",
-    },
     details: {
       bedrooms: 3,
       bathrooms: 2,
@@ -247,22 +227,17 @@ export const properties: Property[] = [
   },
   {
     id: "unit-5",
-    name: "EaDo Apt | Close to Stadiums & Venues",
+    name: "EaDo Apt | Near Minute Maid Park & Toyota Center",
     slug: "houston-lockwood-unit-1",
-    tagline: "Clean, inviting retreat in vibrant East Downtown",
+    tagline: "Modern Houston apartment in walkable East Downtown",
     description:
-      "A modern 1-bedroom apartment in Houston's vibrant EaDo district — a clean, inviting retreat perfect for both work and leisure. Features a fully equipped kitchen, dedicated workspace, in-unit laundry, and one dedicated parking spot. Located near Minute Maid Park, Toyota Center, and vibrant nightlife.",
+      "A modern 1-bedroom apartment in Houston's EaDo district, steps from Minute Maid Park, Toyota Center, and BBVA Stadium. This vacation rental is ideal for business travelers needing a dedicated workspace, couples exploring Houston's East Downtown restaurant scene, or fans attending Astros, Rockets, or Dynamo games. Features include a fully equipped kitchen, in-unit washer/dryer, high-speed Wi-Fi, dedicated parking, and pet-friendly accommodations. Located on Lockwood Drive near Navigation Boulevard — the epicenter of Houston's best taquerias, breweries, and live music. Book direct with Experiences by BLB.",
     location: {
       city: "Houston",
       state: "TX",
       area: "EaDo (East Downtown)",
     },
     images: buildImageArray("unit-5", 8, 37, [], [1, 2, 3, 4]),
-    pricing: {
-      baseNight: 85,
-      cleaningFee: 50,
-      currency: "USD",
-    },
     details: {
       bedrooms: 1,
       bathrooms: 1,
@@ -304,22 +279,17 @@ export const properties: Property[] = [
   },
   {
     id: "unit-6",
-    name: "Modern EaDo Apartment Near Downtown",
+    name: "Modern EaDo Apartment | Downtown Houston",
     slug: "houston-lockwood-unit-2",
-    tagline: "Bright, modern home for solo travelers or couples",
+    tagline: "Bright, contemporary short-term rental near downtown Houston",
     description:
-      "A stylish 1-bedroom apartment — a bright, modern home suited for solo travelers or couples. Features a fully equipped kitchen, contemporary design, and proximity to Minute Maid Park, restaurants, and breweries in Houston's vibrant EaDo neighborhood.",
+      "This bright, modern 1-bedroom Houston vacation rental is perfect for solo travelers or couples visiting East Downtown. Situated in the heart of EaDo on Lockwood Drive, you're a short walk or ride from Minute Maid Park, Discovery Green, the George R. Brown Convention Center, and Houston's thriving brewery district including 8th Wonder Brewery and True Anomaly Brewing. The apartment features contemporary design, a full kitchen, dedicated workspace, self check-in, and one parking spot. Skip the hotel and experience Houston like a local — book direct with Experiences by BLB.",
     location: {
       city: "Houston",
       state: "TX",
       area: "EaDo (East Downtown)",
     },
     images: buildImageArray("unit-6", 8, 34, [3], [1, 2]),
-    pricing: {
-      baseNight: 85,
-      cleaningFee: 50,
-      currency: "USD",
-    },
     details: {
       bedrooms: 1,
       bathrooms: 1,
@@ -361,20 +331,15 @@ export const properties: Property[] = [
     id: "unit-7",
     name: "Premium EaDo Apartment | Stadiums & Downtown",
     slug: "houston-lockwood-unit-3",
-    tagline: "Chic 1-BR apt in Houston's vibrant EaDo district",
+    tagline: "Upscale Houston short-term rental for business or leisure",
     description:
-      "A chic 1-bedroom apartment in Houston's vibrant EaDo district. This urban retreat is a short drive to Minute Maid Park and top breweries, featuring a dedicated workspace, full kitchen, high-speed WiFi, secure parking, and self check-in. Perfect for corporate travel or exploring Houston's downtown attractions.",
+      "A premium 1-bedroom apartment in Houston's EaDo district — perfect for corporate travelers, remote workers, or couples visiting downtown Houston. Located on Lockwood Drive, this urban retreat is a short drive from Minute Maid Park (Houston Astros), Toyota Center (Houston Rockets), and the Theater District. Features include a dedicated workspace with ergonomic setup, full kitchen, high-speed WiFi, secure parking, in-unit laundry, and contactless self check-in. Pet-friendly and ideal for extended stays in Houston's East Downtown. Book direct with Experiences by BLB for rates lower than Airbnb.",
     location: {
       city: "Houston",
       state: "TX",
       area: "EaDo (East Downtown)",
     },
     images: buildImageArray("unit-7", 8, 33, [], [1, 2]),
-    pricing: {
-      baseNight: 85,
-      cleaningFee: 50,
-      currency: "USD",
-    },
     details: {
       bedrooms: 1,
       bathrooms: 1,
@@ -417,20 +382,15 @@ export const properties: Property[] = [
     id: "unit-8",
     name: "Stylish EaDo Apt | Restaurants, Stadiums, Venues",
     slug: "houston-lockwood-unit-4",
-    tagline: "Stylish 1-bedroom in walkable East Downtown",
+    tagline: "Walkable East Downtown Houston vacation rental",
     description:
-      "A stylish 1-bedroom Houston retreat in the heart of vibrant, walkable East Downtown. This bright apartment features a dedicated workspace, fully stocked kitchen, fast WiFi, and free parking. Close to Minute Maid Park, Toyota Center, and local breweries — ideal for both business and leisure travelers.",
+      "This stylish 1-bedroom vacation rental is in the heart of walkable East Downtown Houston. Perfectly positioned near Navigation Esplanade, you're steps from some of Houston's best restaurants, including Original Ninfa's on Navigation, El Tiempo Cantina, and local favorites along the Navigation Boulevard corridor. Minute Maid Park, Toyota Center, and 713 Music Hall are all a short ride away. The apartment features bright interiors, a fully stocked kitchen, workspace, fast WiFi, and free parking. Ideal for weekend getaways, Houston Astros game days, or business trips. Book direct with Experiences by BLB — always cheaper than Airbnb.",
     location: {
       city: "Houston",
       state: "TX",
       area: "EaDo (East Downtown)",
     },
     images: buildImageArray("unit-8", 8, 34, [3], [1, 2]),
-    pricing: {
-      baseNight: 85,
-      cleaningFee: 50,
-      currency: "USD",
-    },
     details: {
       bedrooms: 1,
       bathrooms: 1,

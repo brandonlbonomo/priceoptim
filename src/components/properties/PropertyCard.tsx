@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BedDouble, Bath, Users, MapPin } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { BedDouble, Bath, Users, MapPin, ArrowRight } from "lucide-react";
 import type { Property } from "@/types/property";
 
 interface PropertyCardProps {
@@ -24,11 +23,6 @@ export function PropertyCard({ property }: PropertyCardProps) {
           unoptimized
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
-        <div className="absolute bottom-4 left-4">
-          <span className="glass-dark rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-white">
-            From {formatCurrency(property.pricing.baseNight)}/night
-          </span>
-        </div>
       </div>
 
       <div className="p-5">
@@ -40,18 +34,24 @@ export function PropertyCard({ property }: PropertyCardProps) {
           {property.name}
         </h3>
 
-        <div className="mt-4 flex items-center gap-4 border-t border-black/[0.04] pt-4 text-[13px] text-muted">
-          <span className="flex items-center gap-1.5">
-            <BedDouble className="h-3.5 w-3.5" />
-            {property.details.bedrooms}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Bath className="h-3.5 w-3.5" />
-            {property.details.bathrooms}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            {property.details.maxGuests}
+        <div className="mt-4 flex items-center justify-between border-t border-black/[0.04] pt-4">
+          <div className="flex items-center gap-4 text-[13px] text-muted">
+            <span className="flex items-center gap-1.5">
+              <BedDouble className="h-3.5 w-3.5" />
+              {property.details.bedrooms}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Bath className="h-3.5 w-3.5" />
+              {property.details.bathrooms}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              {property.details.maxGuests}
+            </span>
+          </div>
+          <span className="flex items-center gap-1 text-[13px] font-medium text-accent-dark transition-colors duration-300 group-hover:text-accent">
+            View
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
           </span>
         </div>
       </div>

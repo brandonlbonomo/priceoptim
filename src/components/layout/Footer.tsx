@@ -5,6 +5,7 @@ import { EmailForm } from "@/components/ui/EmailForm";
 const footerLinks = [
   { href: "/", label: "Home" },
   { href: "/properties", label: "Properties" },
+  { href: "/blog", label: "Blog" },
   { href: "/subscribe", label: "Get Deals" },
 ];
 

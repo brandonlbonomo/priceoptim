@@ -10,7 +10,7 @@ export interface Property {
     area: string;
   };
   images: string[];
-  pricing: {
+  pricing?: {
     baseNight: number;
     cleaningFee: number;
     currency: string;
