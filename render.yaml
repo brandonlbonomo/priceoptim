@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: blb-realty
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: node .next/standalone/server.js
+    envVars:
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_BASE_URL
+        sync: false
+      - key: DATABASE_PATH
+        value: /data/subscribers.db
+      - key: PORT
+        value: 3000
+      - key: HOSTNAME
+        value: 0.0.0.0
+    disk:
+      name: blb-realty-data
+      mountPath: /data
+      sizeGB: 1
