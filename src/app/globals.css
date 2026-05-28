@@ -67,8 +67,11 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
-/* Fluid transitions */
-* {
+/* Smooth transitions only on interactive elements */
+a, button, select, input,
+[role="button"] {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 0.4s;
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
 }
 

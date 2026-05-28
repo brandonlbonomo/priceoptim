@@ -75,7 +75,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         type="submit"
         disabled={status === "loading"}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-medium transition-all duration-300 active:scale-[0.97]",
+          "inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-medium active:scale-[0.97]",
           compact
             ? "bg-accent text-white hover:bg-accent-light"
             : "bg-foreground text-white hover:bg-primary-light",
