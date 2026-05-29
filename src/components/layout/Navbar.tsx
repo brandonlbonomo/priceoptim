@@ -20,8 +20,9 @@ export function Navbar() {
     <header className="glass sticky top-0 z-50">
       <Container>
         <nav className="flex h-14 items-center justify-between">
-          <Link href="/" className="text-[15px] font-semibold tracking-tight text-foreground">
-            Experiences by BLB
+          <Link href="/" className="logo-glow text-[18px] font-bold tracking-tight sm:text-[20px]">
+            <span className="text-gradient">Experiences</span>
+            <span className="text-foreground"> by BLB</span>
           </Link>
 
           {/* Desktop nav */}

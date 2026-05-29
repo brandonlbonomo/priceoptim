@@ -109,3 +109,44 @@ a, button, select, input,
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
 }
+
+/* ── Scroll reveal animations ── */
+.reveal {
+  will-change: transform, opacity;
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-fade-up {
+  opacity: 0;
+  transform: translateY(40px);
+}
+.reveal-fade-up.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-fade-in {
+  opacity: 0;
+}
+.reveal-fade-in.revealed {
+  opacity: 1;
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Staggered children: each child gets the same transition */
+.reveal > * {
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Logo glow */
+.logo-glow {
+  text-shadow: 0 0 30px rgba(191, 155, 48, 0.15);
+}
