@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BedDouble, Bath, Users, Clock, ClipboardList, MapPin } from "lucide-react";
+import { BedDouble, Bath, Users, Clock, ClipboardList, MapPin, Star, Quote } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { PhotoGallery } from "@/components/properties/PhotoGallery";
 import { AmenityList } from "@/components/properties/AmenityList";
 import { HospitableWidget } from "@/components/properties/HospitableWidget";
 import { EmailForm } from "@/components/ui/EmailForm";
 import { getPropertyBySlug, getActiveProperties } from "@/data/properties";
+import { getReviewsByProperty } from "@/data/reviews";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
@@ -107,6 +108,39 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                 </div>
               </div>
             </div>
+
+            {/* Guest Reviews */}
+            {(() => {
+              const propertyReviews = getReviewsByProperty(property.id);
+              if (propertyReviews.length === 0) return null;
+              return (
+                <div className="mt-12">
+                  <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                    Guest Reviews
+                  </h2>
+                  <div className="space-y-4">
+                    {propertyReviews.map((review) => (
+                      <div key={review.id} className="glass-card rounded-[24px] p-6">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[14px] font-semibold text-foreground">
+                            {review.guestName}
+                          </p>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: review.rating }).map((_, i) => (
+                              <Star key={i} className="h-3 w-3 fill-accent text-accent" />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="mt-3 text-[14px] leading-relaxed text-primary-light">
+                          <Quote className="mr-1 inline h-3.5 w-3.5 text-accent/30" />
+                          {review.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* House Rules */}
             <div className="mt-12">
