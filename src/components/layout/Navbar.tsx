@@ -21,9 +21,9 @@ export function Navbar() {
   return (
     <header className="glass sticky top-0 z-50">
       <Container>
-        <nav className="flex h-14 items-center justify-between">
-          <Link href="/" className="logo-glow text-[18px] font-bold tracking-tight sm:text-[20px]">
-            <span className="text-gradient">Experiences</span>
+        <nav className="flex h-16 items-center justify-between">
+          <Link href="/" className="logo-glow text-[20px] font-bold tracking-tight sm:text-[22px]">
+            <span className="text-gradient font-display">Experiences</span>
             <span className="text-foreground"> by BLB</span>
           </Link>
 
@@ -33,7 +33,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-[13px] font-normal text-muted transition-colors duration-300 hover:text-foreground"
+                className="text-[13px] font-normal tracking-wide text-muted transition-colors duration-300 hover:text-foreground"
               >
                 {link.label}
               </Link>

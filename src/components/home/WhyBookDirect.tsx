@@ -32,7 +32,7 @@ export function WhyBookDirect() {
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               Why Book Direct
             </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="mt-4 font-display text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
               Skip the platforms.
               <br className="hidden sm:block" />
               <span className="text-muted"> Keep more in your pocket.</span>
@@ -50,7 +50,7 @@ export function WhyBookDirect() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-foreground/[0.04] transition-all duration-500 group-hover:bg-accent/10 group-hover:scale-110">
                   <benefit.icon className="h-7 w-7 text-foreground/70 transition-colors duration-500 group-hover:text-accent-dark" />
                 </div>
-                <h3 className="mt-6 text-[17px] font-semibold text-foreground">
+                <h3 className="mt-6 font-display text-[18px] font-medium text-foreground">
                   {benefit.title}
                 </h3>
                 <p className="mt-3 text-[15px] leading-relaxed text-muted">

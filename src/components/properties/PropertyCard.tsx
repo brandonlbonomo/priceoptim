@@ -38,7 +38,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
           <MapPin className="h-3 w-3" />
           {property.location.city}, {property.location.state}
         </div>
-        <h3 className="mt-2 text-[17px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
+        <h3 className="mt-2 font-display text-[17px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
           {property.name}
         </h3>
         {reviewCount > 0 && (

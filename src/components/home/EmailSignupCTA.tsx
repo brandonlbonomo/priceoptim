@@ -12,7 +12,7 @@ export function EmailSignupCTA() {
             <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
               Insider Access
             </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            <h2 className="mt-4 font-display text-3xl font-medium tracking-tight text-white sm:text-4xl">
               Get Exclusive Deals
             </h2>
             <p className="mt-4 text-[15px] font-light leading-relaxed text-white/50">

@@ -12,9 +12,9 @@ export function Hero() {
     ) / 100;
 
   return (
-    <section className="hero-gradient noise relative overflow-hidden py-32 sm:py-40 lg:py-52">
+    <section className="hero-gradient noise relative overflow-hidden py-36 sm:py-44 lg:py-56">
       {/* Ambient light effects */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-accent/[0.07] blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-accent/[0.09] blur-[120px]" />
       <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-blue-500/[0.04] blur-[100px]" />
       <div className="pointer-events-none absolute -right-40 top-20 h-80 w-80 rounded-full bg-purple-500/[0.03] blur-[100px]" />
 
@@ -23,12 +23,13 @@ export function Hero() {
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
             Experiences by BLB
           </p>
-          <h1 className="mt-6 text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">
+          <div className="mt-4 ornament" />
+          <h1 className="mt-8 font-display text-5xl font-medium tracking-tight text-white sm:text-6xl lg:text-8xl">
             Book Direct.
             <br />
             <span className="text-gradient">Save More.</span>
           </h1>
-          <p className="mx-auto mt-8 max-w-xl text-[17px] font-light leading-relaxed text-white/60">
+          <p className="mx-auto mt-8 max-w-xl text-[17px] font-normal leading-relaxed text-white/50">
             Premium vacation rentals without the platform markup.
             Book directly for the best rates, every time.
           </p>
