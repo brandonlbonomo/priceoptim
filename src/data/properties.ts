@@ -272,7 +272,7 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292716",
+      propertyId: "2292714",
     },
     featured: false,
     active: true,
@@ -373,7 +373,7 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292717",
+      propertyId: "2292716",
     },
     featured: true,
     active: true,
@@ -423,7 +423,7 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292714",
+      propertyId: "2292717",
     },
     featured: false,
     active: true,
