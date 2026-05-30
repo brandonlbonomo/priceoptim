@@ -1,7 +1,16 @@
+import { Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { getAllReviews } from "@/data/reviews";
 
 export function Hero() {
+  const reviews = getAllReviews();
+  const totalReviews = reviews.length;
+  const avgRating =
+    Math.round(
+      (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 100
+    ) / 100;
+
   return (
     <section className="hero-gradient noise relative overflow-hidden py-32 sm:py-40 lg:py-52">
       {/* Ambient light effects */}
@@ -23,7 +32,19 @@ export function Hero() {
             Premium vacation rentals without the platform markup.
             Book directly for the best rates, every time.
           </p>
-          <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
+
+          {/* Review badge */}
+          <div className="mx-auto mt-8 inline-flex items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 backdrop-blur-xl">
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent" />
+              ))}
+            </div>
+            <span className="text-[14px] font-semibold text-white">{avgRating}</span>
+            <span className="text-[13px] text-white/40">from {totalReviews} reviews</span>
+          </div>
+
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button href="/properties" size="lg" variant="secondary">
               Browse Properties
             </Button>

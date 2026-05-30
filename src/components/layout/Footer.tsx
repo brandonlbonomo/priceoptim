@@ -7,6 +7,7 @@ const footerLinks = [
   { href: "/properties", label: "Properties" },
   { href: "/reviews", label: "Reviews" },
   { href: "/blog", label: "Blog" },
+  { href: "/guides", label: "Guides" },
   { href: "/subscribe", label: "Get Deals" },
 ];
 
@@ -20,13 +21,22 @@ export function Footer() {
     <footer className="mt-auto bg-[#1d1d1f] text-white">
       <Container className="py-16">
         <div className="grid gap-12 md:grid-cols-4">
-          {/* Brand */}
+          {/* Brand + NAP */}
           <div>
             <h3 className="text-[15px] font-semibold tracking-tight">Experiences by BLB</h3>
             <p className="mt-4 text-[13px] leading-relaxed text-white/40">
               Premium vacation rentals with the best direct booking rates. Skip the
               platform fees and book with us directly.
             </p>
+            <div className="mt-4 space-y-1 text-[12px] text-white/25">
+              <p>BLB Realty</p>
+              <p>Houston, TX &amp; Niagara Falls, NY</p>
+              <p>
+                <a href="mailto:contact@experiencesbyblb.com" className="transition-colors duration-200 hover:text-white/50">
+                  contact@experiencesbyblb.com
+                </a>
+              </p>
+            </div>
           </div>
 
           {/* Links */}

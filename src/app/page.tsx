@@ -2,7 +2,12 @@ import { Hero } from "@/components/home/Hero";
 import { FeaturedProperties } from "@/components/home/FeaturedProperties";
 import { WhyBookDirect } from "@/components/home/WhyBookDirect";
 import { EmailSignupCTA } from "@/components/home/EmailSignupCTA";
+import { Testimonials } from "@/components/home/Testimonials";
+import { Container } from "@/components/ui/Container";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { getAllReviews } from "@/data/reviews";
+import { properties } from "@/data/properties";
 
 export default function HomePage() {
   const reviews = getAllReviews();
@@ -12,11 +17,46 @@ export default function HomePage() {
       (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 100
     ) / 100;
 
+  // Pick the best testimonials — longer, 5-star reviews from different properties
+  const testimonials = reviews
+    .filter((r) => r.rating === 5 && r.text.length > 100)
+    .slice(0, 6)
+    .map((r) => {
+      const property = properties.find((p) => p.id === r.propertyId);
+      return {
+        guestName: r.guestName,
+        rating: r.rating,
+        text: r.text,
+        propertyName: property?.name ?? "",
+        location: property
+          ? `${property.location.city}, ${property.location.state}`
+          : "",
+      };
+    });
+
   return (
     <>
       <Hero />
       <FeaturedProperties />
       <WhyBookDirect />
+
+      {/* Testimonials */}
+      <section className="py-20 sm:py-28">
+        <Container>
+          <ScrollReveal>
+            <SectionHeading
+              title="What Our Guests Say"
+              subtitle="Real reviews from real stays across Houston and Niagara Falls"
+            />
+          </ScrollReveal>
+          <ScrollReveal variant="fade-up" delay={100}>
+            <div className="mt-14">
+              <Testimonials testimonials={testimonials} />
+            </div>
+          </ScrollReveal>
+        </Container>
+      </section>
+
       <EmailSignupCTA />
 
       {/* JSON-LD structured data */}

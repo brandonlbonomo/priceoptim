@@ -31,6 +31,9 @@ export async function generateMetadata({
   return {
     title: post.title,
     description: post.metaDescription,
+    alternates: {
+      canonical: `/blog/${slug}`,
+    },
     openGraph: {
       title: post.title,
       description: post.metaDescription,
@@ -174,6 +177,54 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </Button>
             </div>
           </div>
+
+          {/* Related Posts */}
+          {(() => {
+            const relatedPosts = getAllPosts()
+              .filter((p) => p.slug !== post.slug)
+              .filter((p) => p.tags.some((t) => post.tags.includes(t)))
+              .slice(0, 2);
+            if (relatedPosts.length === 0) return null;
+            return (
+              <div className="mt-14">
+                <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                  Related Posts
+                </h2>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {relatedPosts.map((related) => (
+                    <Link
+                      key={related.slug}
+                      href={`/blog/${related.slug}`}
+                      className="glass-card group block overflow-hidden rounded-[24px]"
+                    >
+                      <div className="relative aspect-[16/9] overflow-hidden">
+                        <Image
+                          src={related.coverImage}
+                          alt={`${related.title} — Experiences by BLB blog`}
+                          fill
+                          className="object-cover transition-all duration-700 group-hover:scale-110"
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="p-5">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+                          {new Date(related.publishedAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <h3 className="mt-2 text-[15px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
+                          {related.title}
+                        </h3>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </Container>
 

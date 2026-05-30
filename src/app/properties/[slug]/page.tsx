@@ -9,7 +9,8 @@ import { EmailForm } from "@/components/ui/EmailForm";
 import { StarRating } from "@/components/ui/StarRating";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { FAQSection } from "@/components/properties/FAQSection";
-import { getPropertyBySlug, getActiveProperties } from "@/data/properties";
+import { getPropertyBySlug, getActiveProperties, getPropertiesByCity } from "@/data/properties";
+import { PropertyCard } from "@/components/properties/PropertyCard";
 import { getReviewsByProperty, getAverageRating } from "@/data/reviews";
 import { generatePropertyFAQs } from "@/lib/faq";
 
@@ -34,6 +35,9 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   return {
     title: property.name,
     description: property.tagline + ". " + property.description.slice(0, 120) + "...",
+    alternates: {
+      canonical: `/properties/${property.slug}`,
+    },
     openGraph: {
       title: property.name,
       description: property.tagline,
@@ -247,6 +251,26 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               </h2>
               <FAQSection faqs={faqs} />
             </div>
+
+            {/* Related Properties */}
+            {(() => {
+              const related = getPropertiesByCity(property.location.city).filter(
+                (p) => p.id !== property.id
+              );
+              if (related.length === 0) return null;
+              return (
+                <div className="mt-16">
+                  <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                    More Rentals in {property.location.city}, {property.location.state}
+                  </h2>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {related.slice(0, 4).map((p) => (
+                      <PropertyCard key={p.id} property={p} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Sidebar: Booking widget + pricing */}
