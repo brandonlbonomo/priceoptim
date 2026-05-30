@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BedDouble, Bath, Users, Clock, ClipboardList, MapPin, Star, Quote } from "lucide-react";
+import { BedDouble, Bath, Users, Clock, ClipboardList, MapPin, Star, Quote, ExternalLink } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { PhotoGallery } from "@/components/properties/PhotoGallery";
 import { AmenityList } from "@/components/properties/AmenityList";
@@ -291,6 +291,17 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                       )}
                     </div>
                   ))}
+                </div>
+                <div className="mt-5">
+                  <a
+                    href="https://g.page/r/CUN6GXD8vohcEBM/review"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[13px] font-medium text-accent-dark transition-colors duration-200 hover:text-accent"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Stayed here? Leave a Google Review
+                  </a>
                 </div>
               </div>
             )}

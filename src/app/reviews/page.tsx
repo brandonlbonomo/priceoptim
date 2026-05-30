@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Star, Quote } from "lucide-react";
+import { Star, Quote, ExternalLink } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -106,6 +106,18 @@ export default function ReviewsPage() {
               from {totalReviews} reviews
             </span>
           </div>
+
+          <div className="mt-5">
+            <a
+              href="https://g.page/r/CUN6GXD8vohcEBM/review"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-5 py-2.5 text-[13px] font-medium text-accent-dark transition-colors duration-200 hover:bg-accent/20"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Leave a Google Review
+            </a>
+          </div>
         </div>
 
         {/* Reviews grouped by property */}
@@ -173,19 +185,29 @@ export default function ReviewsPage() {
           ))}
         </div>
 
-        {/* CTA */}
+        {/* Google Review CTA */}
         <div className="mt-20 glass-card rounded-[32px] p-10 text-center sm:p-14">
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
-            Ready to Experience It Yourself?
+            Stayed With Us?
           </p>
           <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
-            Book your stay today
+            Share your experience
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
-            Join our happy guests. Book direct for the best rates — no platform fees.
+            We&apos;d love to hear about your stay. Leave a review on Google — it
+            helps other travelers find us.
           </p>
-          <div className="mt-8">
-            <Button href="/properties" size="lg" variant="secondary">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <a
+              href="https://g.page/r/CUN6GXD8vohcEBM/review"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-[14px] font-semibold text-white transition-all duration-200 hover:bg-accent-light active:scale-[0.97]"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Leave a Google Review
+            </a>
+            <Button href="/properties" size="lg" variant="outline">
               Browse Properties
             </Button>
           </div>
