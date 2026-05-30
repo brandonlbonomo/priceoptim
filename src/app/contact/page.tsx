@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Phone, Mail, MapPin, Clock, Building2 } from "lucide-react";
+import { Phone, Mail, Clock, Building2 } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -26,15 +26,7 @@ export default function ContactPage() {
     logo: `${baseUrl}/logo.png`,
     image: `${baseUrl}/logo.png`,
     telephone: "+1-516-650-6653",
-    email: "contact@experiencesbyblb.com",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "102 Lockwood Dr",
-      addressLocality: "Houston",
-      addressRegion: "TX",
-      postalCode: "77011",
-      addressCountry: "US",
-    },
+    email: "blbrealtyllc@gmail.com",
     geo: {
       "@type": "GeoCoordinates",
       latitude: 29.7544,
@@ -83,7 +75,7 @@ export default function ContactPage() {
         </div>
 
         {/* Contact method cards */}
-        <div className="mt-14 grid gap-6 sm:grid-cols-3">
+        <div className="mt-14 grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto">
           {/* Phone */}
           <div className="glass-card rounded-[28px] p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
@@ -115,26 +107,13 @@ export default function ContactPage() {
               We reply within a few hours
             </p>
             <a
-              href="mailto:contact@experiencesbyblb.com"
+              href="mailto:blbrealtyllc@gmail.com"
               className="mt-3 inline-block text-[15px] font-medium text-accent-dark transition-colors duration-200 hover:text-foreground"
             >
-              contact@experiencesbyblb.com
+              blbrealtyllc@gmail.com
             </a>
           </div>
 
-          {/* Address */}
-          <div className="glass-card rounded-[28px] p-8 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
-              <MapPin className="h-5 w-5 text-accent-dark" />
-            </div>
-            <h2 className="mt-5 text-[15px] font-semibold text-foreground">
-              Address
-            </h2>
-            <p className="mt-2 text-[13px] text-muted">BLB REALTY LLC</p>
-            <p className="mt-1 text-[15px] font-medium text-foreground">
-              102 Lockwood Dr, Houston, TX 77011
-            </p>
-          </div>
         </div>
 
         {/* Business hours */}

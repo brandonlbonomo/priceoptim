@@ -657,7 +657,7 @@ const posts: BlogPost[] = [
     `,
     author: "BLB Team",
     publishedAt: "2026-03-05",
-    coverImage: "/images/properties/unit-4/airbnb-4.jpg",
+    coverImage: "/images/properties/unit-4/airbnb-5.jpg",
     tags: ["Houston", "EaDo", "Food", "Dining Guide"],
     metaDescription:
       "Discover the best restaurants near Minute Maid Park in Houston's EaDo — from Tex-Mex at Ninfa's to late-night pizza at Vinny's. Your complete game-day dining guide.",

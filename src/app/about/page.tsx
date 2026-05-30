@@ -64,20 +64,12 @@ export default function AboutPage() {
     description:
       "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates — no Airbnb or Vrbo fees.",
     foundingDate: "2024",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "102 Lockwood Dr",
-      addressLocality: "Houston",
-      addressRegion: "TX",
-      postalCode: "77011",
-      addressCountry: "US",
-    },
     telephone: "+1-516-650-6653",
     contactPoint: {
       "@type": "ContactPoint",
       telephone: "+1-516-650-6653",
       contactType: "customer service",
-      email: "contact@experiencesbyblb.com",
+      email: "blbrealtyllc@gmail.com",
       availableLanguage: "English",
     },
     areaServed: [

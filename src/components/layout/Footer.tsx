@@ -32,15 +32,15 @@ export function Footer() {
             </p>
             <div className="mt-4 space-y-1 text-[12px] text-white/25">
               <p>BLB REALTY LLC</p>
-              <p>102 Lockwood Dr, Houston, TX 77011</p>
+              <p>Houston, TX &amp; Niagara Falls, NY</p>
               <p>
                 <a href="tel:+15166506653" className="transition-colors duration-200 hover:text-white/50">
                   (516) 650-6653
                 </a>
               </p>
               <p>
-                <a href="mailto:contact@experiencesbyblb.com" className="transition-colors duration-200 hover:text-white/50">
-                  contact@experiencesbyblb.com
+                <a href="mailto:blbrealtyllc@gmail.com" className="transition-colors duration-200 hover:text-white/50">
+                  blbrealtyllc@gmail.com
                 </a>
               </p>
             </div>
