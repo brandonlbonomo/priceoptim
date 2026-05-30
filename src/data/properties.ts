@@ -227,7 +227,7 @@ export const properties: Property[] = [
   },
   {
     id: "unit-5",
-    name: "Premium EaDo Apartment | Stadiums & Downtown",
+    name: "Premium EaDo Apartment | Stadiums • Downtown",
     slug: "houston-lockwood-unit-1",
     tagline: "Upscale Houston short-term rental for business or leisure",
     description:
@@ -279,7 +279,7 @@ export const properties: Property[] = [
   },
   {
     id: "unit-6",
-    name: "Modern EaDo Apartment | Downtown Houston",
+    name: "Modern EaDo Apartment Near Downtown",
     slug: "houston-lockwood-unit-2",
     tagline: "Bright, contemporary short-term rental near downtown Houston",
     description:
@@ -380,7 +380,7 @@ export const properties: Property[] = [
   },
   {
     id: "unit-8",
-    name: "EaDo Apt | Near Minute Maid Park & Toyota Center",
+    name: "EaDo Apt | Close to Stadiums & Venues",
     slug: "houston-lockwood-unit-4",
     tagline: "Modern Houston apartment in walkable East Downtown",
     description:
