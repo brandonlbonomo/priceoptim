@@ -224,6 +224,200 @@ const posts: BlogPost[] = [
     metaDescription:
       "Discover the best restaurants and breweries near Minute Maid Park in Houston's EaDo neighborhood — including Rodeo Goat, Nancy's Hustle, 8th Wonder Brewery, and more.",
   },
+  {
+    slug: "pet-friendly-vacation-rentals-niagara-falls-ny",
+    title: "Pet-Friendly Vacation Rentals Near Niagara Falls, NY",
+    excerpt:
+      "Traveling with your dog to Niagara Falls? Discover pet-friendly vacation rentals, dog-friendly trails, and tips for visiting the Falls with your four-legged companion.",
+    content: `
+      <h2>Why Bring Your Pet to Niagara Falls?</h2>
+      <p>Niagara Falls is not just a destination for people — it is surprisingly welcoming for dogs and other pets. The surrounding area features miles of scenic trails, open parks, and outdoor dining patios where your furry friend is more than welcome. The challenge has always been finding comfortable, affordable pet-friendly accommodations. Hotels near the Falls that accept pets often charge steep nightly pet fees ranging from $50 to $100. Vacation rentals are a far better option — you get more space, a private yard or entrance, and typically no hidden pet surcharges.</p>
+
+      <h2>What to Look for in a Pet-Friendly Rental</h2>
+      <p>Not all pet-friendly listings are created equal. When booking a vacation rental for a trip with your dog, look for these features:</p>
+      <ul>
+        <li><strong>Fenced or enclosed outdoor space</strong> — Even a small patio gives your pet a safe area to stretch without a leash.</li>
+        <li><strong>Hard surface flooring</strong> — Easier to clean and more hygienic for pet owners.</li>
+        <li><strong>Proximity to parks and trails</strong> — You will want green space within walking distance for morning and evening walks.</li>
+        <li><strong>Clear pet policy</strong> — The best hosts spell out exactly what is and is not allowed so there are no surprises.</li>
+        <li><strong>No breed or size restrictions</strong> — Many hotels restrict breeds or weight limits. Quality vacation rentals tend to be more flexible.</li>
+      </ul>
+
+      <h2>Dog-Friendly Activities Near Niagara Falls</h2>
+
+      <h3>Niagara Gorge Trail</h3>
+      <p>The Niagara Gorge Trail system runs along the rim and down into the gorge, offering spectacular views of the rapids and whirlpool. Dogs are allowed on-leash on most sections of the trail. The Whirlpool Rapids viewpoint is a favorite — your dog will love the mist and fresh air, and you will love the scenery.</p>
+
+      <h3>DeVeaux Woods State Park</h3>
+      <p>Located just north of the Falls, DeVeaux Woods is a peaceful, wooded park perfect for a quiet walk with your dog. The old-growth forest provides shade during summer months, and the flat trails are easy for dogs of all sizes and ages.</p>
+
+      <h3>Niagara Falls State Park (Paved Areas)</h3>
+      <p>While dogs are not permitted on the Maid of the Mist or Cave of the Winds, they are welcome on-leash in the paved areas of Niagara Falls State Park. Walk along the Observation Tower plaza and enjoy views of the Falls with your pet beside you. The Goat Island pathways are also dog-friendly and offer stunning vantage points.</p>
+
+      <h3>Whirlpool State Park</h3>
+      <p>This state park about two miles downstream from the main falls is excellent for hiking with dogs. The trail descends 300 steps to the Niagara Whirlpool — a dramatic natural feature where the river makes a sharp 90-degree turn. Dogs on-leash are welcome throughout the park.</p>
+
+      <h2>Tips for Traveling with Pets to Niagara Falls</h2>
+      <ul>
+        <li><strong>Pack a pet first-aid kit</strong> — The gorge trails can be rocky, so having paw balm and bandages is wise.</li>
+        <li><strong>Bring familiar items</strong> — Your pet's bed, favorite toy, and regular food will help them settle into a new space quickly.</li>
+        <li><strong>Keep your pet hydrated</strong> — The mist from the Falls is refreshing but carry a portable water bowl for longer walks.</li>
+        <li><strong>Check seasonal rules</strong> — Some trails have seasonal restrictions, especially during nesting seasons for local wildlife.</li>
+        <li><strong>Research local vets</strong> — Identify the nearest emergency veterinary clinic before you arrive, just in case.</li>
+      </ul>
+
+      <h2>Where to Stay with Your Pet Near Niagara Falls</h2>
+      <p><a href="/properties/niagara-falls">Our Niagara Falls vacation rentals</a> welcome pets at no additional charge. Each property offers a comfortable home base with full kitchens, free parking, and quiet residential settings just minutes from the State Park and all major attractions. Your pet will feel right at home — and so will you. Book direct with Experiences by BLB and skip the platform fees and hidden pet charges that hotels and third-party sites tack on.</p>
+    `,
+    author: "BLB Team",
+    publishedAt: "2026-03-15",
+    coverImage: "/images/properties/unit-3/airbnb-1.jpg",
+    tags: ["Niagara Falls", "Pet-Friendly", "Travel Tips", "Vacation Rentals"],
+    metaDescription:
+      "Find pet-friendly vacation rentals near Niagara Falls, NY. Dog-friendly trails, parks, and tips for traveling with pets to the Falls. No pet fees — book direct.",
+  },
+  {
+    slug: "where-to-stay-astros-game-near-minute-maid-park",
+    title: "Where to Stay for an Astros Game: Near Minute Maid Park",
+    excerpt:
+      "Planning a trip to see the Houston Astros? Here's your complete guide to staying near Minute Maid Park — from neighborhood tips to the best vacation rentals in EaDo.",
+    content: `
+      <h2>The Best Neighborhood for Astros Fans</h2>
+      <p>If you are planning a trip to see the Houston Astros play at Minute Maid Park, the single best place to stay is East Downtown — better known as EaDo. This vibrant neighborhood sits directly adjacent to the ballpark, putting you within walking distance of the stadium, pre-game restaurants, post-game breweries, and all the energy that makes game day in Houston special. Forget the generic downtown hotels and overpriced garage parking. Staying in EaDo gives you a genuine neighborhood experience at a fraction of the cost.</p>
+
+      <h2>Why EaDo Beats Downtown Hotels</h2>
+      <h3>Price</h3>
+      <p>Downtown Houston hotels within walking distance of Minute Maid Park typically run $200 to $400 per night, especially on game days and weekends. A vacation rental in EaDo offers significantly more space — a full apartment or house with kitchen, living area, and laundry — often for less than the cost of a single hotel room. When you factor in the money you save by cooking breakfast or packing lunch instead of eating out for every meal, the savings add up quickly.</p>
+
+      <h3>Parking</h3>
+      <p>Parking near Minute Maid Park on game days can cost $30 to $60 per event. Most EaDo vacation rentals include free, dedicated parking. Drive to the stadium or walk if you are close enough — either way, you never pay for parking.</p>
+
+      <h3>Atmosphere</h3>
+      <p>EaDo is where the locals go before and after games. The neighborhood brewery crawl — 8th Wonder, True Anomaly, Sigma Brewing — is a game-day tradition. The restaurants along Polk Street and Navigation Boulevard serve some of the best food in Houston. You are not just attending a game — you are experiencing Houston's most exciting neighborhood.</p>
+
+      <h2>Game Day Timeline in EaDo</h2>
+
+      <h3>3 Hours Before First Pitch</h3>
+      <p>Arrive at your EaDo rental, drop your bags, and freshen up. If you flew in, the drive from Hobby Airport takes about 20 minutes, or 30 minutes from IAH.</p>
+
+      <h3>2 Hours Before</h3>
+      <p>Walk to Rodeo Goat or Vinny's Pizzeria for a pre-game meal. Both are within a short drive or rideshare of most EaDo rentals and offer casual, quick-service dining perfect for game day.</p>
+
+      <h3>1 Hour Before</h3>
+      <p>Head to Minute Maid Park. The gates open 90 minutes before first pitch for regular-season games. Walk the concourse, check out the Crawford Boxes, and grab your first ballpark beer. The Astros Team Store near Section 124 has the latest gear.</p>
+
+      <h3>After the Game</h3>
+      <p>Walk back to EaDo and stop at 8th Wonder Brewery for a post-game pint of Rocket Fuel. If you are hungry, POST Houston's food hall is open late on event nights. Then stroll back to your rental — no Uber surge pricing, no parking garage wait.</p>
+
+      <h2>What to Pack for an Astros Game</h2>
+      <ul>
+        <li><strong>Light, breathable clothing</strong> — Houston is hot and humid from April through October. The retractable roof helps, but the walk to and from the park will be warm.</li>
+        <li><strong>Sunscreen</strong> — For day games or if you are sitting in the Crawford Boxes where the roof opening lets in direct sun.</li>
+        <li><strong>A clear bag</strong> — Minute Maid Park enforces a clear bag policy. Bags must be 12x12x6 or smaller and transparent.</li>
+        <li><strong>Cash for street vendors</strong> — The unofficial tailgate scene on Texas Avenue is cash-friendly.</li>
+      </ul>
+
+      <h2>Where to Stay in EaDo for Astros Games</h2>
+      <p><a href="/properties/houston">Browse our Houston EaDo vacation rentals</a> — all located minutes from Minute Maid Park with free parking, full kitchens, fast WiFi, and self check-in. Whether you are coming for a weekend series or an extended trip, our properties give you the best game-day experience at the best price. Book direct with Experiences by BLB and save versus Airbnb or Vrbo.</p>
+    `,
+    author: "BLB Team",
+    publishedAt: "2026-04-05",
+    coverImage: "/images/properties/unit-4/airbnb-2.jpg",
+    tags: ["Houston", "Astros", "Minute Maid Park", "EaDo", "Where to Stay"],
+    metaDescription:
+      "Find the best places to stay near Minute Maid Park for Houston Astros games. EaDo vacation rentals with free parking, full kitchens, and walkable access to the stadium.",
+  },
+  {
+    slug: "eado-neighborhood-guide-houston",
+    title: "EaDo Neighborhood Guide: Houston's Coolest District",
+    excerpt:
+      "Everything you need to know about East Downtown Houston — from its history and transformation to the best things to see, eat, and do in EaDo today.",
+    content: `
+      <h2>What Is EaDo?</h2>
+      <p>EaDo — short for East Downtown — is the neighborhood immediately east of downtown Houston, Texas. Roughly bounded by US-59/I-69 to the south, the rail yards to the east, Interstate 45 to the west, and Buffalo Bayou to the north, EaDo covers about two square miles of what has become Houston's most dynamic urban neighborhood. A decade ago, this area was mostly industrial warehouses and vacant lots. Today it is home to world-class stadiums, award-winning restaurants, craft breweries, massive murals, and a rapidly growing residential community.</p>
+
+      <h2>The History of EaDo</h2>
+      <p>EaDo's story is one of reinvention. In the early 1900s, the neighborhood was a working-class residential area connected to Houston's rail and shipping industries. As the city expanded outward in the mid-20th century, the area declined. Warehouses replaced homes, and the neighborhood became a pass-through rather than a destination.</p>
+      <p>The transformation began with the opening of Minute Maid Park in 2000, which brought major league sports to the neighborhood's doorstep. Toyota Center followed in 2003. But the real cultural shift came in the 2010s when artists, entrepreneurs, and developers recognized EaDo's potential. Breweries moved into old warehouses. Murals covered blank walls. Restaurants opened on formerly empty streets. The 2021 opening of POST Houston — the redevelopment of the historic Barbara Jordan Post Office into a food hall, event space, and rooftop park — cemented EaDo's status as a must-visit neighborhood.</p>
+
+      <h2>Getting Around EaDo</h2>
+      <p>EaDo is one of Houston's most walkable neighborhoods, which is saying something in a city famous for its car culture. The METRORail Green and Purple lines have stations at EaDo/Stadium and Convention District, connecting you to Midtown, the Museum District, Hermann Park, and the Medical Center. Rideshare apps are plentiful, especially on game days and event nights. Most vacation rentals in the area include dedicated parking, so having a car is convenient but not essential for exploring the immediate neighborhood.</p>
+
+      <h2>Where to Eat in EaDo</h2>
+      <p>EaDo's food scene reflects Houston's famous culinary diversity. <strong>Nancy's Hustle</strong> on Polk Street is a James Beard-nominated restaurant blending Italian techniques with Texas ingredients. <strong>Rodeo Goat</strong> serves creative gourmet burgers with an extensive craft beer list. <strong>Mama Ninfa's on Navigation</strong> is where the fajita was popularized in Houston — the tacos al carbon and tableside guacamole are legendary.</p>
+      <p>For quick bites, <strong>POST Houston's food hall</strong> offers everything from ramen to BBQ under one roof. <strong>Vinny's Pizzeria</strong> on Navigation dishes out New York-style slices late into the night. And if you venture slightly south on Navigation Boulevard, you will find some of Houston's best taquerias and panaderias — authentic Mexican bakeries serving fresh conchas and tres leches cake.</p>
+
+      <h2>Craft Breweries</h2>
+      <p>EaDo is the heart of Houston's craft beer scene. <strong>8th Wonder Brewery</strong> is the neighborhood anchor, famous for their Rocket Fuel Vietnamese Coffee Porter and enormous taproom with food trucks and live music. <strong>True Anomaly Brewing</strong> focuses on hop-forward IPAs in a space-themed taproom. <strong>Sigma Brewing</strong> is family-friendly with a large outdoor area, yard games, and rotating food trucks. All three are within walking distance of each other, making a self-guided brewery crawl one of the best activities in the neighborhood.</p>
+
+      <h2>Arts and Culture</h2>
+      <p>EaDo is an open-air gallery. Massive murals cover warehouse walls along Harrisburg Boulevard, Leeland Street, and St. Emanuel Street. The neighborhood is part of the East End Cultural District, which hosts regular art walks, gallery openings, and cultural festivals. The Houston Graffiti Building and the colorful walls near the EADO METRORail station are particularly photogenic.</p>
+
+      <h2>Sports and Entertainment</h2>
+      <p><strong>Minute Maid Park</strong> is home to the Houston Astros. <strong>Toyota Center</strong> hosts the Houston Rockets, major concerts, and UFC events. <strong>713 Music Hall</strong> at POST Houston is a 5,000-capacity live music venue with outstanding acoustics. And <strong>Shell Energy Stadium</strong> (formerly BBVA Stadium) is home to the Houston Dynamo and Houston Dash soccer teams. On any given weekend, there are multiple sporting events and concerts within walking distance of each other.</p>
+
+      <h2>Where to Stay in EaDo</h2>
+      <p>The best way to experience EaDo is to stay in the neighborhood. <a href="/properties/houston">Our EaDo vacation rentals</a> put you in the heart of the action with full kitchens, free parking, fast WiFi, and all the comforts of home. Walk to the stadiums, stumble back from the breweries, and wake up in one of Houston's most exciting neighborhoods. Book direct with Experiences by BLB for the best rates — no platform fees.</p>
+    `,
+    author: "BLB Team",
+    publishedAt: "2026-04-20",
+    coverImage: "/images/properties/unit-5/airbnb-2.jpg",
+    tags: ["Houston", "EaDo", "Neighborhood Guide", "Travel Guide"],
+    metaDescription:
+      "Your complete guide to Houston's EaDo (East Downtown) neighborhood — history, best restaurants, craft breweries, murals, stadiums, and where to stay.",
+  },
+  {
+    slug: "family-vacation-guide-niagara-falls-ny-with-kids",
+    title: "Family Vacation Guide: Niagara Falls, NY with Kids",
+    excerpt:
+      "Planning a family trip to Niagara Falls? This guide covers kid-friendly attractions, where to eat, money-saving tips, and the best family accommodations near the Falls.",
+    content: `
+      <h2>Why Niagara Falls Is Perfect for Families</h2>
+      <p>Niagara Falls is one of those rare destinations that genuinely thrills every age group. Toddlers stare wide-eyed at the thundering water. Teenagers put their phones down long enough to get soaked at Cave of the Winds. Parents appreciate the manageable scale — most major attractions are within a compact area, and you can see the highlights in two to three days without feeling rushed. Best of all, the centerpiece of the trip — watching 750,000 gallons of water per second plunge over a cliff — is completely free.</p>
+
+      <h2>Best Kid-Friendly Attractions</h2>
+
+      <h3>Cave of the Winds</h3>
+      <p>This is the number-one attraction for families. An elevator takes you 175 feet down to a series of wooden walkways at the base of Bridal Veil Falls. The "Hurricane Deck" puts you within feet of the cascading water — kids love getting absolutely drenched. Yellow ponchos and sandals are provided, but bring a change of clothes. The experience is thrilling without being scary, making it perfect for children ages 4 and up.</p>
+
+      <h3>Maid of the Mist</h3>
+      <p>The iconic boat tour has been running since 1846 and remains a must-do for families. The boat cruises into the basin of Horseshoe Falls, where the mist is so thick you can barely see. Kids are mesmerized by the sheer power of the water. Blue ponchos are provided. The ride lasts about 20 minutes and departs every 15 minutes during peak season. Children under 5 ride free.</p>
+
+      <h3>Aquarium of Niagara</h3>
+      <p>Located just a few minutes from the Falls, the Aquarium of Niagara is a compact but engaging attraction for younger children. Sea lion shows, penguin feedings, and hands-on touch tanks keep kids entertained for an hour or two. It is also a great rainy-day backup plan if the weather does not cooperate.</p>
+
+      <h3>Niagara Falls State Park</h3>
+      <p>America's oldest state park is free to enter and offers gentle paved paths perfect for strollers. Walk to Goat Island for up-close views of the rapids above the Falls. The Observation Tower extends out over the gorge for panoramic views. In summer, the park hosts family-friendly events and ranger-led programs.</p>
+
+      <h3>Niagara Gorge Discovery Center</h3>
+      <p>This small museum at the edge of the gorge teaches kids about the geology, ecology, and history of Niagara Falls through interactive exhibits. The highlight is a 30-minute film about daredevils who went over the Falls in barrels — kids find it absolutely fascinating. Admission is included in the Discovery Pass.</p>
+
+      <h2>Where to Eat with Kids Near Niagara Falls</h2>
+      <p><strong>Top of the Falls Restaurant</strong> in the State Park offers casual dining with an unbeatable view — and a kids' menu. <strong>Sapora's Italian Restaurant</strong> on Pine Avenue serves generous portions of pasta and pizza in a family-friendly setting. For a treat, <strong>Niagara's Finest Ice Cream</strong> on Main Street has been scooping since 1990. On the Canadian side, the <strong>Rainforest Cafe</strong> near Clifton Hill is a hit with younger children who love the themed jungle environment.</p>
+
+      <h2>Money-Saving Tips for Families</h2>
+      <ul>
+        <li><strong>Buy the Niagara Falls USA Discovery Pass</strong> — Bundles admission to Maid of the Mist, Cave of the Winds, Aquarium of Niagara, and Niagara Gorge Discovery Center at roughly 25% savings.</li>
+        <li><strong>Pack lunches</strong> — Restaurant prices near the Falls carry a tourist markup. A vacation rental with a full kitchen lets you prepare breakfast and pack picnic lunches, saving $50 or more per day for a family of four.</li>
+        <li><strong>Visit in shoulder season</strong> — September and October offer smaller crowds, lower accommodation prices, and spectacular fall foliage along the gorge.</li>
+        <li><strong>Skip the Canadian side hotels</strong> — Stay on the American side in a vacation rental and walk or drive across the Rainbow Bridge for a fraction of the cost of Clifton Hill hotels.</li>
+        <li><strong>Free attractions</strong> — Watching the Falls from the State Park, hiking the Gorge Trail, and exploring Goat Island cost nothing. The nightly illumination of the Falls is free to watch from multiple viewpoints.</li>
+      </ul>
+
+      <h2>Crossing to Canada with Kids</h2>
+      <p>The Rainbow Bridge connects Niagara Falls, NY to Niagara Falls, Ontario. All family members — including infants — need a valid passport or passport card to cross. The walk across takes about 10 minutes and kids love the experience of walking between two countries. On the Canadian side, Clifton Hill's arcades, mini-golf courses, and the Niagara SkyWheel are all major hits with kids. Budget one full day for the Canadian side if possible.</p>
+
+      <h2>Where to Stay with Kids Near Niagara Falls</h2>
+      <p>Hotels near Niagara Falls often cram a family of four into a single room with two double beds and no kitchen. A vacation rental gives you separate bedrooms (so parents get privacy after bedtime), a full kitchen for preparing meals, a washer and dryer for managing the inevitable wardrobe explosions, and a living room where everyone can decompress at the end of the day.</p>
+      <p><a href="/properties/niagara-falls">Our Niagara Falls vacation rentals</a> are located in quiet residential neighborhoods just minutes from the State Park. Each property features multiple bedrooms, fully equipped kitchens, free parking, WiFi, and comfortable living spaces designed for families. Book direct with Experiences by BLB for the best rates — no platform fees or hidden charges.</p>
+    `,
+    author: "BLB Team",
+    publishedAt: "2026-05-10",
+    coverImage: "/images/properties/unit-1/1.jpg",
+    tags: ["Niagara Falls", "Family Travel", "Kids", "Travel Guide"],
+    metaDescription:
+      "Plan the perfect family vacation to Niagara Falls, NY — kid-friendly attractions, where to eat, money-saving tips, and the best family vacation rentals near the Falls.",
+  },
 ];
 
 export function getAllPosts(): BlogPost[] {

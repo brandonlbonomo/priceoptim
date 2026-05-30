@@ -441,3 +441,9 @@ export function getFeaturedProperties(): Property[] {
 export function getActiveProperties(): Property[] {
   return properties.filter((p) => p.active);
 }
+
+export function getPropertiesByCity(city: string): Property[] {
+  return properties.filter(
+    (p) => p.active && p.location.city.toLowerCase() === city.toLowerCase()
+  );
+}

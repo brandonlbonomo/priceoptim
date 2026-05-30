@@ -10,11 +10,16 @@ const footerLinks = [
   { href: "/subscribe", label: "Get Deals" },
 ];
 
+const locationLinks = [
+  { href: "/properties/houston", label: "Houston, TX" },
+  { href: "/properties/niagara-falls", label: "Niagara Falls, NY" },
+];
+
 export function Footer() {
   return (
     <footer className="mt-auto bg-[#1d1d1f] text-white">
       <Container className="py-16">
-        <div className="grid gap-12 md:grid-cols-3">
+        <div className="grid gap-12 md:grid-cols-4">
           {/* Brand */}
           <div>
             <h3 className="text-[15px] font-semibold tracking-tight">Experiences by BLB</h3>
@@ -31,6 +36,25 @@ export function Footer() {
             </h4>
             <ul className="mt-5 space-y-3">
               {footerLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-[13px] text-white/40 transition-colors duration-300 hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Locations */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/30">
+              Locations
+            </h4>
+            <ul className="mt-5 space-y-3">
+              {locationLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { PropertyFilters } from "@/components/properties/PropertyFilters";
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
@@ -42,6 +44,24 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
             Find your perfect vacation rental and book directly for the best rate
           </p>
+
+          {/* Location quick-links */}
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              href="/properties/houston"
+              className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-white px-4 py-2 text-[13px] font-medium text-foreground transition-colors duration-200 hover:border-accent hover:text-accent-dark"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Houston, TX
+            </Link>
+            <Link
+              href="/properties/niagara-falls"
+              className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-white px-4 py-2 text-[13px] font-medium text-foreground transition-colors duration-200 hover:border-accent hover:text-accent-dark"
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Niagara Falls, NY
+            </Link>
+          </div>
         </div>
 
         <div className="mt-10 flex justify-center">

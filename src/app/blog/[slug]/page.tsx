@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getAllPosts, getPostBySlug } from "@/data/blog";
 
 interface BlogPostPageProps {
@@ -50,14 +51,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const wordCount = post.content.replace(/<[^>]+>/g, "").split(/\s+/).filter(Boolean).length;
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.metaDescription,
-    image: post.coverImage,
+    image: post.coverImage.startsWith("http") ? post.coverImage : `${baseUrl}${post.coverImage}`,
     datePublished: post.publishedAt,
+    wordCount,
     author: {
       "@type": "Organization",
       name: post.author,
@@ -76,6 +79,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   return (
     <article className="py-8 sm:py-12">
       <Container>
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Blog", href: "/blog" },
+            { label: post.title },
+          ]}
+        />
+
         {/* Back link */}
         <Link
           href="/blog"
@@ -118,7 +130,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="relative aspect-[21/9]">
             <Image
               src={post.coverImage}
-              alt={post.title}
+              alt={`Cover image for ${post.title} — Experiences by BLB blog`}
               fill
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"

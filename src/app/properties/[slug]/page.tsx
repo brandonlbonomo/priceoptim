@@ -6,8 +6,12 @@ import { PhotoGallery } from "@/components/properties/PhotoGallery";
 import { AmenityList } from "@/components/properties/AmenityList";
 import { HospitableWidget } from "@/components/properties/HospitableWidget";
 import { EmailForm } from "@/components/ui/EmailForm";
+import { StarRating } from "@/components/ui/StarRating";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { FAQSection } from "@/components/properties/FAQSection";
 import { getPropertyBySlug, getActiveProperties } from "@/data/properties";
-import { getReviewsByProperty } from "@/data/reviews";
+import { getReviewsByProperty, getAverageRating } from "@/data/reviews";
+import { generatePropertyFAQs } from "@/lib/faq";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
@@ -46,11 +50,88 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
     notFound();
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const propertyReviews = getReviewsByProperty(property.id);
+  const avgRating = getAverageRating(property.id);
+  const reviewCount = propertyReviews.length;
+  const faqs = generatePropertyFAQs(property);
+
+  // VacationRental JSON-LD with AggregateRating + Reviews
+  const vacationRentalJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "VacationRental",
+    name: property.name,
+    description: property.description,
+    url: `${baseUrl}/properties/${property.slug}`,
+    image: property.images.slice(0, 5).map((img) =>
+      img.startsWith("http") ? img : `${baseUrl}${img}`
+    ),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: property.location.city,
+      addressRegion: property.location.state,
+      addressCountry: "US",
+    },
+    numberOfBedrooms: property.details.bedrooms,
+    numberOfBathroomsTotal: property.details.bathrooms,
+    occupancy: {
+      "@type": "QuantitativeValue",
+      maxValue: property.details.maxGuests,
+    },
+    checkinTime: property.checkIn,
+    checkoutTime: property.checkOut,
+  };
+
+  if (reviewCount > 0) {
+    vacationRentalJsonLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: avgRating,
+      reviewCount: reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+    vacationRentalJsonLd.review = propertyReviews.map((review) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: review.guestName },
+      datePublished: `${review.date}-01`,
+      reviewBody: review.text,
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: review.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }));
+  }
+
+  // FAQPage JSON-LD
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
     <article className="py-8 sm:py-12">
       <Container>
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Properties", href: "/properties" },
+            { label: property.name },
+          ]}
+        />
+
         {/* Photo Gallery */}
-        <PhotoGallery images={property.images} alt={property.name} />
+        <PhotoGallery images={property.images} alt={`${property.name} — vacation rental in ${property.location.city}, ${property.location.state}`} />
 
         <div className="mt-10 grid gap-10 lg:grid-cols-3">
           {/* Main content */}
@@ -63,6 +144,11 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               {property.name}
             </h1>
             <p className="mt-3 text-[17px] text-muted">{property.tagline}</p>
+            {reviewCount > 0 && (
+              <div className="mt-3">
+                <StarRating rating={avgRating} reviewCount={reviewCount} size="md" />
+              </div>
+            )}
 
             {/* Quick stats */}
             <div className="mt-8 flex flex-wrap gap-3">
@@ -110,37 +196,33 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             </div>
 
             {/* Guest Reviews */}
-            {(() => {
-              const propertyReviews = getReviewsByProperty(property.id);
-              if (propertyReviews.length === 0) return null;
-              return (
-                <div className="mt-12">
-                  <h2 className="mb-6 text-[19px] font-semibold text-foreground">
-                    Guest Reviews
-                  </h2>
-                  <div className="space-y-4">
-                    {propertyReviews.map((review) => (
-                      <div key={review.id} className="glass-card rounded-[24px] p-6">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[14px] font-semibold text-foreground">
-                            {review.guestName}
-                          </p>
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: review.rating }).map((_, i) => (
-                              <Star key={i} className="h-3 w-3 fill-accent text-accent" />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="mt-3 text-[14px] leading-relaxed text-primary-light">
-                          <Quote className="mr-1 inline h-3.5 w-3.5 text-accent/30" />
-                          {review.text}
+            {reviewCount > 0 && (
+              <div className="mt-12">
+                <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                  Guest Reviews
+                </h2>
+                <div className="space-y-4">
+                  {propertyReviews.map((review) => (
+                    <div key={review.id} className="glass-card rounded-[24px] p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[14px] font-semibold text-foreground">
+                          {review.guestName}
                         </p>
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: review.rating }).map((_, i) => (
+                            <Star key={i} className="h-3 w-3 fill-accent text-accent" />
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      <p className="mt-3 text-[14px] leading-relaxed text-primary-light">
+                        <Quote className="mr-1 inline h-3.5 w-3.5 text-accent/30" />
+                        {review.text}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {/* House Rules */}
             <div className="mt-12">
@@ -156,6 +238,14 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* FAQ Section */}
+            <div className="mt-12">
+              <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                Frequently Asked Questions
+              </h2>
+              <FAQSection faqs={faqs} />
             </div>
           </div>
 
@@ -181,26 +271,16 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         </div>
       </Container>
 
-      {/* JSON-LD structured data */}
+      {/* JSON-LD: VacationRental with AggregateRating + Reviews */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "VacationRental",
-            name: property.name,
-            description: property.description,
-            url: `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/properties/${property.slug}`,
-            numberOfBedrooms: property.details.bedrooms,
-            numberOfBathroomsTotal: property.details.bathrooms,
-            occupancy: {
-              "@type": "QuantitativeValue",
-              maxValue: property.details.maxGuests,
-            },
-            checkinTime: property.checkIn,
-            checkoutTime: property.checkOut,
-          }),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(vacationRentalJsonLd) }}
+      />
+
+      {/* JSON-LD: FAQPage */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
     </article>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Star, Quote } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getAllReviews } from "@/data/reviews";
 import { properties } from "@/data/properties";
 
@@ -11,14 +12,6 @@ export const metadata: Metadata = {
     "Read what guests say about Experiences by BLB vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
 };
 
-function getPropertyName(propertyId: string): string {
-  return properties.find((p) => p.id === propertyId)?.name ?? "";
-}
-
-function getPropertySlug(propertyId: string): string {
-  return properties.find((p) => p.id === propertyId)?.slug ?? "";
-}
-
 function formatDate(dateStr: string): string {
   const [year, month] = dateStr.split("-");
   const date = new Date(parseInt(year), parseInt(month) - 1);
@@ -27,6 +20,7 @@ function formatDate(dateStr: string): string {
 
 export default function ReviewsPage() {
   const reviews = getAllReviews();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   // Group reviews by property
   const grouped = properties
@@ -43,9 +37,46 @@ export default function ReviewsPage() {
       (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 100
     ) / 100;
 
+  // LodgingBusiness JSON-LD with AggregateRating + Reviews
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: "Experiences by BLB",
+    description:
+      "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates.",
+    url: baseUrl,
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: avgRating,
+      reviewCount: totalReviews,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    review: reviews.map((review) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: review.guestName },
+      datePublished: `${review.date}-01`,
+      reviewBody: review.text,
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: review.rating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    })),
+  };
+
   return (
     <section className="py-14 sm:py-20">
       <Container>
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Reviews" },
+          ]}
+        />
+
         {/* Header */}
         <div className="text-center">
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
@@ -152,6 +183,12 @@ export default function ReviewsPage() {
           </div>
         </div>
       </Container>
+
+      {/* JSON-LD: LodgingBusiness with AggregateRating + Reviews */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     </section>
   );
 }

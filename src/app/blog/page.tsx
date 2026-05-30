@@ -44,7 +44,7 @@ export default function BlogPage() {
               <div className="relative aspect-[16/9] overflow-hidden">
                 <Image
                   src={post.coverImage}
-                  alt={post.title}
+                  alt={`${post.title} — Experiences by BLB travel guide`}
                   fill
                   className="object-cover transition-all duration-700 group-hover:scale-110"
                   sizes="(max-width: 768px) 100vw, 50vw"

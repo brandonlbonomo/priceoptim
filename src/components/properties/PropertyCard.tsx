@@ -2,12 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { BedDouble, Bath, Users, MapPin, ArrowRight } from "lucide-react";
 import type { Property } from "@/types/property";
+import { StarRating } from "@/components/ui/StarRating";
+import { getAverageRating, getReviewsByProperty } from "@/data/reviews";
 
 interface PropertyCardProps {
   property: Property;
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  const rating = getAverageRating(property.id);
+  const reviewCount = getReviewsByProperty(property.id).length;
+
   return (
     <Link
       href={`/properties/${property.slug}`}
@@ -16,7 +21,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
           src={property.images[0]}
-          alt={property.name}
+          alt={`${property.name} — vacation rental in ${property.location.city}, ${property.location.state}`}
           fill
           className="object-cover transition-all duration-700 group-hover:scale-110"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
@@ -33,6 +38,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
         <h3 className="mt-2 text-[17px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
           {property.name}
         </h3>
+        {reviewCount > 0 && (
+          <div className="mt-2">
+            <StarRating rating={rating} reviewCount={reviewCount} size="sm" />
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-between border-t border-black/[0.04] pt-4">
           <div className="flex items-center gap-4 text-[13px] text-muted">
