@@ -227,11 +227,11 @@ export const properties: Property[] = [
   },
   {
     id: "unit-5",
-    name: "EaDo Apt | Near Minute Maid Park & Toyota Center",
+    name: "Premium EaDo Apartment | Stadiums & Downtown",
     slug: "houston-lockwood-unit-1",
-    tagline: "Modern Houston apartment in walkable East Downtown",
+    tagline: "Upscale Houston short-term rental for business or leisure",
     description:
-      "A modern 1-bedroom apartment in Houston's EaDo district, steps from Minute Maid Park, Toyota Center, and BBVA Stadium. This vacation rental is ideal for business travelers needing a dedicated workspace, couples exploring Houston's East Downtown restaurant scene, or fans attending Astros, Rockets, or Dynamo games. Features include a fully equipped kitchen, in-unit washer/dryer, high-speed Wi-Fi, dedicated parking, and pet-friendly accommodations. Located on Lockwood Drive near Navigation Boulevard — the epicenter of Houston's best taquerias, breweries, and live music. Book direct with Experiences by BLB.",
+      "A premium 1-bedroom apartment in Houston's EaDo district — perfect for corporate travelers, remote workers, or couples visiting downtown Houston. Located on Lockwood Drive, this urban retreat is a short drive from Minute Maid Park (Houston Astros), Toyota Center (Houston Rockets), and the Theater District. Features include a dedicated workspace with ergonomic setup, full kitchen, high-speed WiFi, secure parking, in-unit laundry, and contactless self check-in. Pet-friendly and ideal for extended stays in Houston's East Downtown. Book direct with Experiences by BLB for rates lower than Airbnb.",
     location: {
       city: "Houston",
       state: "TX",
@@ -272,9 +272,9 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292714",
+      propertyId: "2292716",
     },
-    featured: false,
+    featured: true,
     active: true,
   },
   {
@@ -329,11 +329,11 @@ export const properties: Property[] = [
   },
   {
     id: "unit-7",
-    name: "Premium EaDo Apartment | Stadiums & Downtown",
+    name: "Stylish EaDo Apt | Restaurants, Stadiums, Venues",
     slug: "houston-lockwood-unit-3",
-    tagline: "Upscale Houston short-term rental for business or leisure",
+    tagline: "Walkable East Downtown Houston vacation rental",
     description:
-      "A premium 1-bedroom apartment in Houston's EaDo district — perfect for corporate travelers, remote workers, or couples visiting downtown Houston. Located on Lockwood Drive, this urban retreat is a short drive from Minute Maid Park (Houston Astros), Toyota Center (Houston Rockets), and the Theater District. Features include a dedicated workspace with ergonomic setup, full kitchen, high-speed WiFi, secure parking, in-unit laundry, and contactless self check-in. Pet-friendly and ideal for extended stays in Houston's East Downtown. Book direct with Experiences by BLB for rates lower than Airbnb.",
+      "This stylish 1-bedroom vacation rental is in the heart of walkable East Downtown Houston. Perfectly positioned near Navigation Esplanade, you're steps from some of Houston's best restaurants, including Original Ninfa's on Navigation, El Tiempo Cantina, and local favorites along the Navigation Boulevard corridor. Minute Maid Park, Toyota Center, and 713 Music Hall are all a short ride away. The apartment features bright interiors, a fully stocked kitchen, workspace, fast WiFi, and free parking. Ideal for weekend getaways, Houston Astros game days, or business trips. Book direct with Experiences by BLB — always cheaper than Airbnb.",
     location: {
       city: "Houston",
       state: "TX",
@@ -373,18 +373,18 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292716",
+      propertyId: "2292717",
     },
-    featured: true,
+    featured: false,
     active: true,
   },
   {
     id: "unit-8",
-    name: "Stylish EaDo Apt | Restaurants, Stadiums, Venues",
+    name: "EaDo Apt | Near Minute Maid Park & Toyota Center",
     slug: "houston-lockwood-unit-4",
-    tagline: "Walkable East Downtown Houston vacation rental",
+    tagline: "Modern Houston apartment in walkable East Downtown",
     description:
-      "This stylish 1-bedroom vacation rental is in the heart of walkable East Downtown Houston. Perfectly positioned near Navigation Esplanade, you're steps from some of Houston's best restaurants, including Original Ninfa's on Navigation, El Tiempo Cantina, and local favorites along the Navigation Boulevard corridor. Minute Maid Park, Toyota Center, and 713 Music Hall are all a short ride away. The apartment features bright interiors, a fully stocked kitchen, workspace, fast WiFi, and free parking. Ideal for weekend getaways, Houston Astros game days, or business trips. Book direct with Experiences by BLB — always cheaper than Airbnb.",
+      "A modern 1-bedroom apartment in Houston's EaDo district, steps from Minute Maid Park, Toyota Center, and BBVA Stadium. This vacation rental is ideal for business travelers needing a dedicated workspace, couples exploring Houston's East Downtown restaurant scene, or fans attending Astros, Rockets, or Dynamo games. Features include a fully equipped kitchen, in-unit washer/dryer, high-speed Wi-Fi, dedicated parking, and pet-friendly accommodations. Located on Lockwood Drive near Navigation Boulevard — the epicenter of Houston's best taquerias, breweries, and live music. Book direct with Experiences by BLB.",
     location: {
       city: "Houston",
       state: "TX",
@@ -423,7 +423,7 @@ export const properties: Property[] = [
     checkOut: "10:00 AM",
     hospitable: {
       widgetId: WIDGET_ID,
-      propertyId: "2292717",
+      propertyId: "2292714",
     },
     featured: false,
     active: true,
