@@ -50,12 +50,28 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Experiences by BLB",
-    legalName: "BLB Realty",
+    legalName: "BLB REALTY LLC",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
       "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates — no Airbnb or Vrbo fees.",
     foundingDate: "2024",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "102 Lockwood Dr",
+      addressLocality: "Houston",
+      addressRegion: "TX",
+      postalCode: "77011",
+      addressCountry: "US",
+    },
+    telephone: "+1-516-650-6653",
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: "+1-516-650-6653",
+      contactType: "customer service",
+      email: "contact@experiencesbyblb.com",
+      availableLanguage: "English",
+    },
     areaServed: [
       {
         "@type": "City",
@@ -96,6 +112,50 @@ export default function RootLayout({
     },
   };
 
+  const localBusinessJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name: "Experiences by BLB",
+    legalName: "BLB REALTY LLC",
+    url: baseUrl,
+    logo: `${baseUrl}/logo.png`,
+    image: `${baseUrl}/logo.png`,
+    telephone: "+1-516-650-6653",
+    email: "contact@experiencesbyblb.com",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "102 Lockwood Dr",
+      addressLocality: "Houston",
+      addressRegion: "TX",
+      postalCode: "77011",
+      addressCountry: "US",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: 29.7544,
+      longitude: -95.3401,
+    },
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: [
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday",
+      ],
+      opens: "00:00",
+      closes: "23:59",
+    },
+    priceRange: "$$",
+    ...(totalReviews > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: avgRating,
+        reviewCount: totalReviews,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
+  };
+
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <head>
@@ -118,6 +178,11 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+        {/* Global JSON-LD: LocalBusiness (ties to Google Business Profile) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
         />
       </body>
     </html>

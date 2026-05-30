@@ -29,8 +29,13 @@ export function Footer() {
               platform fees and book with us directly.
             </p>
             <div className="mt-4 space-y-1 text-[12px] text-white/25">
-              <p>BLB Realty</p>
-              <p>Houston, TX &amp; Niagara Falls, NY</p>
+              <p>BLB REALTY LLC</p>
+              <p>102 Lockwood Dr, Houston, TX 77011</p>
+              <p>
+                <a href="tel:+15166506653" className="transition-colors duration-200 hover:text-white/50">
+                  (516) 650-6653
+                </a>
+              </p>
               <p>
                 <a href="mailto:contact@experiencesbyblb.com" className="transition-colors duration-200 hover:text-white/50">
                   contact@experiencesbyblb.com
@@ -90,7 +95,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-white/[0.06] pt-8 text-center text-[12px] text-white/25">
-          &copy; {new Date().getFullYear()} Experiences by BLB. Owned and operated by BLB Realty. All rights reserved.
+          &copy; {new Date().getFullYear()} Experiences by BLB. Owned and operated by BLB REALTY LLC. All rights reserved.
         </div>
       </Container>
     </footer>
