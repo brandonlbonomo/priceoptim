@@ -65,7 +65,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         placeholder="Enter your email"
         required
         className={cn(
-          "flex-1 rounded-full px-6 py-3.5 text-[15px] transition-all duration-300 focus:outline-none focus:ring-2",
+          "flex-1 rounded-full px-5 py-2.5 text-[14px] transition-all duration-300 focus:outline-none focus:ring-2",
           compact
             ? "border-0 bg-white/[0.08] text-white placeholder-white/30 focus:bg-white/[0.12] focus:ring-accent/30"
             : "border border-black/[0.06] bg-white text-foreground placeholder-muted focus:border-transparent focus:ring-accent/30",
@@ -75,7 +75,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
         type="submit"
         disabled={status === "loading"}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-medium active:scale-[0.97]",
+          "inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-[14px] font-medium active:scale-[0.97]",
           compact
             ? "bg-accent text-white hover:bg-accent-light"
             : "bg-foreground text-white hover:bg-primary-light",

@@ -112,7 +112,7 @@ export default function AmenitiesPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             What&apos;s Included
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Every Property Feature at a Glance
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -132,7 +132,7 @@ export default function AmenitiesPage() {
             const Icon = meta.icon;
 
             return (
-              <div key={cat} className="glass-card rounded-[28px] p-8">
+              <div key={cat} className="glass-card rounded-[20px] p-8">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                     <Icon className="h-4 w-4 text-accent-dark" />

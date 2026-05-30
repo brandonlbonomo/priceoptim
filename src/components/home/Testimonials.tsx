@@ -42,9 +42,9 @@ export function Testimonials({ testimonials }: TestimonialsProps) {
   return (
     <div className="relative mx-auto max-w-3xl">
       {/* Main testimonial */}
-      <div className="glass-card rounded-[32px] px-8 py-10 text-center sm:px-12 sm:py-14">
-        <Quote className="mx-auto h-8 w-8 text-accent/30" />
-        <p className="mt-6 text-[17px] leading-relaxed text-foreground sm:text-[19px]">
+      <div className="glass-card rounded-[18px] px-6 py-8 text-center sm:px-10 sm:py-10">
+        <Quote className="mx-auto h-6 w-6 text-accent/30" />
+        <p className="mt-5 text-[15px] leading-relaxed text-foreground sm:text-[17px]">
           &ldquo;{testimonial.text}&rdquo;
         </p>
         <div className="mt-6 flex items-center justify-center gap-1">

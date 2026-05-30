@@ -108,7 +108,7 @@ export default function BookDirectPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Save More. Book Smarter.
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Skip the Fees. Book Direct.
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -127,7 +127,7 @@ export default function BookDirectPage() {
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {/* Airbnb column header */}
-            <div className="glass-card rounded-[28px] p-8">
+            <div className="glass-card rounded-[20px] p-8">
               <div className="text-center">
                 <span className="text-[19px] font-semibold text-foreground">
                   Airbnb / VRBO
@@ -157,7 +157,7 @@ export default function BookDirectPage() {
             </div>
 
             {/* Book Direct column */}
-            <div className="glass-card rounded-[28px] border-accent/20 p-8">
+            <div className="glass-card rounded-[20px] border-accent/20 p-8">
               <div className="text-center">
                 <span className="text-[19px] font-semibold text-accent-dark">
                   Book Direct
@@ -196,7 +196,7 @@ export default function BookDirectPage() {
 
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {steps.map((item) => (
-              <div key={item.step} className="glass-card rounded-[28px] p-8 text-center">
+              <div key={item.step} className="glass-card rounded-[20px] p-8 text-center">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-[15px] font-bold text-accent-dark">
                   {item.step}
                 </div>
@@ -218,7 +218,7 @@ export default function BookDirectPage() {
           </h2>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            <div className="glass-card rounded-[28px] p-8 text-center">
+            <div className="glass-card rounded-[20px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <Star className="h-4 w-4 text-accent-dark" />
               </div>
@@ -230,7 +230,7 @@ export default function BookDirectPage() {
               </p>
             </div>
 
-            <div className="glass-card rounded-[28px] p-8 text-center">
+            <div className="glass-card rounded-[20px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <ShieldCheck className="h-4 w-4 text-accent-dark" />
               </div>
@@ -242,7 +242,7 @@ export default function BookDirectPage() {
               </p>
             </div>
 
-            <div className="glass-card rounded-[28px] p-8 text-center">
+            <div className="glass-card rounded-[20px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <Users className="h-4 w-4 text-accent-dark" />
               </div>

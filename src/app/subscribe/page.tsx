@@ -29,13 +29,13 @@ const perks = [
 
 export default function SubscribePage() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-14 sm:py-20">
       <Container>
-        <div className="glass-card mx-auto max-w-2xl rounded-[32px] px-8 py-14 text-center sm:px-14">
+        <div className="glass-card mx-auto max-w-2xl rounded-[24px] px-8 py-10 text-center sm:px-10">
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
             Insider Access
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Get Exclusive Deals
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -50,9 +50,9 @@ export default function SubscribePage() {
 
         <div className="mx-auto mt-14 grid max-w-3xl gap-5 sm:grid-cols-3">
           {perks.map((perk) => (
-            <div key={perk.title} className="glass-card group rounded-[28px] p-8 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-foreground/[0.04] transition-all duration-500 group-hover:bg-accent/10 group-hover:scale-110">
-                <perk.icon className="h-6 w-6 text-foreground/70 transition-colors duration-500 group-hover:text-accent-dark" />
+            <div key={perk.title} className="glass-card group rounded-[20px] p-8 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-foreground/[0.04] transition-all duration-500 group-hover:bg-accent/10 group-hover:scale-110">
+                <perk.icon className="h-5 w-5 text-foreground/70 transition-colors duration-500 group-hover:text-accent-dark" />
               </div>
               <h3 className="mt-5 text-[15px] font-semibold text-foreground">{perk.title}</h3>
               <p className="mt-2 text-[13px] text-muted">{perk.description}</p>

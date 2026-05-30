@@ -75,7 +75,7 @@ export default function HoustonPropertiesPage() {
             <MapPin className="h-3 w-3" />
             Houston, Texas
           </div>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {location.title}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">

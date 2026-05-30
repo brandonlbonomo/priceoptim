@@ -48,7 +48,7 @@ export default function GuidesPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Destination Guides
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Plan Your Trip
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -65,7 +65,7 @@ export default function GuidesPage() {
             );
 
             return (
-              <div key={tag} className="glass-card rounded-[28px] p-8">
+              <div key={tag} className="glass-card rounded-[20px] p-8">
                 <div className="flex items-center gap-2 text-accent-dark">
                   <MapPin className="h-4 w-4" />
                   <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">

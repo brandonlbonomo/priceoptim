@@ -74,8 +74,8 @@ export const properties: Property[] = [
   },
   {
     id: "unit-2",
-    name: "Niagara Falls Retreat – 24B",
-    slug: "niagara-falls-retreat-24b",
+    name: "Niagara Falls Retreat",
+    slug: "niagara-falls-retreat",
     tagline: "Newly updated Niagara Falls home — walk to attractions",
     description:
       "This newly renovated 2-bedroom Niagara Falls vacation rental is perfect for families or couples looking for a comfortable home base. Located in a quiet residential neighborhood, you're just minutes from the Maid of the Mist, Cave of the Winds, Rainbow Bridge, and Niagara Falls State Park. The home features modern furnishings, a fully equipped kitchen, high-speed Wi-Fi, free parking, and a pet-friendly policy. Save on your next Niagara Falls trip by booking directly with Experiences by BLB — no platform fees, no middleman.",

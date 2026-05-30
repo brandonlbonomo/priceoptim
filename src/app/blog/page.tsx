@@ -25,7 +25,7 @@ export default function BlogPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Travel Journal
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Blog
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -39,7 +39,7 @@ export default function BlogPage() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="glass-card group block overflow-hidden rounded-[28px]"
+              className="glass-card group block overflow-hidden rounded-[20px]"
             >
               <div className="relative aspect-[16/9] overflow-hidden">
                 <Image

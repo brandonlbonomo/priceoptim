@@ -21,11 +21,11 @@ const locationLinks = [
 export function Footer() {
   return (
     <footer className="mt-auto bg-[#1d1d1f] text-white">
-      <Container className="py-16">
-        <div className="grid gap-12 md:grid-cols-4">
+      <Container className="py-12">
+        <div className="grid gap-10 md:grid-cols-4">
           {/* Brand + NAP */}
           <div>
-            <h3 className="font-display text-[17px] font-medium tracking-tight">Experiences by BLB</h3>
+            <h3 className="font-display text-[15px] font-medium tracking-tight">Experiences by BLB</h3>
             <p className="mt-4 text-[13px] leading-relaxed text-white/40">
               Premium vacation rentals with the best direct booking rates. Skip the
               platform fees and book with us directly.

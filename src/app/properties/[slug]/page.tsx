@@ -203,10 +203,10 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <MapPin className="h-3 w-3" />
               {property.location.area} &middot; {property.location.city !== "TBD" ? `${property.location.city}, ${property.location.state}` : "Location details coming soon"}
             </div>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-[40px] sm:leading-tight">
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl sm:leading-tight">
               {property.name}
             </h1>
-            <p className="mt-3 text-[17px] text-muted">{property.tagline}</p>
+            <p className="mt-2 text-[15px] text-muted">{property.tagline}</p>
             {reviewCount > 0 && (
               <div className="mt-3">
                 <StarRating rating={avgRating} reviewCount={reviewCount} size="md" />
@@ -266,7 +266,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                 </h2>
                 <div className="space-y-4">
                   {propertyReviews.map((review) => (
-                    <div key={review.id} className="glass-card rounded-[24px] p-6">
+                    <div key={review.id} className="glass-card rounded-[18px] p-6">
                       <div className="flex items-center justify-between">
                         <p className="text-[14px] font-semibold text-foreground">
                           {review.guestName}
@@ -361,7 +361,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               />
 
               {/* Email CTA */}
-              <div className="glass-card rounded-[28px] p-7">
+              <div className="glass-card rounded-[20px] p-7">
                 <h3 className="text-[15px] font-semibold text-foreground">Get Deal Alerts</h3>
                 <p className="mt-2 mb-5 text-[13px] text-muted">
                   Be the first to know about special rates for this property.

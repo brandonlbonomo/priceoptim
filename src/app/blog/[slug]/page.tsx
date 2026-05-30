@@ -146,7 +146,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
 
         {/* Cover image */}
-        <div className="mt-8 overflow-hidden rounded-[28px]">
+        <div className="mt-8 overflow-hidden rounded-[20px]">
           <div className="relative aspect-[21/9]">
             <Image
               src={post.coverImage}
@@ -182,7 +182,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           />
 
           {/* CTA */}
-          <div className="mt-14 glass-card rounded-[28px] p-8 text-center sm:p-10">
+          <div className="mt-14 glass-card rounded-[20px] p-8 text-center sm:p-10">
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               Plan Your Stay
             </p>

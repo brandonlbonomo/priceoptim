@@ -82,7 +82,7 @@ export default function ReviewsPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Guest Reviews
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             What Our Guests Say
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -146,7 +146,7 @@ export default function ReviewsPage() {
                 {propertyReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="glass-card rounded-[24px] p-6"
+                    className="glass-card rounded-[18px] p-6"
                   >
                     <Quote className="h-5 w-5 text-accent/40" />
                     <p className="mt-3 text-[14px] leading-relaxed text-primary-light">
@@ -186,11 +186,11 @@ export default function ReviewsPage() {
         </div>
 
         {/* Google Review CTA */}
-        <div className="mt-20 glass-card rounded-[32px] p-10 text-center sm:p-14">
+        <div className="mt-20 glass-card rounded-[18px] p-8 text-center sm:p-10">
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
             Stayed With Us?
           </p>
-          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+          <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
             Share your experience
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">

@@ -51,7 +51,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Our Collection
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             All Properties
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">

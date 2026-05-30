@@ -41,7 +41,7 @@ export default function HomePage() {
       <WhyBookDirect />
 
       {/* Testimonials */}
-      <section className="py-20 sm:py-28">
+      <section className="py-16 sm:py-20">
         <Container>
           <ScrollReveal>
             <SectionHeading
@@ -50,7 +50,7 @@ export default function HomePage() {
             />
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={100}>
-            <div className="mt-14">
+            <div className="mt-10">
               <Testimonials testimonials={testimonials} />
             </div>
           </ScrollReveal>

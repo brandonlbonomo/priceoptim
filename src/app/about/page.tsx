@@ -106,7 +106,7 @@ export default function AboutPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             About Us
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             About Experiences by BLB
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -119,7 +119,7 @@ export default function AboutPage() {
 
         {/* Story section */}
         <div className="mx-auto mt-16 max-w-3xl">
-          <div className="glass-card rounded-[28px] p-8 sm:p-10">
+          <div className="glass-card rounded-[20px] p-8 sm:p-10">
             <h2 className="text-[19px] font-semibold text-foreground">
               Who We Are
             </h2>
@@ -148,7 +148,7 @@ export default function AboutPage() {
 
         {/* Our Mission */}
         <div className="mx-auto mt-12 max-w-3xl">
-          <div className="glass-card rounded-[28px] p-8 sm:p-10">
+          <div className="glass-card rounded-[20px] p-8 sm:p-10">
             <h2 className="text-[19px] font-semibold text-foreground">
               Our Mission
             </h2>
@@ -174,7 +174,7 @@ export default function AboutPage() {
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               Our Locations
             </p>
-            <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+            <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
               Where We Operate
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
@@ -185,7 +185,7 @@ export default function AboutPage() {
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             <Link
               href="/properties/houston"
-              className="glass-card rounded-[28px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
@@ -205,7 +205,7 @@ export default function AboutPage() {
 
             <Link
               href="/properties/niagara-falls"
-              className="glass-card rounded-[28px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
@@ -229,7 +229,7 @@ export default function AboutPage() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="glass-card rounded-[24px] p-6 text-center"
+              className="glass-card rounded-[20px] p-6 text-center"
             >
               <p className="text-[28px] font-bold tracking-tight text-foreground sm:text-[32px]">
                 {stat.value}
@@ -245,7 +245,7 @@ export default function AboutPage() {
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               The Direct Advantage
             </p>
-            <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+            <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
               Why Book Direct
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
@@ -257,7 +257,7 @@ export default function AboutPage() {
             {benefits.map((benefit) => (
               <div
                 key={benefit.title}
-                className="glass-card rounded-[28px] p-8 text-center"
+                className="glass-card rounded-[20px] p-8 text-center"
               >
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
                   <benefit.icon className="h-5 w-5 text-accent-dark" />
@@ -274,11 +274,11 @@ export default function AboutPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-20 glass-card rounded-[32px] p-10 text-center sm:p-14">
+        <div className="mt-20 glass-card rounded-[20px] p-8 text-center sm:p-10">
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
             Start Your Experience
           </p>
-          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+          <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
             Browse our properties
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">

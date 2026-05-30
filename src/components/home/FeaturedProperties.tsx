@@ -9,7 +9,7 @@ export function FeaturedProperties() {
   const featured = getFeaturedProperties();
 
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container>
         <ScrollReveal>
           <SectionHeading
@@ -19,7 +19,7 @@ export function FeaturedProperties() {
         </ScrollReveal>
 
         <ScrollReveal variant="fade-up" delay={100} stagger={120}>
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((property) => (
               <PropertyCard key={property.id} property={property} />
             ))}
@@ -27,7 +27,7 @@ export function FeaturedProperties() {
         </ScrollReveal>
 
         <ScrollReveal delay={400}>
-          <div className="mt-14 text-center">
+          <div className="mt-10 text-center">
             <Button href="/properties" variant="outline">
               View All Properties
             </Button>

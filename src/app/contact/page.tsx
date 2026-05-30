@@ -64,7 +64,7 @@ export default function ContactPage() {
           <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
             Contact Us
           </p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Get in Touch
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -77,7 +77,7 @@ export default function ContactPage() {
         {/* Contact method cards */}
         <div className="mt-14 grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto">
           {/* Phone */}
-          <div className="glass-card rounded-[28px] p-8 text-center">
+          <div className="glass-card rounded-[20px] p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
               <Phone className="h-5 w-5 text-accent-dark" />
             </div>
@@ -96,7 +96,7 @@ export default function ContactPage() {
           </div>
 
           {/* Email */}
-          <div className="glass-card rounded-[28px] p-8 text-center">
+          <div className="glass-card rounded-[20px] p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
               <Mail className="h-5 w-5 text-accent-dark" />
             </div>
@@ -131,7 +131,7 @@ export default function ContactPage() {
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               Our Locations
             </p>
-            <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+            <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
               Where We Operate
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
@@ -142,7 +142,7 @@ export default function ContactPage() {
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             <Link
               href="/properties/houston"
-              className="glass-card rounded-[28px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
@@ -162,7 +162,7 @@ export default function ContactPage() {
 
             <Link
               href="/properties/niagara-falls"
-              className="glass-card rounded-[28px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
@@ -182,11 +182,11 @@ export default function ContactPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-20 glass-card rounded-[32px] p-10 text-center sm:p-14">
+        <div className="mt-20 glass-card rounded-[18px] p-8 text-center sm:p-10">
           <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
             Ready to Book?
           </p>
-          <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-foreground sm:text-[28px]">
+          <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
             Browse our properties
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">

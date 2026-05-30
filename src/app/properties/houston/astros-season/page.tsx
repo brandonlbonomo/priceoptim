@@ -74,7 +74,7 @@ export default function AstrosSeasonPage() {
             <Calendar className="h-3 w-3" />
             2026 Season: Mar 27 – Sep 28
           </div>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Vacation Rentals Near Minute Maid Park
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">

@@ -17,7 +17,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
   return (
     <Link
       href={`/properties/${property.slug}`}
-      className="glass-card group block overflow-hidden rounded-[28px]"
+      className="glass-card group block overflow-hidden rounded-[20px]"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image

@@ -74,7 +74,7 @@ export default function FamilyPage() {
             <Users className="h-3 w-3" />
             Family-Friendly Stays
           </div>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             Family-Friendly Vacation Rentals Near Niagara Falls
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">

@@ -25,14 +25,14 @@ const benefits = [
 
 export function WhyBookDirect() {
   return (
-    <section className="py-20 sm:py-28">
+    <section className="py-16 sm:py-20">
       <Container>
         <ScrollReveal>
           <div className="text-center">
             <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
               Why Book Direct
             </p>
-            <h2 className="mt-4 font-display text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+            <h2 className="mt-4 font-display text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
               Skip the platforms.
               <br className="hidden sm:block" />
               <span className="text-muted"> Keep more in your pocket.</span>
@@ -41,19 +41,19 @@ export function WhyBookDirect() {
         </ScrollReveal>
 
         <ScrollReveal variant="fade-up" delay={100} stagger={150}>
-          <div className="mt-16 grid gap-5 sm:grid-cols-3">
+          <div className="mt-10 grid gap-5 sm:grid-cols-3">
             {benefits.map((benefit) => (
               <div
                 key={benefit.title}
-                className="glass-card group rounded-[28px] p-10 text-center"
+                className="glass-card group rounded-[20px] p-7 text-center"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-foreground/[0.04] transition-all duration-500 group-hover:bg-accent/10 group-hover:scale-110">
-                  <benefit.icon className="h-7 w-7 text-foreground/70 transition-colors duration-500 group-hover:text-accent-dark" />
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-foreground/[0.04] transition-all duration-500 group-hover:bg-accent/10 group-hover:scale-110">
+                  <benefit.icon className="h-5 w-5 text-foreground/70 transition-colors duration-500 group-hover:text-accent-dark" />
                 </div>
-                <h3 className="mt-6 font-display text-[18px] font-medium text-foreground">
+                <h3 className="mt-5 font-display text-[16px] font-medium text-foreground">
                   {benefit.title}
                 </h3>
-                <p className="mt-3 text-[15px] leading-relaxed text-muted">
+                <p className="mt-2 text-[14px] leading-relaxed text-muted">
                   {benefit.description}
                 </p>
               </div>
