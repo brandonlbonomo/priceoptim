@@ -84,6 +84,11 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
     },
     checkinTime: property.checkIn,
     checkoutTime: property.checkOut,
+    amenityFeature: property.amenities.map((a) => ({
+      "@type": "LocationFeatureSpecification",
+      name: a.name,
+      value: true,
+    })),
   };
 
   if (reviewCount > 0) {
@@ -121,6 +126,60 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
       },
     })),
   };
+
+  // Event JSON-LD — nearby events relevant to the property
+  const eventJsonLd = property.location.city === "Houston"
+    ? [
+        {
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: "Houston Astros Baseball Season",
+          description: "Catch the Houston Astros at Minute Maid Park, walking distance from our EaDo vacation rentals.",
+          location: {
+            "@type": "Place",
+            name: "Minute Maid Park",
+            address: { "@type": "PostalAddress", addressLocality: "Houston", addressRegion: "TX", addressCountry: "US" },
+          },
+          startDate: "2026-03-27",
+          endDate: "2026-09-28",
+          eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+          organizer: { "@type": "Organization", name: "Houston Astros" },
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: "RodeoHouston 2027",
+          description: "The world's largest livestock show and rodeo at NRG Stadium, accessible via METRORail from EaDo.",
+          location: {
+            "@type": "Place",
+            name: "NRG Stadium",
+            address: { "@type": "PostalAddress", addressLocality: "Houston", addressRegion: "TX", addressCountry: "US" },
+          },
+          startDate: "2027-02-25",
+          endDate: "2027-03-16",
+          eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+          organizer: { "@type": "Organization", name: "Houston Livestock Show and Rodeo" },
+        },
+      ]
+    : property.location.city === "Niagara Falls"
+    ? [
+        {
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: "Winter Festival of Lights — Niagara Falls",
+          description: "Millions of LED lights illuminate Niagara Parks from November through February.",
+          location: {
+            "@type": "Place",
+            name: "Niagara Parks",
+            address: { "@type": "PostalAddress", addressLocality: "Niagara Falls", addressRegion: "ON", addressCountry: "CA" },
+          },
+          startDate: "2026-11-14",
+          endDate: "2027-02-28",
+          eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+          organizer: { "@type": "Organization", name: "Niagara Parks Commission" },
+        },
+      ]
+    : [];
 
   return (
     <article className="py-8 sm:py-12">
@@ -222,6 +281,14 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                         <Quote className="mr-1 inline h-3.5 w-3.5 text-accent/30" />
                         {review.text}
                       </p>
+                      {review.hostResponse && (
+                        <div className="mt-4 rounded-2xl bg-accent/5 p-4">
+                          <p className="text-[12px] font-semibold text-accent-dark">Host Response</p>
+                          <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                            {review.hostResponse}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -306,6 +373,15 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
+
+      {/* JSON-LD: Events */}
+      {eventJsonLd.map((event, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(event) }}
+        />
+      ))}
     </article>
   );
 }

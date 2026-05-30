@@ -4,6 +4,7 @@ import { BedDouble, Bath, Users, MapPin, ArrowRight } from "lucide-react";
 import type { Property } from "@/types/property";
 import { StarRating } from "@/components/ui/StarRating";
 import { getAverageRating, getReviewsByProperty } from "@/data/reviews";
+import { shimmerBlur } from "@/lib/blur";
 
 interface PropertyCardProps {
   property: Property;
@@ -25,6 +26,8 @@ export function PropertyCard({ property }: PropertyCardProps) {
           fill
           className="object-cover transition-all duration-700 group-hover:scale-110"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+          placeholder="blur"
+          blurDataURL={shimmerBlur}
           unoptimized
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />

@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { TableOfContents } from "@/components/blog/TableOfContents";
 import { getAllPosts, getPostBySlug } from "@/data/blog";
 
 interface BlogPostPageProps {
@@ -63,6 +64,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     description: post.metaDescription,
     image: post.coverImage.startsWith("http") ? post.coverImage : `${baseUrl}${post.coverImage}`,
     datePublished: post.publishedAt,
+    ...(post.updatedAt && { dateModified: post.updatedAt }),
     wordCount,
     author: {
       "@type": "Organization",
@@ -125,6 +127,21 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 day: "numeric",
               })}
             </time>
+            {post.updatedAt && (
+              <>
+                <span className="h-1 w-1 rounded-full bg-muted" />
+                <span>
+                  Updated{" "}
+                  <time dateTime={post.updatedAt}>
+                    {new Date(post.updatedAt).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </time>
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -141,6 +158,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               unoptimized
             />
           </div>
+        </div>
+
+        {/* Table of Contents */}
+        <div className="mx-auto mt-10 max-w-3xl">
+          <TableOfContents html={post.content} />
         </div>
 
         {/* Article content */}

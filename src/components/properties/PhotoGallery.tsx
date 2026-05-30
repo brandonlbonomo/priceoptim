@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
+import { shimmerBlur } from "@/lib/blur";
 
 interface PhotoGalleryProps {
   images: string[];
@@ -34,6 +35,8 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
             className="object-cover transition-opacity hover:opacity-90"
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
+            placeholder="blur"
+            blurDataURL={shimmerBlur}
             unoptimized
           />
         </button>
@@ -51,6 +54,8 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
               fill
               className="object-cover transition-opacity hover:opacity-90"
               sizes="25vw"
+              placeholder="blur"
+              blurDataURL={shimmerBlur}
               unoptimized
             />
             {index === 3 && images.length > 5 && (

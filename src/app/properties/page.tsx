@@ -14,12 +14,25 @@ export const metadata: Metadata = {
 };
 
 interface PropertiesPageProps {
-  searchParams: Promise<{ guests?: string; bedrooms?: string }>;
+  searchParams: Promise<{ q?: string; guests?: string; bedrooms?: string }>;
 }
 
 export default async function PropertiesPage({ searchParams }: PropertiesPageProps) {
-  const { guests, bedrooms } = await searchParams;
+  const { q, guests, bedrooms } = await searchParams;
   let properties = getActiveProperties();
+
+  if (q) {
+    const query = q.toLowerCase();
+    properties = properties.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.tagline.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.location.city.toLowerCase().includes(query) ||
+        p.location.state.toLowerCase().includes(query) ||
+        p.location.area.toLowerCase().includes(query)
+    );
+  }
 
   if (guests) {
     const minGuests = parseInt(guests, 10);

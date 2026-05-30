@@ -5,6 +5,7 @@ export interface Review {
   rating: number;
   date: string;
   text: string;
+  hostResponse?: string;
 }
 
 export const reviews: Review[] = [
@@ -16,6 +17,7 @@ export const reviews: Review[] = [
     rating: 5,
     date: "2025-03",
     text: "This place was perfect for our Niagara Falls trip! Super clean, well-stocked kitchen, and the location was great — just a few minutes from the State Park. Would definitely book again.",
+    hostResponse: "Thank you so much, Sarah! We're glad the kitchen and location worked out perfectly for your trip. We'd love to host you again!",
   },
   {
     id: "r1-2",
@@ -42,6 +44,7 @@ export const reviews: Review[] = [
     rating: 4,
     date: "2026-04",
     text: "I felt that the renovations to this older home were done well and with care and matched the pictures well. The place was clean as well. Getting to downtown was an easy 10 minute drive.",
+    hostResponse: "Thanks for the kind words, David! We put a lot of care into the renovation and we're happy it showed. Hope to host you again on your next Niagara Falls visit!",
   },
   {
     id: "r2-2",
@@ -66,6 +69,7 @@ export const reviews: Review[] = [
     rating: 5,
     date: "2026-03",
     text: "The place was clean and safe neighborhood. Brandon was very accommodating and very helpful. He helped us move our reservation into the unit next-door, which had a downstairs bathroom, so that was awesome. Felt safe and comfortable. He was very responsive and checked in on us. Will definitely consider staying again!",
+    hostResponse: "Sheri, thank you for the wonderful review! We're so glad we could accommodate the switch — making sure our guests are comfortable is our top priority. Can't wait to welcome you back!",
   },
   {
     id: "r2-5",

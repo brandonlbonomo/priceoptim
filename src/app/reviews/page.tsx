@@ -158,6 +158,14 @@ export default function ReviewsPage() {
                         ))}
                       </div>
                     </div>
+                    {review.hostResponse && (
+                      <div className="mt-4 rounded-2xl bg-accent/5 p-4">
+                        <p className="text-[12px] font-semibold text-accent-dark">Host Response</p>
+                        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                          {review.hostResponse}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

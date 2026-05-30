@@ -1,15 +1,17 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { useCallback, useState } from "react";
+import { SlidersHorizontal, Search } from "lucide-react";
 
 export function PropertyFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const q = searchParams.get("q") || "";
   const guests = searchParams.get("guests") || "";
   const bedrooms = searchParams.get("bedrooms") || "";
+  const [searchValue, setSearchValue] = useState(q);
 
   const updateParams = useCallback(
     (key: string, value: string) => {
@@ -24,8 +26,27 @@ export function PropertyFilters() {
     [router, searchParams],
   );
 
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      updateParams("q", searchValue);
+    },
+    [searchValue, updateParams],
+  );
+
   return (
     <div className="glass-surface inline-flex flex-wrap items-center gap-4 rounded-full px-6 py-3">
+      <form onSubmit={handleSearch} className="flex items-center gap-2">
+        <Search className="h-4 w-4 text-muted" />
+        <input
+          type="text"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Search properties..."
+          className="w-32 border-0 bg-transparent text-[13px] text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-0 sm:w-40"
+        />
+      </form>
+      <div className="h-4 w-px bg-black/[0.06]" />
       <SlidersHorizontal className="h-4 w-4 text-muted" />
       <select
         value={guests}
@@ -51,11 +72,14 @@ export function PropertyFilters() {
         <option value="3">3+ bedrooms</option>
       </select>
 
-      {(guests || bedrooms) && (
+      {(q || guests || bedrooms) && (
         <>
           <div className="h-4 w-px bg-black/[0.06]" />
           <button
-            onClick={() => router.push("/properties")}
+            onClick={() => {
+              setSearchValue("");
+              router.push("/properties");
+            }}
             className="text-[13px] text-accent-dark transition-colors duration-300 hover:text-accent"
           >
             Clear

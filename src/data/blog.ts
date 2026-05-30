@@ -5,6 +5,7 @@ export interface BlogPost {
   content: string;
   author: string;
   publishedAt: string;
+  updatedAt?: string;
   coverImage: string;
   tags: string[];
   metaDescription: string;
@@ -558,6 +559,55 @@ const posts: BlogPost[] = [
     tags: ["Houston", "Remote Work", "EaDo", "Extended Stay"],
     metaDescription:
       "Find remote work-friendly vacation rentals in Houston's EaDo neighborhood. Dedicated workspaces, fast WiFi, full kitchens, and walkable access to restaurants and nightlife.",
+  },
+  {
+    slug: "airbnb-vs-book-direct-vacation-rentals",
+    title: "Airbnb vs. Booking Direct: Why Direct Saves You Money",
+    excerpt:
+      "Compare the true cost of booking on Airbnb versus booking directly with a vacation rental host. See how much you can save by cutting out the middleman.",
+    content: `
+      <h2>The Hidden Cost of Booking on Airbnb</h2>
+      <p>Airbnb revolutionized the vacation rental industry, and we are grateful it exists — it is how many guests discover our properties for the first time. But once you have found a rental you love, booking through Airbnb for every subsequent stay means paying unnecessary fees. Understanding these costs can save you hundreds of dollars per trip.</p>
+
+      <h2>Airbnb's Fee Structure</h2>
+      <p>Airbnb charges fees to both guests and hosts. As a guest, you typically pay a <strong>service fee of 14–16%</strong> of the booking subtotal. On a $1,000 booking, that is $140–$160 added to your total before taxes. Hosts also pay Airbnb a 3% fee, which many factor into their nightly rates. The combined platform cost on a single booking can exceed 18%.</p>
+
+      <h3>Example: A 3-Night Stay</h3>
+      <p>Let us say a property costs $150 per night. Here is how the math breaks down:</p>
+      <ul>
+        <li><strong>On Airbnb:</strong> $150 × 3 nights = $450 + $67 service fee + $75 cleaning fee = <strong>$592 before taxes</strong></li>
+        <li><strong>Direct booking:</strong> $150 × 3 nights = $450 + $75 cleaning fee = <strong>$525 before taxes</strong> — that is a $67 savings, and many hosts offer even lower direct rates</li>
+      </ul>
+
+      <h2>Why Hosts Prefer Direct Bookings</h2>
+      <p>When you book directly, the host keeps more of the revenue. This means they can offer you a better price while still earning more than they would through Airbnb. It is a win-win. Many hosts — including us at Experiences by BLB — pass those savings directly to guests through lower nightly rates on direct bookings.</p>
+
+      <h2>Other Benefits of Booking Direct</h2>
+      <p>Price is not the only advantage. Direct bookings often come with perks that platforms cannot offer:</p>
+      <ul>
+        <li><strong>Direct communication</strong> — Message the host directly without platform delays or message filtering. Get faster responses and more personalized service.</li>
+        <li><strong>Flexible policies</strong> — Hosts can work with you on check-in times, special requests, and cancellation flexibility in ways that Airbnb's rigid system does not allow.</li>
+        <li><strong>No algorithmic pressure</strong> — On Airbnb, hosts feel pressure to accept every booking to maintain their ranking. Direct bookings let hosts focus on quality over quantity.</li>
+        <li><strong>Repeat guest discounts</strong> — Many hosts offer returning guest discounts that are not possible on Airbnb, where every booking is treated the same.</li>
+        <li><strong>Extended stay rates</strong> — For longer stays, hosts can offer custom weekly or monthly rates without platform fee markup.</li>
+      </ul>
+
+      <h2>Is It Safe to Book Direct?</h2>
+      <p>A common concern is whether direct bookings are safe. The answer is yes — if the host has a professional website, verified reviews, and secure payment processing. At Experiences by BLB, we use Hospitable for booking management and Stripe for secure payments. Your money is protected, and you get the same (or better) cancellation policies as Airbnb.</p>
+      <p>Look for hosts who have reviews on multiple platforms (Airbnb, Vrbo, Google) — this verifies they are legitimate operators, not fly-by-night listings. Our 100+ five-star reviews across platforms speak for themselves.</p>
+
+      <h2>When Airbnb Still Makes Sense</h2>
+      <p>We are not anti-Airbnb. The platform is excellent for discovering new properties and destinations. If you are visiting a city for the first time and have no idea where to stay, Airbnb's search and filter tools are invaluable. But once you have found a host you trust, switch to direct booking for repeat stays. You will save money, get better service, and build a relationship with your host.</p>
+
+      <h2>How to Book Direct with Experiences by BLB</h2>
+      <p>Booking directly with us is simple. <a href="/properties">Browse our properties</a>, select your dates on any listing page, and complete your reservation through our secure booking widget. No account required, no service fees, and instant confirmation. If you have stayed with us before, reach out directly for returning guest rates.</p>
+    `,
+    author: "BLB Team",
+    publishedAt: "2026-05-30",
+    coverImage: "/images/properties/unit-5/airbnb-1.jpg",
+    tags: ["Tips", "Book Direct", "Vacation Rentals"],
+    metaDescription:
+      "Compare Airbnb fees vs. booking direct with a vacation rental host. Learn how to save 14–16% on every stay by cutting out platform service fees.",
   },
 ];
 

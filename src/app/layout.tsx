@@ -25,6 +25,12 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Experiences by BLB",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Experiences by BLB | Vacation Rentals – Book Direct & Save",
+    description:
+      "Book vacation rentals in Houston EaDo and Niagara Falls directly. Skip Airbnb fees — best rates near Minute Maid Park, Toyota Center, and Niagara Falls State Park.",
+  },
 };
 
 export default function RootLayout({
@@ -96,6 +102,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://hospitable.com" />
+        <link rel="alternate" type="application/rss+xml" title="Experiences by BLB Blog" href="/blog/feed.xml" />
       </head>
       <body className="flex min-h-full flex-col font-sans">
         <Navbar />

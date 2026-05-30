@@ -67,6 +67,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     ...locationPages,
+    {
+      url: `${baseUrl}/properties/houston/astros-season`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.75,
+    },
+    {
+      url: `${baseUrl}/properties/niagara-falls/winter`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.75,
+    },
     ...propertyPages,
     ...blogPages,
   ];
