@@ -35,13 +35,13 @@ export function HospitableWidget({ widgetId, propertyId, variant = "card" }: Hos
           <p className="text-[11px] text-muted">Select dates to book directly</p>
         </div>
       </div>
-      <div className="border-t border-black/[0.04]">
+      <div className="flex justify-center border-t border-black/[0.04]">
         <iframe
           id="booking-iframe"
           sandbox="allow-top-navigation allow-scripts allow-same-origin"
           src={src}
           title="Book this property"
-          className="h-[660px] w-full border-0"
+          className="h-[660px] w-full max-w-[360px] border-0"
           loading="lazy"
         />
       </div>
