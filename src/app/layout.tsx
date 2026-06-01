@@ -30,12 +30,21 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Experiences by BLB",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Experiences by BLB — Vacation Rentals in Houston & Niagara Falls",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Experiences by BLB | Vacation Rentals – Book Direct & Save",
     description:
       "Book vacation rentals in Houston EaDo and Niagara Falls directly. Skip Airbnb fees — best rates near Minute Maid Park, Toyota Center, and Niagara Falls State Park.",
+    images: ["/og-image.jpg"],
   },
 };
 
