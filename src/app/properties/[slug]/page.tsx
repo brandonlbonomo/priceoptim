@@ -203,7 +203,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <MapPin className="h-3 w-3" />
               {property.location.area} &middot; {property.location.city !== "TBD" ? `${property.location.city}, ${property.location.state}` : "Location details coming soon"}
             </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl sm:leading-tight">
+            <h1 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-3xl sm:leading-tight">
               {property.name}
             </h1>
             <p className="mt-2 text-[15px] text-muted">{property.tagline}</p>
@@ -238,19 +238,19 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             </div>
 
             {/* Description */}
-            <div className="mt-10">
-              <h2 className="text-[19px] font-semibold text-foreground">About This Property</h2>
-              <p className="mt-4 text-[15px] leading-[1.8] text-muted">{property.description}</p>
+            <div className="mt-8 sm:mt-10">
+              <h2 className="text-[17px] font-semibold text-foreground sm:text-[19px]">About This Property</h2>
+              <p className="mt-3 text-[14px] leading-[1.8] text-muted sm:mt-4 sm:text-[15px]">{property.description}</p>
             </div>
 
             {/* Amenities */}
-            <div className="mt-12">
-              <h2 className="mb-6 text-[19px] font-semibold text-foreground">Amenities</h2>
+            <div className="mt-10 sm:mt-12">
+              <h2 className="mb-5 text-[17px] font-semibold text-foreground sm:mb-6 sm:text-[19px]">Amenities</h2>
               <AmenityList amenities={property.amenities} />
             </div>
 
             {/* Check-in / Check-out */}
-            <div className="mt-12">
+            <div className="mt-10 sm:mt-12">
               <h2 className="mb-5 text-[19px] font-semibold text-foreground">Check-in &amp; Check-out</h2>
               <div className="flex flex-wrap gap-3">
                 <div className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px]">
@@ -268,13 +268,13 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
             {/* Guest Reviews */}
             {reviewCount > 0 && (
-              <div className="mt-12">
+              <div className="mt-10 sm:mt-12">
                 <h2 className="mb-6 text-[19px] font-semibold text-foreground">
                   Guest Reviews
                 </h2>
                 <div className="space-y-4">
                   {propertyReviews.map((review) => (
-                    <div key={review.id} className="glass-card rounded-[18px] p-6">
+                    <div key={review.id} className="glass-card rounded-[18px] p-5 sm:p-6">
                       <div className="flex items-center justify-between">
                         <p className="text-[14px] font-semibold text-foreground">
                           {review.guestName}
@@ -315,7 +315,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             )}
 
             {/* House Rules */}
-            <div className="mt-12">
+            <div className="mt-10 sm:mt-12">
               <h2 className="mb-5 flex items-center gap-2 text-[19px] font-semibold text-foreground">
                 <ClipboardList className="h-5 w-5 text-muted" />
                 House Rules
