@@ -17,11 +17,13 @@ export default function HomePage() {
       (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 100
     ) / 100;
 
-  // Pick the best testimonials — longer, 5-star reviews from different properties
-  const testimonials = reviews
-    .filter((r) => r.rating === 5 && r.text.length > 100)
-    .slice(0, 6)
-    .map((r) => {
+  // Pick the best testimonials — longer, 5-star reviews from both cities
+  const fiveStarLong = reviews.filter((r) => r.rating === 5 && r.text.length > 100);
+  const houstonIds = new Set(properties.filter((p) => p.location.city === "Houston").map((p) => p.id));
+  const houstonReviews = fiveStarLong.filter((r) => houstonIds.has(r.propertyId));
+  const niagaraReviews = fiveStarLong.filter((r) => !houstonIds.has(r.propertyId));
+  const picked = [...houstonReviews.slice(0, 3), ...niagaraReviews.slice(0, 3)];
+  const testimonials = picked.map((r) => {
       const property = properties.find((p) => p.id === r.propertyId);
       return {
         guestName: r.guestName,
