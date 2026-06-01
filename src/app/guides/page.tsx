@@ -128,7 +128,6 @@ export default function GuidesPage() {
                     fill
                     className="object-cover transition-all duration-700 group-hover:scale-110"
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
                 </div>

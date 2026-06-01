@@ -28,7 +28,6 @@ export function PropertyCard({ property }: PropertyCardProps) {
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
           placeholder="blur"
           blurDataURL={shimmerBlur}
-          unoptimized
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
       </div>

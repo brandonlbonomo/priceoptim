@@ -213,6 +213,14 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               </div>
             )}
 
+            {/* Mobile booking widget — visible only on small screens */}
+            <div className="mt-8 lg:hidden">
+              <HospitableWidget
+                widgetId={property.hospitable.widgetId}
+                propertyId={property.hospitable.propertyId}
+              />
+            </div>
+
             {/* Quick stats */}
             <div className="mt-8 flex flex-wrap gap-3">
               <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
@@ -351,8 +359,8 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             })()}
           </div>
 
-          {/* Sidebar: Booking widget + pricing */}
-          <div className="lg:col-span-1">
+          {/* Sidebar: Booking widget + pricing — hidden on mobile (shown above instead) */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-5">
               {/* Hospitable widget */}
               <HospitableWidget

@@ -97,7 +97,12 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-white/[0.06] pt-8 text-center text-[12px] text-white/25">
-          &copy; {new Date().getFullYear()} Experiences by BLB. Owned and operated by BLB REALTY LLC. All rights reserved.
+          <p>&copy; {new Date().getFullYear()} Experiences by BLB. Owned and operated by BLB REALTY LLC. All rights reserved.</p>
+          <p className="mt-2">
+            <Link href="/privacy" className="transition-colors duration-200 hover:text-white/50">Privacy Policy</Link>
+            {" "}&middot;{" "}
+            <Link href="/terms" className="transition-colors duration-200 hover:text-white/50">Terms of Service</Link>
+          </p>
         </div>
       </Container>
     </footer>

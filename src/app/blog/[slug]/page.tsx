@@ -155,7 +155,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"
               priority
-              unoptimized
             />
           </div>
         </div>
@@ -226,8 +225,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                           fill
                           className="object-cover transition-all duration-700 group-hover:scale-110"
                           sizes="(max-width: 768px) 100vw, 50vw"
-                          unoptimized
-                        />
+                                    />
                       </div>
                       <div className="p-5">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">

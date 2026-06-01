@@ -37,7 +37,6 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
             sizes="(max-width: 768px) 100vw, 50vw"
             placeholder="blur"
             blurDataURL={shimmerBlur}
-            unoptimized
           />
         </button>
 
@@ -56,8 +55,7 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
               sizes="25vw"
               placeholder="blur"
               blurDataURL={shimmerBlur}
-              unoptimized
-            />
+              />
             {index === 3 && images.length > 5 && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                 <span className="text-lg font-semibold">+{images.length - 5} more</span>
