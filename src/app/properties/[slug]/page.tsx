@@ -214,7 +214,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             )}
 
             {/* Mobile booking widget — visible only on small screens */}
-            <div className="mt-8 flex justify-center lg:hidden">
+            <div className="mt-8 lg:hidden">
               <HospitableWidget
                 widgetId={property.hospitable.widgetId}
                 propertyId={property.hospitable.propertyId}
