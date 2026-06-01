@@ -153,6 +153,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://hospitable.com" />
         <link rel="alternate" type="application/rss+xml" title="Experiences by BLB Blog" href="/blog/feed.xml" />
+        <script id="mcjs" dangerouslySetInnerHTML={{ __html: `!function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/4b04bf316771ed8107e92913e/db364ec57771e70054ea386ea.js");` }} />
       </head>
       <body className="flex min-h-full flex-col font-sans">
         <Navbar />
