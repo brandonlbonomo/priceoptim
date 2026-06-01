@@ -41,7 +41,7 @@ export function HospitableWidget({ widgetId, propertyId, variant = "card" }: Hos
           sandbox="allow-top-navigation allow-scripts allow-same-origin"
           src={src}
           title="Book this property"
-          className="mx-auto block h-[660px] w-full max-w-[380px] border-0"
+          className="h-[660px] w-full border-0"
           loading="lazy"
         />
       </div>
