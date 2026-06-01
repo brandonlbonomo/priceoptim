@@ -196,7 +196,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
         {/* Photo Gallery */}
         <PhotoGallery images={property.images} alt={`${property.name} — vacation rental in ${property.location.city}, ${property.location.state}`} />
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-3">
+        <div className="mt-8 grid gap-8 sm:mt-10 sm:gap-10 lg:grid-cols-3">
           {/* Main content */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
@@ -222,17 +222,17 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             </div>
 
             {/* Quick stats */}
-            <div className="mt-8 flex flex-wrap gap-3">
-              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
-                <BedDouble className="h-4 w-4 text-muted" />
+            <div className="mt-6 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
+              <span className="glass-surface flex items-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-medium text-foreground sm:gap-2.5 sm:px-5 sm:py-3 sm:text-[13px]">
+                <BedDouble className="h-3.5 w-3.5 text-muted sm:h-4 sm:w-4" />
                 {property.details.bedrooms} {property.details.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
               </span>
-              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
-                <Bath className="h-4 w-4 text-muted" />
+              <span className="glass-surface flex items-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-medium text-foreground sm:gap-2.5 sm:px-5 sm:py-3 sm:text-[13px]">
+                <Bath className="h-3.5 w-3.5 text-muted sm:h-4 sm:w-4" />
                 {property.details.bathrooms} {property.details.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
               </span>
-              <span className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-medium text-foreground">
-                <Users className="h-4 w-4 text-muted" />
+              <span className="glass-surface flex items-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-medium text-foreground sm:gap-2.5 sm:px-5 sm:py-3 sm:text-[13px]">
+                <Users className="h-3.5 w-3.5 text-muted sm:h-4 sm:w-4" />
                 Up to {property.details.maxGuests} Guests
               </span>
             </div>

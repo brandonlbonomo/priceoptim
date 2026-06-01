@@ -275,7 +275,7 @@ const posts: BlogPost[] = [
     coverImage: "/images/properties/unit-3/airbnb-1.jpg",
     tags: ["Niagara Falls", "Pet-Friendly", "Travel Tips", "Vacation Rentals"],
     metaDescription:
-      "Find pet-friendly vacation rentals near Niagara Falls, NY. Dog-friendly trails, parks, and tips for traveling with pets to the Falls. No pet fees — book direct.",
+      "Find pet-friendly vacation rentals near Niagara Falls, NY. Dog-friendly trails, parks, and tips for traveling with pets to the Falls. $75/night pet fee — book direct.",
   },
   {
     slug: "where-to-stay-astros-game-near-minute-maid-park",

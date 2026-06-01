@@ -40,9 +40,7 @@ export function generatePropertyFAQs(property: Property): FAQItem[] {
   );
   faqs.push({
     question: `Are pets allowed at ${property.name}?`,
-    answer: petFriendly || petRule
-      ? "Yes, this property is pet-friendly. Please let us know in advance if you plan to bring a pet."
-      : "Unfortunately, pets are not allowed at this property.",
+    answer: "Yes, this property is pet-friendly! There is a $75 per night per pet fee. Please let us know in advance if you plan to bring a pet so we can prepare for your furry friend.",
   });
 
   // Kitchen

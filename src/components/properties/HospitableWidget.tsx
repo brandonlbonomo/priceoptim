@@ -18,7 +18,7 @@ export function HospitableWidget({ widgetId, propertyId }: HospitableWidgetProps
         sandbox="allow-top-navigation allow-scripts allow-same-origin"
         src={src}
         title="Book this property"
-        className="h-[900px] w-full border-0"
+        className="h-[600px] w-full border-0 sm:h-[900px]"
         loading="lazy"
       />
     </div>

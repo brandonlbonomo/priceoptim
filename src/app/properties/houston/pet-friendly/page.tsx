@@ -10,7 +10,7 @@ import { getAllReviews } from "@/data/reviews";
 export const metadata: Metadata = {
   title: "Pet-Friendly Vacation Rentals in Houston EaDo",
   description:
-    "Find pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog parks, pet-friendly patios, and spacious rentals that welcome your furry family members. No pet fees — book direct.",
+    "Find pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog parks, pet-friendly patios, and spacious rentals that welcome your furry family members. $75/night pet fee — book direct.",
   alternates: {
     canonical: "/properties/houston/pet-friendly",
   },
@@ -38,7 +38,7 @@ export default function PetFriendlyPage() {
     "@type": "LodgingBusiness",
     name: "Experiences by BLB — Pet-Friendly Houston Rentals",
     description:
-      "Pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog-friendly breweries, parks, and patios within walking distance. No pet fees.",
+      "Pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog-friendly breweries, parks, and patios within walking distance. $75/night pet fee.",
     url: `${baseUrl}/properties/houston/pet-friendly`,
     address: {
       "@type": "PostalAddress",
@@ -79,8 +79,8 @@ export default function PetFriendlyPage() {
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
             Traveling with your dog? Houston&apos;s EaDo neighborhood is one of the most
-            pet-friendly areas in the city. Our vacation rentals welcome pets with no hidden
-            fees. The neighborhood&apos;s breweries — including 8th Wonder and True Anomaly —
+            pet-friendly areas in the city. Our vacation rentals welcome pets for a $75/night
+            pet fee. The neighborhood&apos;s breweries — including 8th Wonder and True Anomaly —
             have dog-friendly patios. Discovery Green park is a short walk away for morning
             walks and off-leash areas. Pet-friendly restaurant patios line Polk Street and
             Navigation Boulevard. Your dog will love EaDo as much as you do.
@@ -88,7 +88,7 @@ export default function PetFriendlyPage() {
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             {[
-              "No Pet Fees",
+              "$75/Night Pet Fee",
               "Dog-Friendly Breweries",
               "Near Discovery Green",
               "Free Parking",
