@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { UnlockGate } from "@/components/ui/UnlockGate";
-import { portfolioStats } from "@/data/portfolio";
+import { InvestorDashboard } from "@/components/invest/InvestorDashboard";
 
 export const metadata: Metadata = {
   title: "Invest — Private Capital",
@@ -34,23 +34,6 @@ const strategies = [
       "Every strategy is anchored to tangible property in markets we know. We invest our own capital alongside our partners in the same opportunities.",
   },
 ];
-
-// ▼▼▼ EDIT THESE — headline figures from the BLB Realty portfolio model.
-//     Actuals as of June 2026; items marked projected carry an asterisk.
-//     Unit/property counts pull live from the portfolio data. ▼▼▼
-const NUMBERS_AS_OF = "June 2026";
-const investorNumbers: { value: string; label: string; projected?: boolean }[] = [
-  { value: "$1.63M", label: "Portfolio value" },
-  { value: "$374K", label: "Portfolio equity" },
-  { value: "1.39×", label: "Equity multiple on cash" },
-  { value: "$28.3K", label: "Revenue run-rate / mo" },
-  { value: "22%", label: "Stabilized cash-on-cash", projected: true },
-  {
-    value: `${portfolioStats.units}`,
-    label: `Units across ${portfolioStats.assets} properties`,
-  },
-];
-// ▲▲▲ END EDITABLE NUMBERS ▲▲▲
 
 const principles = [
   { k: "Horizon", v: "Long-term. We hold and compound rather than trade." },
@@ -161,34 +144,9 @@ export default function InvestPage() {
           </ScrollReveal>
 
           <ScrollReveal variant="fade-up" delay={120}>
-            <div className="mx-auto mt-12 max-w-4xl">
+            <div className="mx-auto mt-12 max-w-5xl">
               <UnlockGate source="invest-numbers">
-                <div className="rounded-[6px] bg-white p-8 sm:p-12">
-                  <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-                    {investorNumbers.map((n) => (
-                      <div key={n.label} className="text-center">
-                        <div className="font-display text-3xl font-medium text-hunter sm:text-4xl">
-                          {n.value}
-                          {n.projected && (
-                            <span className="align-super text-[14px] text-gold-dark">
-                              *
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-muted">
-                          {n.label}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-10 border-t border-hunter/10 pt-6 text-center text-[12px] leading-relaxed text-muted/70">
-                    Actuals from BLB Realty&apos;s internal portfolio model as of{" "}
-                    {NUMBERS_AS_OF}. *Projected / stabilized run-rate. Figures are
-                    unaudited and are not a guarantee of future results or an
-                    offer. Full underwriting is shared with qualified investors
-                    under definitive documentation.
-                  </p>
-                </div>
+                <InvestorDashboard />
               </UnlockGate>
             </div>
           </ScrollReveal>
