@@ -93,6 +93,30 @@ export default function AstrosSeasonPage() {
     }),
   };
 
+  // Event JSON-LD — the season this page is about (mirrors property pages)
+  const eventJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: "Houston Astros Baseball Season 2026",
+    description:
+      "Houston Astros home games at Minute Maid Park in East Downtown. BLB Realty offers walk-to-the-ballpark vacation rentals nearby.",
+    location: {
+      "@type": "Place",
+      name: "Minute Maid Park",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Houston",
+        addressRegion: "TX",
+        addressCountry: "US",
+      },
+    },
+    startDate: "2026-03-27",
+    endDate: "2026-09-28",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+    organizer: { "@type": "Organization", name: "Houston Astros" },
+  };
+
   return (
     <section className="py-14 sm:py-20">
       <Container>
@@ -191,6 +215,10 @@ export default function AstrosSeasonPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
     </section>
   );

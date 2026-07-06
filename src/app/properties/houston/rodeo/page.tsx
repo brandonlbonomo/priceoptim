@@ -93,6 +93,33 @@ export default function RodeoPage() {
     }),
   };
 
+  // Event JSON-LD — the event this page is about (mirrors property pages)
+  const eventJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: "Houston Livestock Show and Rodeo (RodeoHouston) 2027",
+    description:
+      "RodeoHouston at NRG Stadium — rodeo events and headliner concerts. BLB Realty offers vacation rentals in East Downtown, a rideshare or METRORail ride from the grounds.",
+    location: {
+      "@type": "Place",
+      name: "NRG Stadium",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Houston",
+        addressRegion: "TX",
+        addressCountry: "US",
+      },
+    },
+    startDate: "2027-02-25",
+    endDate: "2027-03-16",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+    organizer: {
+      "@type": "Organization",
+      name: "Houston Livestock Show and Rodeo",
+    },
+  };
+
   return (
     <section className="py-14 sm:py-20">
       <Container>
@@ -197,6 +224,10 @@ export default function RodeoPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
     </section>
   );

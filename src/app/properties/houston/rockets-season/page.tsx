@@ -93,6 +93,30 @@ export default function RocketsSeasonPage() {
     }),
   };
 
+  // Event JSON-LD — the season this page is about (mirrors property pages)
+  const eventJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: "Houston Rockets Basketball Season 2026–27",
+    description:
+      "Houston Rockets home games at Toyota Center in downtown Houston. BLB Realty offers walk-to-the-arena vacation rentals nearby in EaDo.",
+    location: {
+      "@type": "Place",
+      name: "Toyota Center",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Houston",
+        addressRegion: "TX",
+        addressCountry: "US",
+      },
+    },
+    startDate: "2026-10-21",
+    endDate: "2027-04-12",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+    organizer: { "@type": "Organization", name: "Houston Rockets" },
+  };
+
   return (
     <section className="py-14 sm:py-20">
       <Container>
@@ -108,7 +132,7 @@ export default function RocketsSeasonPage() {
         <div className="text-center">
           <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Trophy className="h-3 w-3" />
-            2025–26 NBA Season: Oct – Jun
+            2026–27 NBA Season: Oct – Apr
           </div>
           <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Vacation Rentals Near Toyota Center
@@ -195,6 +219,10 @@ export default function RocketsSeasonPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
     </section>
   );
