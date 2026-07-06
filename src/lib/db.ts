@@ -24,10 +24,19 @@ function getDb(): Database.Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
       first_name TEXT,
+      phone TEXT,
       source TEXT NOT NULL DEFAULT 'unknown',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  // Migration: add phone column to pre-existing databases that lack it.
+  const columns = db
+    .prepare("PRAGMA table_info(subscribers)")
+    .all() as Array<{ name: string }>;
+  if (!columns.some((c) => c.name === "phone")) {
+    db.exec("ALTER TABLE subscribers ADD COLUMN phone TEXT");
+  }
 
   return db;
 }
@@ -36,17 +45,26 @@ export function addSubscriber(
   email: string,
   source: string,
   firstName?: string,
+  phone?: string,
 ): { success: boolean; message: string } {
   const database = getDb();
 
   try {
     const stmt = database.prepare(
-      "INSERT INTO subscribers (email, source, first_name) VALUES (?, ?, ?)",
+      "INSERT INTO subscribers (email, source, first_name, phone) VALUES (?, ?, ?, ?)",
     );
-    stmt.run(email.toLowerCase().trim(), source, firstName || null);
+    stmt.run(email.toLowerCase().trim(), source, firstName || null, phone || null);
     return { success: true, message: "You're on the list! Watch your inbox for exclusive deals." };
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
+      // Returning subscriber — capture the phone if we didn't have it before.
+      if (phone) {
+        database
+          .prepare(
+            "UPDATE subscribers SET phone = COALESCE(phone, ?) WHERE email = ?",
+          )
+          .run(phone, email.toLowerCase().trim());
+      }
       return { success: true, message: "You're already subscribed! We'll keep the deals coming." };
     }
     throw error;

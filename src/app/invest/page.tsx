@@ -4,6 +4,8 @@ import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { UnlockGate } from "@/components/ui/UnlockGate";
+import { portfolioStats } from "@/data/portfolio";
 
 export const metadata: Metadata = {
   title: "Invest — Private Capital",
@@ -32,6 +34,18 @@ const strategies = [
       "Every strategy is anchored to tangible property in markets we know. We invest our own capital alongside our partners in the same opportunities.",
   },
 ];
+
+// ▼▼▼ EDIT THESE — replace illustrative ranges (marked *) with your real
+//     figures. Values without * are pulled live from the portfolio data. ▼▼▼
+const investorNumbers: { value: string; label: string; illustrative?: boolean }[] = [
+  { value: "8–12%", label: "Target annual return", illustrative: true },
+  { value: "1.6–2.0×", label: "Target equity multiple", illustrative: true },
+  { value: "70–85%", label: "Short-term rental occupancy", illustrative: true },
+  { value: `${portfolioStats.units}`, label: "Residential units operating" },
+  { value: `${portfolioStats.markets}`, label: "Markets" },
+  { value: `${portfolioStats.assets}`, label: "Properties owned" },
+];
+// ▲▲▲ END EDITABLE NUMBERS ▲▲▲
 
 const principles = [
   { k: "Horizon", v: "Long-term. We hold and compound rather than trade." },
@@ -121,6 +135,57 @@ export default function InvestPage() {
               </dl>
             </ScrollReveal>
           </div>
+        </Container>
+      </section>
+
+      {/* The Numbers — gated behind email + phone */}
+      <section className="py-20 sm:py-28">
+        <Container>
+          <ScrollReveal>
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow">The Numbers</p>
+              <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-hunter sm:text-4xl">
+                See the performance and the math.
+              </h2>
+              <p className="mt-4 text-[16px] leading-relaxed text-muted">
+                Portfolio performance, target returns, and the underwriting we
+                run on every deal — shared with prospective partners. Enter your
+                email and phone to unlock the figures.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal variant="fade-up" delay={120}>
+            <div className="mx-auto mt-12 max-w-4xl">
+              <UnlockGate source="invest-numbers">
+                <div className="rounded-[6px] bg-white p-8 sm:p-12">
+                  <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+                    {investorNumbers.map((n) => (
+                      <div key={n.label} className="text-center">
+                        <div className="font-display text-3xl font-medium text-hunter sm:text-4xl">
+                          {n.value}
+                          {n.illustrative && (
+                            <span className="align-super text-[14px] text-gold-dark">
+                              *
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-muted">
+                          {n.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-10 border-t border-hunter/10 pt-6 text-center text-[12px] leading-relaxed text-muted/70">
+                    * Illustrative ranges, not audited results, guarantees, or an
+                    offer. Actual terms, track record, and underwriting are shared
+                    privately with qualified investors under definitive
+                    documentation.
+                  </p>
+                </div>
+              </UnlockGate>
+            </div>
+          </ScrollReveal>
         </Container>
       </section>
 

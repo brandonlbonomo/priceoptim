@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, source } = body;
+    const { email, source, phone } = body;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json(
@@ -53,7 +53,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = addSubscriber(email, source || "unknown", body.firstName);
+    // Phone validation — required only when the caller expects it (gated content).
+    let normalizedPhone: string | undefined;
+    if (body.requirePhone || phone) {
+      const digits = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+      if (digits.length < 10) {
+        return NextResponse.json(
+          { error: "Please enter a valid phone number." },
+          { status: 400 },
+        );
+      }
+      normalizedPhone = phone.trim();
+    }
+
+    const result = addSubscriber(
+      email,
+      source || "unknown",
+      body.firstName,
+      normalizedPhone,
+    );
 
     return NextResponse.json({ message: result.message }, { status: 200 });
   } catch (error) {
