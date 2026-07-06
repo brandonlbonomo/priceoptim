@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Where to Stay for RodeoHouston 2027 — EaDo Vacation Rentals",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/houston/rodeo",
   },
+  openGraph: {
+    title: "Where to Stay for RodeoHouston — EaDo Vacation Rentals",
+    description:
+      "Full-home vacation rentals in Houston's EaDo for RodeoHouston at NRG Stadium. Room for the whole group, full kitchen, no Airbnb fees. Book direct.",
+    url: "/properties/houston/rodeo",
+    type: "website",
+  },
 };
+
+const rodeoFaqs = [
+  {
+    question: "How do we get to NRG Stadium from the rental?",
+    answer:
+      "NRG Stadium sits southwest of downtown, and our EaDo homes are a rideshare or METRORail ride away — an easy trip out to the Rodeo and back without the stadium parking scramble.",
+  },
+  {
+    question: "Are these rentals good for families and groups?",
+    answer:
+      "Yes. Each home is a full house with real bedrooms, a kitchen, and laundry, so families and groups can spread out instead of squeezing into hotel rooms — and split one nightly rate between everyone.",
+  },
+  {
+    question: "Can we book for the Rodeo's multi-week run?",
+    answer:
+      "Of course. RodeoHouston stretches from late February into March, so whether you're coming for one headliner concert or several nights of events, you can book the exact dates you need. Direct booking for a longer stay is the best value.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+  },
+  {
+    question: "What else is nearby besides the Rodeo?",
+    answer:
+      "EaDo is Houston's most walkable sports-and-nightlife district — breweries, restaurants, and street murals, with easy access back downtown when you want more than the Rodeo grounds.",
+  },
+];
 
 export default function RodeoPage() {
   const properties = getPropertiesByCity("Houston");
@@ -121,6 +157,42 @@ export default function RodeoPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — RodeoHouston guide */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              Where to stay for RodeoHouston
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                The Houston Livestock Show and Rodeo runs from late February
+                into March — about three weeks that pair rodeo events with some
+                of the biggest headliner concerts of the year at NRG Stadium.
+                The stadium sits southwest of downtown, and our EaDo homes are a
+                rideshare or METRORail ride away, so you can head out to the
+                Rodeo and be back at the house without ever hunting for a parking
+                spot. Staying in East Downtown also keeps you close to the
+                restaurants, breweries, and nightlife downtown for the hours
+                you're not at the grounds.
+              </p>
+              <p>
+                Each home is a full residence — kitchen, laundry, real beds, and
+                room to spread out — which suits families and groups coming in
+                for the Rodeo far better than a cluster of hotel rooms. Self
+                check-in means you arrive on your own schedule after a late
+                concert, and because the Rodeo's run spans several weeks, you can
+                book the exact nights you need. Booking direct with us is always
+                the lowest price for the same home, with no platform service fees
+                added at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={rodeoFaqs} heading="RodeoHouston stays — FAQ" />
 
       <script
         type="application/ld+json"

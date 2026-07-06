@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Summer Vacation Rentals Near Niagara Falls, NY",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/niagara-falls/summer",
   },
+  openGraph: {
+    title: "Summer Vacation Rentals Near Niagara Falls, NY",
+    description:
+      "Full homes minutes from Niagara Falls State Park — room for families and groups, full kitchen and laundry, free parking. Book direct for the lowest price, no Airbnb fees.",
+    url: "/properties/niagara-falls/summer",
+    type: "website",
+  },
 };
+
+const summerFaqs = [
+  {
+    question: "How close are your rentals to Niagara Falls State Park?",
+    answer:
+      "Our homes are just minutes from Niagara Falls State Park on the American side — close enough to walk to the Falls or make a quick drive, so you can head back to a real house to rest between visits instead of paying for hotel parking every day.",
+  },
+  {
+    question: "What are the best things to do near the Falls in summer?",
+    answer:
+      "Summer is peak season. Take the Maid of the Mist boat tour into the mist of Horseshoe Falls, get up close on the Cave of the Winds Hurricane Deck, cross the Rainbow Bridge, and walk the gorge trails — all within minutes of your rental in Niagara Falls, NY.",
+  },
+  {
+    question: "Do your homes work for families and groups?",
+    answer:
+      "Yes. Each home is a full residence with real bedrooms, a full kitchen, and laundry, so families and groups have room to spread out and come back from the Falls to a real house instead of cramped hotel rooms.",
+  },
+  {
+    question: "Is parking included?",
+    answer:
+      "Every home has its own free parking, so you can leave the car at the house and walk or drive the short distance to the Falls rather than hunting for a lot near the park.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout, and self check-in means you arrive on your own schedule.",
+  },
+];
 
 export default function SummerPage() {
   const properties = getPropertiesByCity("Niagara Falls");
@@ -122,6 +158,41 @@ export default function SummerPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — summer base near the Falls */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              A summer base near Niagara Falls
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                Summer is when Niagara Falls is at its best, and our homes are
+                minutes from Niagara Falls State Park on the American side. You
+                can walk or make a short drive to the Falls, then spend the day
+                on the Maid of the Mist, out on the Cave of the Winds Hurricane
+                Deck, and along the gorge trails before crossing back to a quiet
+                street. Staying this close means you skip the crowded hotel
+                strip and the daily parking hunt — the Falls are right there when
+                you want them, and a real house is waiting when you don&apos;t.
+              </p>
+              <p>
+                Each home is a full residence with a kitchen, laundry, real
+                beds, and room to spread out, which suits families and groups
+                exploring the American side together. Cook breakfast before an
+                early start, do a load of laundry after a misty afternoon, and
+                come back from the Falls to space instead of cramped hotel
+                rooms. Self check-in means you arrive on your own schedule, and
+                booking direct with us is always the lowest price for the same
+                home, with no platform service fees at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={summerFaqs} heading="Summer stays near Niagara Falls — FAQ" />
 
       <script
         type="application/ld+json"

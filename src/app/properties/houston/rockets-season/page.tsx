@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Vacation Rentals Near Toyota Center — Rockets Season 2026",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/houston/rockets-season",
   },
+  openGraph: {
+    title: "Vacation Rentals Near Toyota Center — Rockets Season",
+    description:
+      "Walk-to-the-arena vacation rentals in Houston's EaDo for the Rockets season. Free parking, full kitchen, no Airbnb fees. Book direct.",
+    url: "/properties/houston/rockets-season",
+    type: "website",
+  },
 };
+
+const rocketsFaqs = [
+  {
+    question: "How close are your rentals to Toyota Center?",
+    answer:
+      "Our homes are in East Downtown (EaDo), a short walk or quick rideshare from Toyota Center — close enough to walk back after the game, skip arena parking, and beat the post-game traffic.",
+  },
+  {
+    question: "Is parking included on game nights?",
+    answer:
+      "Yes. Every home has its own parking, so you can leave the car at the house and walk to the arena instead of paying for an event lot.",
+  },
+  {
+    question: "Can we book for a multi-game homestand or road trip?",
+    answer:
+      "Absolutely — many guests stay several nights to catch a few Rockets games in one trip. Booking direct for multiple nights is the best value, with no third-party platform fees.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+  },
+  {
+    question: "What's the EaDo neighborhood like?",
+    answer:
+      "EaDo is Houston's most walkable sports-and-nightlife district — breweries, restaurants, and street murals, with both Toyota Center and Minute Maid Park within a few blocks.",
+  },
+];
 
 export default function RocketsSeasonPage() {
   const properties = getPropertiesByCity("Houston");
@@ -120,6 +156,41 @@ export default function RocketsSeasonPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — game-night guide */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              Staying near Toyota Center for a Rockets game
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                Toyota Center sits on the edge of East Downtown, and our homes
+                are a short walk or quick rideshare from the arena — the same
+                easy hop as Minute Maid Park a few blocks over. On game nights
+                that means no arena parking fees and no post-game traffic crawl:
+                you can walk back to the house, or let the garage empty out over
+                a drink at a neighborhood brewery first. With the NBA regular
+                season running from October into April, staying in EaDo turns a
+                couple of Rockets games into a real Houston trip instead of a
+                hotel-and-highway shuffle.
+              </p>
+              <p>
+                Each home is a full residence — kitchen, laundry, real beds, and
+                room to spread out — which suits families, groups splitting a
+                multi-game trip, and anyone in town to watch their team on the
+                road. Self check-in means you arrive on your own schedule after a
+                late tip-off or a Toyota Center concert, and booking direct with
+                us is always the lowest price for the same home, with no platform
+                service fees at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={rocketsFaqs} heading="Rockets-season stays — FAQ" />
 
       <script
         type="application/ld+json"

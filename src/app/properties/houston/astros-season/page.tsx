@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Vacation Rentals Near Minute Maid Park — Astros Season 2026",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/houston/astros-season",
   },
+  openGraph: {
+    title: "Vacation Rentals Near Minute Maid Park — Astros Season",
+    description:
+      "Walk-to-the-ballpark vacation rentals in Houston's EaDo for the Astros season. Free parking, full kitchen, no Airbnb fees. Book direct.",
+    url: "/properties/houston/astros-season",
+    type: "website",
+  },
 };
+
+const astrosFaqs = [
+  {
+    question: "How close are your rentals to Minute Maid Park?",
+    answer:
+      "Our homes are in East Downtown (EaDo), a short walk or quick rideshare from Minute Maid Park — close enough to walk back after the game, skip stadium parking, and beat the post-game traffic.",
+  },
+  {
+    question: "Is parking included on game days?",
+    answer:
+      "Yes. Every home has its own parking, so you can leave the car at the house and walk to the ballpark instead of paying for a stadium lot.",
+  },
+  {
+    question: "Can we book for a full homestand or weekend series?",
+    answer:
+      "Absolutely — many guests book several nights around a series. Booking direct for multiple nights is the best value, with no third-party platform fees.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+  },
+  {
+    question: "What's the EaDo neighborhood like?",
+    answer:
+      "EaDo is Houston's most walkable sports-and-nightlife district — breweries, restaurants, and street murals, with both Minute Maid Park and Toyota Center within a few blocks.",
+  },
+];
 
 export default function AstrosSeasonPage() {
   const properties = getPropertiesByCity("Houston");
@@ -119,6 +155,38 @@ export default function AstrosSeasonPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — game-day guide */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              Staying near Minute Maid Park for an Astros game
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                Minute Maid Park sits on the western edge of East Downtown, and
+                our homes are a short walk or quick rideshare from the ballpark.
+                On game days that means no stadium parking fees and no post-game
+                traffic crawl — you can walk back to the house, or let the lot
+                empty out over a drink at a neighborhood brewery first. For a
+                weekend series, staying in EaDo turns three games into a real
+                Houston trip instead of a hotel-and-highway shuffle.
+              </p>
+              <p>
+                Each home is a full residence — kitchen, laundry, real beds, and
+                room to spread out — which suits families, groups splitting a
+                series, and anyone in town to watch their team on the road.
+                Self check-in means you arrive on your own schedule after a night
+                game, and booking direct with us is always the lowest price for
+                the same home, with no platform service fees at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={astrosFaqs} heading="Astros-season stays — FAQ" />
 
       <script
         type="application/ld+json"

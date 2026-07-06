@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Family-Friendly Vacation Rentals Near Niagara Falls, NY",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/niagara-falls/family",
   },
+  openGraph: {
+    title: "Family-Friendly Vacation Rentals Near Niagara Falls, NY",
+    description:
+      "Full-home vacation rentals near Niagara Falls for families — separate bedrooms, a kitchen, laundry, and room for kids to spread out. Minutes from the Falls. Book direct, no Airbnb fees.",
+    url: "/properties/niagara-falls/family",
+    type: "website",
+  },
 };
+
+const familyFaqs = [
+  {
+    question: "Are your rentals a good fit for kids?",
+    answer:
+      "Yes — these are full homes, not hotel rooms, so kids get separate bedrooms, a living room to play in, and room to spread out and wind down after a day at the Falls. It's a much calmer setup than a cramped hotel room shared by the whole family.",
+  },
+  {
+    question: "What family attractions are nearby?",
+    answer:
+      "You're minutes from Niagara Falls State Park, the Maid of the Mist boat ride, the Aquarium of Niagara, and the Niagara Gorge Discovery Center — a full slate of kid-friendly things to do within a short drive of the house.",
+  },
+  {
+    question: "Is there a kitchen and laundry for families?",
+    answer:
+      "Every home has a full kitchen for family meals, easy breakfasts, and picky-eater dinners, plus a washer and dryer for the inevitable soaked clothes after a day near the Falls. It saves money on eating out and keeps everyone in clean, dry gear.",
+  },
+  {
+    question: "How close are the homes to the Falls?",
+    answer:
+      "Our homes sit in quiet residential neighborhoods just minutes from Niagara Falls State Park, so you can head to the Falls in the morning and come back to the house for naps or lunch without a long drive.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which adds up quickly on a family-length stay.",
+  },
+];
 
 export default function FamilyPage() {
   const properties = getPropertiesByCity("Niagara Falls");
@@ -122,6 +158,40 @@ export default function FamilyPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — family base near the Falls */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              A family base near Niagara Falls
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                A trip to Niagara Falls with kids goes better when everyone has
+                room to breathe. Our homes give you separate bedrooms so parents
+                and kids aren&apos;t sharing one tight hotel room, a living room
+                where kids can spread out, and a kitchen for family breakfasts
+                and picky-eater dinners instead of a restaurant every night. A
+                washer and dryer handles the soaked clothes that come with Cave
+                of the Winds and the Maid of the Mist, and quiet residential
+                streets give everyone a calm place to wind down after a big day.
+              </p>
+              <p>
+                From the house you&apos;re only minutes from Niagara Falls State
+                Park, the Aquarium of Niagara, and the Niagara Gorge Discovery
+                Center, so it&apos;s easy to head out in the morning and circle
+                back for naps or lunch without a long drive. Self check-in means
+                you arrive on your own schedule, even with tired kids in the car,
+                and booking direct with us is always the lowest price for the
+                same home — no Airbnb service fees added at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={familyFaqs} heading="Family stays near Niagara Falls — FAQ" />
 
       <script
         type="application/ld+json"

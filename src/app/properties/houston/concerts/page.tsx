@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Vacation Rentals Near 713 Music Hall — Houston Concerts",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/houston/concerts",
   },
+  openGraph: {
+    title: "Vacation Rentals Near Houston Concert Venues — EaDo",
+    description:
+      "Walk-or-short-rideshare vacation rentals in Houston's EaDo near 713 Music Hall, Toyota Center, and POST Houston. Full homes, self check-in, no Airbnb fees. Book direct.",
+    url: "/properties/houston/concerts",
+    type: "website",
+  },
 };
+
+const concertsFaqs = [
+  {
+    question: "Which concert venues are near your rentals?",
+    answer:
+      "Our EaDo homes are a short walk or quick rideshare from 713 Music Hall at POST Houston, Toyota Center, and the House of Blues and downtown clubs. Minute Maid Park, just a few blocks away, also hosts big stadium shows.",
+  },
+  {
+    question: "How do we get to and from a show?",
+    answer:
+      "Most nights you can walk to 713 Music Hall or POST Houston, and Toyota Center is a short rideshare away. Leaving from the house means no downtown parking to find and no waiting in a garage line after the encore — you just stroll or grab a quick ride home.",
+  },
+  {
+    question: "Can we check in late after a night show?",
+    answer:
+      "Yes. Every home has self check-in, so you can arrive on your own schedule after a late set and let yourself in — no front desk, no waiting around.",
+  },
+  {
+    question: "Can we book a full house for a group?",
+    answer:
+      "Absolutely. Each rental is a full home with a kitchen, laundry, and room to spread out, which suits groups going to a show together far better than a row of hotel rooms. Come back afterward and keep the night going under one roof.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+  },
+];
 
 export default function ConcertsPage() {
   const properties = getPropertiesByCity("Houston");
@@ -122,6 +158,39 @@ export default function ConcertsPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — concert-night guide */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              Staying near Houston&apos;s concert venues
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                East Downtown puts you in the middle of Houston&apos;s live music
+                scene. 713 Music Hall at POST Houston is a walkable or short
+                rideshare away, Toyota Center sits just blocks off for the big
+                arena tours, and the House of Blues and downtown clubs round out
+                the night. Staying here means you skip the hunt for downtown
+                parking, grab dinner and a drink at a neighborhood brewery before
+                the doors open, and walk or catch a quick ride back once the
+                encore ends instead of crawling out of a garage.
+              </p>
+              <p>
+                Each home is a full residence — kitchen, laundry, real beds, and
+                room to spread out — which makes it easy to bring the whole group
+                and keep the night going under one roof after the show. Self
+                check-in means you can arrive on your own schedule, even after a
+                late set, and booking direct with us is always the lowest price
+                for the same home, with no platform service fees at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={concertsFaqs} heading="Concert-night stays — FAQ" />
 
       <script
         type="application/ld+json"

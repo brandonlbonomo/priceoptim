@@ -6,6 +6,7 @@ import { PropertyGrid } from "@/components/properties/PropertyGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { getPropertiesByCity } from "@/data/properties";
 import { getAllReviews } from "@/data/reviews";
+import { LandingFAQ } from "@/components/properties/LandingFAQ";
 
 export const metadata: Metadata = {
   title: "Winter Vacation Rentals Near Niagara Falls, NY",
@@ -14,7 +15,42 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/properties/niagara-falls/winter",
   },
+  openGraph: {
+    title: "Winter Vacation Rentals Near Niagara Falls, NY",
+    description:
+      "Cozy full homes near Niagara Falls for a winter getaway — Festival of Lights, frozen Falls, fewer crowds, lower rates. Heated, pet-friendly, no platform fees. Book direct.",
+    url: "/properties/niagara-falls/winter",
+    type: "website",
+  },
 };
+
+const winterFaqs = [
+  {
+    question: "Can you visit Niagara Falls in the winter?",
+    answer:
+      "Yes — the Falls run all year and never fully stop. Winter is one of the most dramatic times to see them, with ice formations along the edges, frozen mist on the railings, and far fewer crowds than the summer season. Niagara Falls State Park stays open, so you can walk right up to the overlooks.",
+  },
+  {
+    question: "What is the Winter Festival of Lights?",
+    answer:
+      "The Winter Festival of Lights fills the Niagara area with millions of lights and illuminated displays through the colder months. It pairs beautifully with the nightly light show on the Falls themselves — an easy, magical evening out that's just minutes from our homes.",
+  },
+  {
+    question: "Are the homes warm and heated?",
+    answer:
+      "Every home is a full residence with central heat, a real kitchen, and room to spread out — so you can spend the day out in the cold at the Falls and come back to a warm, cozy place to thaw out and cook dinner.",
+  },
+  {
+    question: "Are there fewer crowds in winter?",
+    answer:
+      "Far fewer. Winter is the quiet off-season, which means shorter lines at the overlooks, easier parking, and a calmer, more magical visit — plus lower rates than you'll find in the busy summer months.",
+  },
+  {
+    question: "Is it cheaper to book direct than on Airbnb?",
+    answer:
+      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which matters even more when off-season rates are already lower.",
+  },
+];
 
 export default function NiagaraWinterPage() {
   const properties = getPropertiesByCity("Niagara Falls");
@@ -121,6 +157,41 @@ export default function NiagaraWinterPage() {
           </Link>
         </div>
       </Container>
+
+      {/* Unique local content — winter getaway guide */}
+      <section className="mt-4 border-t border-hunter/10 bg-cream py-16 sm:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
+              A winter escape near Niagara Falls
+            </h2>
+            <div className="mt-5 space-y-4 text-[15px] leading-relaxed text-muted">
+              <p>
+                Winter turns Niagara Falls into something you can&apos;t see
+                the rest of the year — ice building up along the banks, mist
+                freezing on the railings, and the falls still thundering
+                through it all. Niagara Falls State Park stays open through the
+                cold months, and in the evening the Winter Festival of Lights
+                and the nightly show on the water light up the whole gorge.
+                With the summer crowds gone, you get the overlooks nearly to
+                yourself, easy parking, and lower rates than the busy season —
+                all just minutes from our homes.
+              </p>
+              <p>
+                Each home is a full residence — central heat, a real kitchen,
+                laundry, and room to spread out — so you can spend the day out
+                in the cold and come back somewhere warm to thaw out and cook
+                dinner. Self check-in means you arrive on your own schedule
+                even on a snowy night, and booking direct with us is always
+                the lowest price for the same home, with no platform service
+                fees at checkout.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <LandingFAQ faqs={winterFaqs} heading="Winter stays near Niagara Falls — FAQ" />
 
       <script
         type="application/ld+json"
