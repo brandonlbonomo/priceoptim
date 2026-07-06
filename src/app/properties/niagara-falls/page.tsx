@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { PropertyGrid } from "@/components/properties/PropertyGrid";
@@ -9,9 +10,16 @@ import { getLocationBySlug } from "@/data/locations";
 
 const location = getLocationBySlug("niagara-falls")!;
 
+const niagaraLandings = [
+  { href: "/properties/niagara-falls/summer", label: "Summer at the Falls" },
+  { href: "/properties/niagara-falls/winter", label: "Winter getaways" },
+  { href: "/properties/niagara-falls/family", label: "Family stays" },
+];
+
 export const metadata: Metadata = {
   title: location.title,
   description: location.metaDescription,
+  alternates: { canonical: "/properties/niagara-falls" },
   openGraph: {
     title: `${location.title} | BLB Realty`,
     description: location.metaDescription,
@@ -24,7 +32,7 @@ export default function NiagaraFallsPropertiesPage() {
   const niagaraReviews = allReviews.filter((r) =>
     properties.some((p) => p.id === r.propertyId)
   );
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
 
   const avgRating =
     niagaraReviews.length > 0
@@ -97,6 +105,24 @@ export default function NiagaraFallsPropertiesPage() {
 
         <div className="mt-12">
           <PropertyGrid properties={properties} />
+        </div>
+
+        {/* Seasonal stays — internal links to Niagara Falls landing pages */}
+        <div className="mt-16">
+          <h2 className="text-center font-display text-xl font-medium tracking-tight text-hunter">
+            Find a Niagara Falls stay for your trip
+          </h2>
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-2.5">
+            {niagaraLandings.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="rounded-full border border-black/[0.08] px-4 py-2 text-[13px] text-hunter transition-colors duration-200 hover:border-hunter/40 hover:bg-hunter/[0.03]"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </Container>
 

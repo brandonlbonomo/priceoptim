@@ -22,7 +22,7 @@ export default function PetFriendlyPage() {
   const houstonReviews = allReviews.filter((r) =>
     properties.some((p) => p.id === r.propertyId)
   );
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
 
   const avgRating =
     houstonReviews.length > 0

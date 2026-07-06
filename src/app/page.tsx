@@ -76,7 +76,7 @@ export default function HomePage() {
             legalName: "BLB REALTY LLC",
             description:
               "A real estate investment firm acquiring, building, and redeveloping residential property, holding a growing rental portfolio, and operating in private credit and private equity.",
-            url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
+            url: process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com",
             aggregateRating: {
               "@type": "AggregateRating",
               ratingValue: avgRating,

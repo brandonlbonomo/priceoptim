@@ -54,7 +54,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
   const wordCount = post.content.replace(/<[^>]+>/g, "").split(/\s+/).filter(Boolean).length;
 
   const jsonLd = {

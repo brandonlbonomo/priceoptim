@@ -54,7 +54,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
     notFound();
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
   const propertyReviews = getReviewsByProperty(property.id);
   const avgRating = getAverageRating(property.id);
   const reviewCount = propertyReviews.length;

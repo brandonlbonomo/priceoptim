@@ -1,7 +1,7 @@
 import { getAllPosts } from "@/data/blog";
 
 export function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
   const posts = getAllPosts();
 
   const items = posts

@@ -12,17 +12,26 @@ const firmLinks = [
 
 const stayLinks = [
   { href: "/book", label: "Book a Stay" },
+  { href: "/book-direct", label: "Why Book Direct" },
   { href: "/properties", label: "All Properties" },
   { href: "/properties/houston", label: "Houston, TX" },
   { href: "/properties/niagara-falls", label: "Niagara Falls, NY" },
   { href: "/reviews", label: "Guest Reviews" },
 ];
 
+const exploreLinks = [
+  { href: "/guides", label: "Destination Guides" },
+  { href: "/things-to-do/houston", label: "Things to Do in Houston" },
+  { href: "/things-to-do/niagara-falls", label: "Things to Do in Niagara Falls" },
+  { href: "/amenities", label: "Amenities" },
+  { href: "/blog", label: "Blog" },
+];
+
 export function Footer() {
   return (
     <footer className="mt-auto bg-hunter-dark text-white">
       <Container className="py-16">
-        <div className="grid gap-12 md:grid-cols-4">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand + NAP */}
           <div>
             <Link href="/" aria-label="BLB Realty — home" className="inline-block text-[30px]">
@@ -75,6 +84,25 @@ export function Footer() {
             </h4>
             <ul className="mt-6 space-y-3">
               {stayLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-[13px] text-white/45 transition-colors duration-300 hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Explore */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gold-light/80">
+              Explore
+            </h4>
+            <ul className="mt-6 space-y-3">
+              {exploreLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}

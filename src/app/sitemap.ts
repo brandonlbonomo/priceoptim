@@ -4,7 +4,7 @@ import { getAllPosts } from "@/data/blog";
 import { locations } from "@/data/locations";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
   const properties = getActiveProperties();
   const posts = getAllPosts();
 

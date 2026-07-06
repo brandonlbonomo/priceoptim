@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
 
   const jsonLd = {
     "@context": "https://schema.org",

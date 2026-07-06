@@ -9,6 +9,7 @@ import { locations } from "@/data/locations";
 
 export const metadata: Metadata = {
   title: "Destination Guides",
+  alternates: { canonical: "/guides" },
   description:
     "Travel guides, neighborhood tips, and local insights for Houston EaDo and Niagara Falls, NY. Plan your perfect trip with BLB Realty.",
   openGraph: {

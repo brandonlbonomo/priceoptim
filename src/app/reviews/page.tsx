@@ -8,6 +8,7 @@ import { properties } from "@/data/properties";
 
 export const metadata: Metadata = {
   title: "Guest Reviews",
+  alternates: { canonical: "/reviews" },
   description:
     "Read what guests say about BLB Realty vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
 };
@@ -20,7 +21,7 @@ function formatDate(dateStr: string): string {
 
 export default function ReviewsPage() {
   const reviews = getAllReviews();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
 
   // Group reviews by property
   const grouped = properties

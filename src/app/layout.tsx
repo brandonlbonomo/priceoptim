@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   description:
     "BLB Realty is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston and Niagara Falls.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com"),
   alternates: {
     canonical: "/",
   },
@@ -53,7 +53,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com";
   const reviews = getAllReviews();
   const totalReviews = reviews.length;
   const avgRating =

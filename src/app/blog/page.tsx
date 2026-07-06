@@ -6,6 +6,7 @@ import { getAllPosts } from "@/data/blog";
 
 export const metadata: Metadata = {
   title: "Blog",
+  alternates: { canonical: "/blog" },
   description:
     "Travel guides, tips, and local insights for Houston EaDo and Niagara Falls. Discover the best things to do, where to eat, and how to save on vacation rentals.",
   openGraph: {
