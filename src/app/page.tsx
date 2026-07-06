@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
 import { FirmPillars } from "@/components/home/FirmPillars";
 import { PortfolioPreview } from "@/components/home/PortfolioPreview";
@@ -10,6 +11,22 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { getAllReviews } from "@/data/reviews";
 import { properties } from "@/data/properties";
+
+export const metadata: Metadata = {
+  title: {
+    absolute:
+      "BLB Realty | Direct Stays in Houston & Niagara Falls + Real Estate Investment",
+  },
+  description:
+    "Book direct and save on 5-star short-term rentals in Houston, TX and Niagara Falls, NY — no platform fees. BLB Realty is a real estate investment firm operating a growing rental portfolio alongside private credit and private equity.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "BLB Realty | Direct Stays in Houston & Niagara Falls",
+    description:
+      "Book direct and save on 5-star short-term rentals in Houston and Niagara Falls. A real estate investment firm with a growing rental portfolio and private capital.",
+    url: "/",
+  },
+};
 
 export default function HomePage() {
   const reviews = getAllReviews();

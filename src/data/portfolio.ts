@@ -69,8 +69,15 @@ export const portfolio: PortfolioAsset[] = [
   },
 ];
 
+/**
+ * Units currently under construction — owned and mid-build, not yet
+ * counted in the operating unit total above.
+ */
+export const underConstructionUnits = 1;
+
 export const portfolioStats = {
   assets: portfolio.length,
   units: portfolio.reduce((sum, a) => sum + a.units, 0),
   markets: Array.from(new Set(portfolio.map((a) => a.market))).length,
+  underConstruction: underConstructionUnits,
 };

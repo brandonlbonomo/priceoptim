@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/layout/Logo";
 
 const navLinks = [
+  { href: "/properties", label: "Stays" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/invest", label: "Invest" },
+  { href: "/blog", label: "Journal" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -26,7 +28,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden items-center gap-10 md:flex">
+          <div className="hidden items-center gap-7 md:flex lg:gap-9">
             {navLinks.map((link) => (
               <Link
                 key={link.href}

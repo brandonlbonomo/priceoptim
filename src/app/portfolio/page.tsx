@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { AssetCard } from "@/components/portfolio/AssetCard";
+import { PortfolioStatStrip } from "@/components/portfolio/PortfolioStatStrip";
 import { portfolio, portfolioStats } from "@/data/portfolio";
 
 export const metadata: Metadata = {
@@ -14,10 +15,10 @@ export const metadata: Metadata = {
 };
 
 const stats = [
-  { value: `${portfolioStats.assets}`, label: "Properties owned" },
-  { value: `${portfolioStats.units}`, label: "Residential units" },
-  { value: `${portfolioStats.markets}`, label: "Markets" },
-  { value: "2", label: "Rental strategies" },
+  { value: portfolioStats.assets, label: "Properties owned" },
+  { value: portfolioStats.units, label: "Residential units" },
+  { value: portfolioStats.markets, label: "Markets" },
+  { value: portfolioStats.underConstruction, label: "Under construction", live: true },
 ];
 
 export default function PortfolioPage() {
@@ -31,23 +32,8 @@ export default function PortfolioPage() {
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Portfolio" }]}
       />
 
-      {/* Stat strip */}
-      <section className="border-b border-hunter/10 bg-cream">
-        <Container>
-          <div className="grid grid-cols-2 divide-x divide-y divide-hunter/10 sm:grid-cols-4 sm:divide-y-0">
-            {stats.map((s) => (
-              <div key={s.label} className="px-4 py-8 text-center">
-                <div className="font-display text-3xl font-medium text-hunter sm:text-4xl">
-                  {s.value}
-                </div>
-                <div className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-muted">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
+      {/* Stat strip — live portfolio status */}
+      <PortfolioStatStrip stats={stats} />
 
       {/* Asset grid */}
       <section className="py-20 sm:py-28">
