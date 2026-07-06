@@ -37,8 +37,8 @@ export const portfolio: PortfolioAsset[] = [
   {
     id: "pierce",
     name: "Pierce",
-    market: "Houston",
-    state: "TX",
+    market: "Niagara Falls",
+    state: "NY",
     strategy: "Long-term residential",
     units: 7,
     status: "Operating · long-term tenants",
