@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSubscriber } from "@/lib/db";
+import { routeLeadToCrm } from "@/lib/crm";
 
 // Simple in-memory rate limiting
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -72,6 +73,15 @@ export async function POST(request: NextRequest) {
       body.firstName,
       normalizedPhone,
     );
+
+    // Route the lead into the CRM (Mailchimp / webhook). Best-effort — a CRM
+    // failure must not fail the request or block the visitor.
+    await routeLeadToCrm({
+      email,
+      phone: normalizedPhone,
+      source: source || "unknown",
+      firstName: body.firstName,
+    });
 
     return NextResponse.json({ message: result.message }, { status: 200 });
   } catch (error) {

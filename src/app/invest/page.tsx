@@ -35,15 +35,20 @@ const strategies = [
   },
 ];
 
-// ▼▼▼ EDIT THESE — replace illustrative ranges (marked *) with your real
-//     figures. Values without * are pulled live from the portfolio data. ▼▼▼
-const investorNumbers: { value: string; label: string; illustrative?: boolean }[] = [
-  { value: "8–12%", label: "Target annual return", illustrative: true },
-  { value: "1.6–2.0×", label: "Target equity multiple", illustrative: true },
-  { value: "70–85%", label: "Short-term rental occupancy", illustrative: true },
-  { value: `${portfolioStats.units}`, label: "Residential units operating" },
-  { value: `${portfolioStats.markets}`, label: "Markets" },
-  { value: `${portfolioStats.assets}`, label: "Properties owned" },
+// ▼▼▼ EDIT THESE — headline figures from the BLB Realty portfolio model.
+//     Actuals as of June 2026; items marked projected carry an asterisk.
+//     Unit/property counts pull live from the portfolio data. ▼▼▼
+const NUMBERS_AS_OF = "June 2026";
+const investorNumbers: { value: string; label: string; projected?: boolean }[] = [
+  { value: "$1.63M", label: "Portfolio value" },
+  { value: "$374K", label: "Portfolio equity" },
+  { value: "1.39×", label: "Equity multiple on cash" },
+  { value: "$28.3K", label: "Revenue run-rate / mo" },
+  { value: "22%", label: "Stabilized cash-on-cash", projected: true },
+  {
+    value: `${portfolioStats.units}`,
+    label: `Units across ${portfolioStats.assets} properties`,
+  },
 ];
 // ▲▲▲ END EDITABLE NUMBERS ▲▲▲
 
@@ -164,7 +169,7 @@ export default function InvestPage() {
                       <div key={n.label} className="text-center">
                         <div className="font-display text-3xl font-medium text-hunter sm:text-4xl">
                           {n.value}
-                          {n.illustrative && (
+                          {n.projected && (
                             <span className="align-super text-[14px] text-gold-dark">
                               *
                             </span>
@@ -177,10 +182,11 @@ export default function InvestPage() {
                     ))}
                   </div>
                   <p className="mt-10 border-t border-hunter/10 pt-6 text-center text-[12px] leading-relaxed text-muted/70">
-                    * Illustrative ranges, not audited results, guarantees, or an
-                    offer. Actual terms, track record, and underwriting are shared
-                    privately with qualified investors under definitive
-                    documentation.
+                    Actuals from BLB Realty&apos;s internal portfolio model as of{" "}
+                    {NUMBERS_AS_OF}. *Projected / stabilized run-rate. Figures are
+                    unaudited and are not a guarantee of future results or an
+                    offer. Full underwriting is shared with qualified investors
+                    under definitive documentation.
                   </p>
                 </div>
               </UnlockGate>
