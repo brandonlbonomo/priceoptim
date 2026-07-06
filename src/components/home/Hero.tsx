@@ -1,62 +1,66 @@
-import { Star } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-import { getAllReviews } from "@/data/reviews";
+import { portfolioStats } from "@/data/portfolio";
 
 export function Hero() {
-  const reviews = getAllReviews();
-  const totalReviews = reviews.length;
-  const avgRating =
-    Math.round(
-      (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 100
-    ) / 100;
+  const stats = [
+    { value: `${portfolioStats.assets}`, label: "Properties owned" },
+    { value: `${portfolioStats.units}`, label: "Residential units" },
+    { value: `${portfolioStats.markets}`, label: "Markets" },
+  ];
 
   return (
-    <section className="hero-gradient noise relative overflow-hidden py-24 sm:py-32 lg:py-40">
-      {/* Ambient light effects */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-accent/[0.09] blur-[120px]" />
-      <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-blue-500/[0.04] blur-[100px]" />
-      <div className="pointer-events-none absolute -right-40 top-20 h-80 w-80 rounded-full bg-purple-500/[0.03] blur-[100px]" />
-
+    <section className="hero-gradient noise relative overflow-hidden py-28 sm:py-36 lg:py-44">
       <Container className="relative z-10">
         <div className="mx-auto max-w-4xl text-center">
-          <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
-            Experiences by BLB
+          <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-gold-light">
+            Real Estate Investment &amp; Development
           </p>
-          <div className="mt-4 ornament" />
-          <h1 className="mt-8 font-display text-4xl font-medium tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Book Direct.
-            <br />
-            <span className="text-gradient">Save More.</span>
+          <div className="mx-auto mt-5 ornament" />
+          <h1 className="mt-8 font-display text-4xl font-medium leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            Real estate, acquired
+            <br className="hidden sm:block" /> and held for the long term.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-[15px] font-normal leading-relaxed text-white/50">
-            Premium vacation rentals without the platform markup.
-            Book directly for the best rates, every time.
+          <p className="mx-auto mt-7 max-w-2xl text-[16px] font-light leading-relaxed text-white/60">
+            BLB Realty acquires, builds, and redevelops residential property —
+            holding a growing portfolio of rental homes with long-term tenants,
+            and operating in private credit and private equity.
           </p>
 
-          {/* Review badge */}
-          <div className="mx-auto mt-6 inline-flex items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 backdrop-blur-xl">
-            <div className="flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="h-3.5 w-3.5 fill-accent text-accent" />
-              ))}
-            </div>
-            <span className="text-[14px] font-semibold text-white">{avgRating}</span>
-            <span className="text-[13px] text-white/40">from {totalReviews} reviews</span>
-          </div>
-
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button href="/properties" size="lg" variant="secondary">
-              Browse Properties
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button href="/portfolio" size="lg" variant="secondary">
+              View the Portfolio
             </Button>
             <Button
-              href="/subscribe"
+              href="/invest"
               size="lg"
               variant="outline"
-              className="border-white/[0.12] bg-white/[0.06] text-white backdrop-blur-xl hover:bg-white/[0.12] hover:text-white"
+              className="border-white/25 text-white hover:border-white/50 hover:bg-white/[0.06]"
             >
-              Get Exclusive Deals
+              Investor Inquiry
             </Button>
+          </div>
+
+          <p className="mt-6 text-[13px] text-white/45">
+            Visiting Houston or Niagara Falls?{" "}
+            <Link href="/book" className="text-gold-light underline-offset-4 hover:underline">
+              Book a stay direct →
+            </Link>
+          </p>
+
+          {/* Firm stat strip */}
+          <div className="mx-auto mt-14 grid max-w-2xl grid-cols-3 divide-x divide-white/10 border-y border-white/10 py-6">
+            {stats.map((s) => (
+              <div key={s.label} className="px-2">
+                <div className="font-display text-3xl font-medium text-white sm:text-4xl">
+                  {s.value}
+                </div>
+                <div className="mt-1.5 text-[11px] uppercase tracking-[0.16em] text-white/45">
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </Container>

@@ -36,7 +36,7 @@ export default function FamilyPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Family Niagara Falls Rentals",
+    name: "BLB Realty — Family Niagara Falls Rentals",
     description:
       "Family-friendly vacation rentals near Niagara Falls State Park. Multiple bedrooms, full kitchens, washer/dryer, and space for the whole family. Minutes from kid-friendly attractions.",
     url: `${baseUrl}/properties/niagara-falls/family`,
@@ -70,11 +70,11 @@ export default function FamilyPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Users className="h-3 w-3" />
             Family-Friendly Stays
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Family-Friendly Vacation Rentals Near Niagara Falls
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -115,7 +115,7 @@ export default function FamilyPage() {
           </p>
           <Link
             href="/blog/family-vacation-guide-niagara-falls-ny-with-kids"
-            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent-dark transition-colors hover:text-accent"
+            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-gold-dark transition-colors hover:text-hunter"
           >
             Read our family vacation guide to Niagara Falls
             <ArrowRight className="h-3.5 w-3.5" />

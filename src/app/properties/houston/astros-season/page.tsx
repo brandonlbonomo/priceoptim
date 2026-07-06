@@ -36,7 +36,7 @@ export default function AstrosSeasonPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Astros Season Rentals",
+    name: "BLB Realty — Astros Season Rentals",
     description:
       "Vacation rentals within walking distance of Minute Maid Park in Houston's EaDo neighborhood. Perfect for Astros games, concerts, and events.",
     url: `${baseUrl}/properties/houston/astros-season`,
@@ -70,11 +70,11 @@ export default function AstrosSeasonPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Calendar className="h-3 w-3" />
             2026 Season: Mar 27 – Sep 28
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Vacation Rentals Near Minute Maid Park
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -112,7 +112,7 @@ export default function AstrosSeasonPage() {
           </p>
           <Link
             href="/blog/top-10-things-to-do-in-houston-eado"
-            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent-dark transition-colors hover:text-accent"
+            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-gold-dark transition-colors hover:text-hunter"
           >
             Read our EaDo neighborhood guide
             <ArrowRight className="h-3.5 w-3.5" />

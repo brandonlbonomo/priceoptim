@@ -20,7 +20,7 @@ import { getAllReviews } from "@/data/reviews";
 export const metadata: Metadata = {
   title: "Book Direct & Save — No Airbnb Fees",
   description:
-    "Save money by booking your vacation rental directly with Experiences by BLB. No Airbnb service fees, better communication, flexible cancellations, and the lowest price guaranteed.",
+    "Save money by booking your vacation rental directly with BLB Realty. No Airbnb service fees, better communication, flexible cancellations, and the lowest price guaranteed.",
   alternates: {
     canonical: "/book-direct",
   },
@@ -105,31 +105,31 @@ export default function BookDirectPage() {
 
         {/* Hero */}
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Save More. Book Smarter.
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Skip the Fees. Book Direct.
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
             When you book through Airbnb or VRBO, you pay platform service fees
             that can add hundreds to your trip. Book directly with
-            Experiences&nbsp;by&nbsp;BLB and keep that money in your pocket —
+            BLB&nbsp;Realty and keep that money in your pocket —
             same properties, same host, better price.
           </p>
         </div>
 
         {/* Comparison */}
         <div className="mt-14">
-          <h2 className="text-center text-[13px] font-semibold uppercase tracking-[0.3em] text-muted">
+          <h2 className="eyebrow text-center">
             Airbnb vs. Book Direct
           </h2>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {/* Airbnb column header */}
-            <div className="glass-card rounded-[20px] p-8">
+            <div className="glass-card rounded-[4px] p-8">
               <div className="text-center">
-                <span className="text-[19px] font-semibold text-foreground">
+                <span className="text-[19px] font-display font-medium text-hunter">
                   Airbnb / VRBO
                 </span>
                 <p className="mt-1 text-[13px] text-muted">
@@ -140,7 +140,7 @@ export default function BookDirectPage() {
                 {comparisonRows.map((row) => (
                   <div
                     key={row.feature}
-                    className="rounded-[16px] bg-black/[0.02] px-5 py-4"
+                    className="rounded-[3px] bg-black/[0.02] px-5 py-4"
                   >
                     <div className="flex items-center gap-2">
                       <X className="h-4 w-4 shrink-0 text-red-400" />
@@ -157,20 +157,20 @@ export default function BookDirectPage() {
             </div>
 
             {/* Book Direct column */}
-            <div className="glass-card rounded-[20px] border-accent/20 p-8">
+            <div className="glass-card rounded-[4px] border-accent/20 p-8">
               <div className="text-center">
-                <span className="text-[19px] font-semibold text-accent-dark">
+                <span className="text-[19px] font-display font-medium text-accent-dark">
                   Book Direct
                 </span>
                 <p className="mt-1 text-[13px] text-muted">
-                  Experiences by BLB
+                  BLB Realty
                 </p>
               </div>
               <div className="mt-6 space-y-4">
                 {comparisonRows.map((row) => (
                   <div
                     key={row.feature}
-                    className="rounded-[16px] bg-accent/[0.04] px-5 py-4"
+                    className="rounded-[3px] bg-accent/[0.04] px-5 py-4"
                   >
                     <div className="flex items-center gap-2">
                       <Check className="h-4 w-4 shrink-0 text-green-500" />
@@ -190,17 +190,17 @@ export default function BookDirectPage() {
 
         {/* How It Works */}
         <div className="mt-16">
-          <h2 className="text-center text-[13px] font-semibold uppercase tracking-[0.3em] text-muted">
+          <h2 className="eyebrow text-center">
             How It Works
           </h2>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {steps.map((item) => (
-              <div key={item.step} className="glass-card rounded-[20px] p-8 text-center">
+              <div key={item.step} className="glass-card rounded-[4px] p-8 text-center">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-[15px] font-bold text-accent-dark">
                   {item.step}
                 </div>
-                <h3 className="mt-4 text-[17px] font-semibold text-foreground">
+                <h3 className="mt-4 text-[17px] font-display font-medium text-hunter">
                   {item.title}
                 </h3>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted">
@@ -213,16 +213,16 @@ export default function BookDirectPage() {
 
         {/* Trust Signals */}
         <div className="mt-16">
-          <h2 className="text-center text-[13px] font-semibold uppercase tracking-[0.3em] text-muted">
+          <h2 className="eyebrow text-center">
             Why Guests Trust Us
           </h2>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            <div className="glass-card rounded-[20px] p-8 text-center">
+            <div className="glass-card rounded-[4px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <Star className="h-4 w-4 text-accent-dark" />
               </div>
-              <p className="mt-4 text-[28px] font-bold text-foreground">
+              <p className="mt-4 text-[28px] font-display font-medium text-hunter">
                 {allReviews.length}+
               </p>
               <p className="mt-1 text-[13px] text-muted">
@@ -230,11 +230,11 @@ export default function BookDirectPage() {
               </p>
             </div>
 
-            <div className="glass-card rounded-[20px] p-8 text-center">
+            <div className="glass-card rounded-[4px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <ShieldCheck className="h-4 w-4 text-accent-dark" />
               </div>
-              <p className="mt-4 text-[28px] font-bold text-foreground">
+              <p className="mt-4 text-[28px] font-display font-medium text-hunter">
                 Secure
               </p>
               <p className="mt-1 text-[13px] text-muted">
@@ -242,11 +242,11 @@ export default function BookDirectPage() {
               </p>
             </div>
 
-            <div className="glass-card rounded-[20px] p-8 text-center">
+            <div className="glass-card rounded-[4px] p-8 text-center">
               <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                 <Users className="h-4 w-4 text-accent-dark" />
               </div>
-              <p className="mt-4 text-[28px] font-bold text-foreground">
+              <p className="mt-4 text-[28px] font-display font-medium text-hunter">
                 Real
               </p>
               <p className="mt-1 text-[13px] text-muted">

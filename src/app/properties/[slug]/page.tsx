@@ -203,7 +203,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               <MapPin className="h-3 w-3" />
               {property.location.area} &middot; {property.location.city !== "TBD" ? `${property.location.city}, ${property.location.state}` : "Location details coming soon"}
             </div>
-            <h1 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-3xl sm:leading-tight">
+            <h1 className="font-display mt-3 text-xl font-medium tracking-tight text-hunter sm:text-3xl sm:leading-tight">
               {property.name}
             </h1>
             <p className="mt-2 text-[15px] text-muted">{property.tagline}</p>
@@ -240,19 +240,19 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
             {/* Description */}
             <div className="mt-8 sm:mt-10">
-              <h2 className="text-[17px] font-semibold text-foreground sm:text-[19px]">About This Property</h2>
+              <h2 className="font-display text-[17px] font-medium text-hunter sm:text-[19px]">About This Property</h2>
               <p className="mt-3 text-[14px] leading-[1.8] text-muted sm:mt-4 sm:text-[15px]">{property.description}</p>
             </div>
 
             {/* Amenities */}
             <div className="mt-10 sm:mt-12">
-              <h2 className="mb-5 text-[17px] font-semibold text-foreground sm:mb-6 sm:text-[19px]">Amenities</h2>
+              <h2 className="font-display mb-5 text-[17px] font-medium text-hunter sm:mb-6 sm:text-[19px]">Amenities</h2>
               <AmenityList amenities={property.amenities} />
             </div>
 
             {/* Check-in / Check-out */}
             <div className="mt-10 sm:mt-12">
-              <h2 className="mb-5 text-[19px] font-semibold text-foreground">Check-in &amp; Check-out</h2>
+              <h2 className="font-display mb-5 text-[19px] font-medium text-hunter">Check-in &amp; Check-out</h2>
               <div className="flex flex-wrap gap-3">
                 <div className="glass-surface flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px]">
                   <Clock className="h-4 w-4 text-muted" />
@@ -270,12 +270,12 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
             {/* Guest Reviews */}
             {reviewCount > 0 && (
               <div className="mt-10 sm:mt-12">
-                <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                <h2 className="font-display mb-6 text-[19px] font-medium text-hunter">
                   Guest Reviews
                 </h2>
                 <div className="space-y-4">
                   {propertyReviews.map((review) => (
-                    <div key={review.id} className="glass-card rounded-[18px] p-5 sm:p-6">
+                    <div key={review.id} className="glass-card rounded-[4px] p-5 sm:p-6">
                       <div className="flex items-center justify-between">
                         <p className="text-[14px] font-semibold text-foreground">
                           {review.guestName}
@@ -291,8 +291,8 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                         {review.text}
                       </p>
                       {review.hostResponse && (
-                        <div className="mt-4 rounded-2xl bg-accent/5 p-4">
-                          <p className="text-[12px] font-semibold text-accent-dark">Host Response</p>
+                        <div className="mt-4 rounded-[4px] bg-accent/5 p-4">
+                          <p className="text-[12px] font-semibold text-gold-dark">Host Response</p>
                           <p className="mt-1 text-[13px] leading-relaxed text-muted">
                             {review.hostResponse}
                           </p>
@@ -306,7 +306,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
                     href="https://g.page/r/CUN6GXD8vohcEBM/review"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[13px] font-medium text-accent-dark transition-colors duration-200 hover:text-accent"
+                    className="inline-flex items-center gap-2 text-[13px] font-medium text-gold-dark transition-colors duration-200 hover:text-gold"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Stayed here? Leave a Google Review
@@ -317,7 +317,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
             {/* House Rules */}
             <div className="mt-10 sm:mt-12">
-              <h2 className="mb-5 flex items-center gap-2 text-[19px] font-semibold text-foreground">
+              <h2 className="font-display mb-5 flex items-center gap-2 text-[19px] font-medium text-hunter">
                 <ClipboardList className="h-5 w-5 text-muted" />
                 House Rules
               </h2>
@@ -333,7 +333,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
 
             {/* FAQ Section */}
             <div className="mt-12">
-              <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+              <h2 className="font-display mb-6 text-[19px] font-medium text-hunter">
                 Frequently Asked Questions
               </h2>
               <FAQSection faqs={faqs} />
@@ -347,7 +347,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               if (related.length === 0) return null;
               return (
                 <div className="mt-16">
-                  <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                  <h2 className="font-display mb-6 text-[19px] font-medium text-hunter">
                     More Rentals in {property.location.city}, {property.location.state}
                   </h2>
                   <div className="grid gap-5 sm:grid-cols-2">
@@ -370,8 +370,8 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
               />
 
               {/* Email CTA */}
-              <div className="glass-card rounded-[20px] p-7">
-                <h3 className="text-[15px] font-semibold text-foreground">Get Deal Alerts</h3>
+              <div className="glass-card rounded-[4px] p-7">
+                <h3 className="font-display text-[15px] font-medium text-hunter">Get Deal Alerts</h3>
                 <p className="mt-2 mb-5 text-[13px] text-muted">
                   Be the first to know about special rates for this property.
                 </p>

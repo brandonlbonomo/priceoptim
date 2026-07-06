@@ -80,7 +80,7 @@ export function PropertyFilters() {
               setSearchValue("");
               router.push("/properties");
             }}
-            className="text-[13px] text-accent-dark transition-colors duration-300 hover:text-accent"
+            className="text-[13px] text-gold-dark transition-colors duration-300 hover:text-gold"
           >
             Clear
           </button>

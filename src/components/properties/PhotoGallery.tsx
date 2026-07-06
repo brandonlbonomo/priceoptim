@@ -25,7 +25,7 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
       <div className="grid gap-2 sm:grid-cols-4 sm:grid-rows-2">
         {/* Main image */}
         <button
-          className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100 sm:col-span-2 sm:row-span-2"
+          className="relative aspect-[4/3] overflow-hidden rounded-[4px] bg-muted-light sm:col-span-2 sm:row-span-2"
           onClick={() => openLightbox(0)}
         >
           <Image
@@ -44,7 +44,7 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
         {images.slice(1, 5).map((image, index) => (
           <button
             key={image}
-            className="relative hidden aspect-[4/3] overflow-hidden rounded-lg bg-gray-100 sm:block"
+            className="relative hidden aspect-[4/3] overflow-hidden rounded-[4px] bg-muted-light sm:block"
             onClick={() => openLightbox(index + 1)}
           >
             <Image
@@ -58,7 +58,7 @@ export function PhotoGallery({ images, alt }: PhotoGalleryProps) {
               />
             {index === 3 && images.length > 5 && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-                <span className="text-lg font-semibold">+{images.length - 5} more</span>
+                <span className="font-display text-lg font-medium">+{images.length - 5} more</span>
               </div>
             )}
           </button>

@@ -21,18 +21,18 @@ type ButtonProps = {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-foreground text-white hover:bg-primary-light active:scale-[0.97]",
+    "bg-hunter text-ivory hover:bg-hunter-light active:scale-[0.98]",
   secondary:
-    "bg-accent text-white hover:bg-accent-light active:scale-[0.97]",
+    "bg-ivory text-hunter hover:bg-white active:scale-[0.98]",
   outline:
-    "border border-black/10 text-foreground bg-white/60 backdrop-blur-sm hover:bg-white active:scale-[0.97]",
-  ghost: "text-foreground hover:bg-black/[0.03] active:scale-[0.97]",
+    "border border-hunter/25 text-hunter bg-transparent hover:border-hunter/50 hover:bg-hunter/[0.03] active:scale-[0.98]",
+  ghost: "text-hunter hover:bg-hunter/[0.04] active:scale-[0.98]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "px-5 py-2 text-[13px]",
-  md: "px-7 py-2.5 text-[14px]",
-  lg: "px-8 py-3 text-[15px]",
+  sm: "px-5 py-2.5 text-[11px]",
+  md: "px-7 py-3 text-[12px]",
+  lg: "px-9 py-3.5 text-[12px]",
 };
 
 export function Button({
@@ -43,7 +43,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const classes = cn(
-    "inline-flex items-center justify-center font-medium tracking-wide rounded-full transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2",
+    "inline-flex items-center justify-center font-semibold uppercase tracking-[0.16em] rounded-[2px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-2",
     variantStyles[variant],
     sizeStyles[size],
     className,

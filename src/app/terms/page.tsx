@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for Experiences by BLB vacation rentals operated by BLB REALTY LLC.",
+    "Terms of Service for BLB Realty vacation rentals operated by BLB REALTY LLC.",
   alternates: {
     canonical: "/terms",
   },
@@ -25,28 +25,28 @@ export default function TermsPage() {
 
         {/* Header */}
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Legal
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Terms of Service
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
             Please read these terms carefully before using our website or booking
-            a vacation rental through Experiences by BLB.
+            a vacation rental through BLB Realty.
           </p>
         </div>
 
         {/* Terms Content */}
         <div className="mx-auto mt-14 max-w-3xl">
-          <div className="glass-card rounded-[20px] p-8 sm:p-10">
+          <div className="glass-card rounded-[4px] p-8 sm:p-10">
             <p className="text-[13px] text-muted">
               Last updated: June 1, 2026
             </p>
 
             {/* 1. Acceptance of Terms */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 1. Acceptance of Terms
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -58,7 +58,7 @@ export default function TermsPage() {
                   www.byblb.com
                 </a>{" "}
                 (the &ldquo;Site&rdquo;) or booking a vacation rental through
-                Experiences by BLB, operated by BLB REALTY LLC
+                BLB Realty, operated by BLB REALTY LLC
                 (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you
                 agree to be bound by these Terms of Service
                 (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you
@@ -68,7 +68,7 @@ export default function TermsPage() {
 
             {/* 2. Bookings and Reservations */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 2. Bookings &amp; Reservations
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -88,7 +88,7 @@ export default function TermsPage() {
 
             {/* 3. Cancellation Policy */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 3. Cancellation Policy
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -104,7 +104,7 @@ export default function TermsPage() {
 
             {/* 4. Payment Terms */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 4. Payment Terms
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -121,7 +121,7 @@ export default function TermsPage() {
 
             {/* 5. Property Rules */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 5. Property Rules
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -144,7 +144,7 @@ export default function TermsPage() {
 
             {/* 6. Liability Limitations */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 6. Limitation of Liability
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -167,7 +167,7 @@ export default function TermsPage() {
 
             {/* 7. Intellectual Property */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 7. Intellectual Property
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -183,7 +183,7 @@ export default function TermsPage() {
 
             {/* 8. Modifications to Terms */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 8. Modifications to Terms
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -198,7 +198,7 @@ export default function TermsPage() {
 
             {/* 9. Governing Law */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 9. Governing Law
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -212,7 +212,7 @@ export default function TermsPage() {
 
             {/* 10. Contact Information */}
             <div className="mt-10">
-              <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+              <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
                 10. Contact Information
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">

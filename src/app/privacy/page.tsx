@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for Experiences by BLB vacation rentals. Learn how we collect, use, and protect your personal information.",
+    "Privacy Policy for BLB Realty vacation rentals. Learn how we collect, use, and protect your personal information.",
   alternates: {
     canonical: "/privacy",
   },
@@ -25,15 +25,15 @@ export default function PrivacyPolicyPage() {
 
         {/* Header */}
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Legal
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Privacy Policy
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
-            Your privacy matters to us. This policy explains how Experiences by
-            BLB collects, uses, and protects your personal information.
+            Your privacy matters to us. This policy explains how BLB Realty
+            collects, uses, and protects your personal information.
           </p>
           <p className="mt-3 text-[13px] text-muted">
             Last updated: June 1, 2026
@@ -43,8 +43,8 @@ export default function PrivacyPolicyPage() {
         {/* Policy Content */}
         <div className="mx-auto mt-14 max-w-3xl">
           {/* Introduction */}
-          <div className="glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Introduction
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -56,7 +56,7 @@ export default function PrivacyPolicyPage() {
               >
                 www.byblb.com
               </a>{" "}
-              and the vacation rental brand &ldquo;Experiences by BLB.&rdquo;
+              and the vacation rental brand &ldquo;BLB Realty.&rdquo;
               This Privacy Policy describes how we collect, use, disclose, and
               safeguard your information when you visit our website or book a
               stay with us. By using our services, you consent to the practices
@@ -65,12 +65,12 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Information We Collect */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Information We Collect
             </h2>
 
-            <h3 className="mt-6 text-[15px] font-semibold text-foreground">
+            <h3 className="mt-6 text-[15px] font-display font-medium text-hunter">
               Personal Information You Provide
             </h3>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-muted">
@@ -98,7 +98,7 @@ export default function PrivacyPolicyPage() {
               </li>
             </ul>
 
-            <h3 className="mt-6 text-[15px] font-semibold text-foreground">
+            <h3 className="mt-6 text-[15px] font-display font-medium text-hunter">
               Information Collected Automatically
             </h3>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-muted">
@@ -119,8 +119,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* How We Use Your Information */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               How We Use Your Information
             </h2>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-muted">
@@ -148,8 +148,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Third-Party Services */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Third-Party Services
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -188,8 +188,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Cookies */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Cookies
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -204,8 +204,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Data Retention */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Data Retention
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -220,8 +220,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Your Rights */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Your Rights
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -260,8 +260,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Data Security */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Data Security
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -274,8 +274,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Changes to This Policy */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Changes to This Policy
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
@@ -288,8 +288,8 @@ export default function PrivacyPolicyPage() {
           </div>
 
           {/* Contact Us */}
-          <div className="mt-10 glass-card rounded-[20px] p-8 sm:p-10">
-            <h2 className="text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <div className="mt-10 glass-card rounded-[4px] p-8 sm:p-10">
+            <h2 className="text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Contact Us
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">

@@ -1,6 +1,8 @@
 import { Hero } from "@/components/home/Hero";
-import { FeaturedProperties } from "@/components/home/FeaturedProperties";
-import { WhyBookDirect } from "@/components/home/WhyBookDirect";
+import { FirmPillars } from "@/components/home/FirmPillars";
+import { PortfolioPreview } from "@/components/home/PortfolioPreview";
+import { InvestCTA } from "@/components/home/InvestCTA";
+import { BookingSection } from "@/components/home/BookingSection";
 import { EmailSignupCTA } from "@/components/home/EmailSignupCTA";
 import { Testimonials } from "@/components/home/Testimonials";
 import { Container } from "@/components/ui/Container";
@@ -39,20 +41,22 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <FeaturedProperties />
-      <WhyBookDirect />
+      <FirmPillars />
+      <PortfolioPreview />
+      <InvestCTA />
+      <BookingSection />
 
-      {/* Testimonials */}
-      <section className="py-16 sm:py-20">
+      {/* Guest testimonials — social proof for the direct-booking offering */}
+      <section className="py-20 sm:py-28">
         <Container>
           <ScrollReveal>
             <SectionHeading
-              title="What Our Guests Say"
-              subtitle="Real reviews from real stays across Houston and Niagara Falls"
+              title="What our guests say"
+              subtitle="Reviews from recent stays across Houston and Niagara Falls."
             />
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={100}>
-            <div className="mt-10">
+            <div className="mt-12">
               <Testimonials testimonials={testimonials} />
             </div>
           </ScrollReveal>
@@ -61,18 +65,18 @@ export default function HomePage() {
 
       <EmailSignupCTA />
 
-      {/* JSON-LD structured data */}
+      {/* JSON-LD structured data — the firm */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "LodgingBusiness",
-            name: "Experiences by BLB",
+            "@type": "RealEstateAgent",
+            name: "BLB Realty",
+            legalName: "BLB REALTY LLC",
             description:
-              "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates — no Airbnb or Vrbo fees. Properties near Minute Maid Park, Toyota Center, Niagara Falls State Park, and more.",
+              "A real estate investment firm acquiring, building, and redeveloping residential property, holding a growing rental portfolio, and operating in private credit and private equity.",
             url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
-            numberOfRooms: 8,
             aggregateRating: {
               "@type": "AggregateRating",
               ratingValue: avgRating,

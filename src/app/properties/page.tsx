@@ -10,7 +10,7 @@ import { getActiveProperties } from "@/data/properties";
 export const metadata: Metadata = {
   title: "All Properties",
   description:
-    "Browse all Experiences by BLB vacation rentals. Find your perfect getaway and book directly for the best rates.",
+    "Browse all BLB Realty vacation rentals. Find your perfect getaway and book directly for the best rates.",
 };
 
 interface PropertiesPageProps {
@@ -48,10 +48,10 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
     <section className="py-14 sm:py-20">
       <Container>
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Our Collection
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             All Properties
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">

@@ -109,14 +109,14 @@ export default function AmenitiesPage() {
         />
 
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             What&apos;s Included
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Every Property Feature at a Glance
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Every Experiences&nbsp;by&nbsp;BLB vacation rental comes fully
+            Every BLB&nbsp;Realty vacation rental comes fully
             equipped with the amenities you need — from free WiFi and parking to
             full kitchens and streaming TV. No surprises, no hidden fees.
           </p>
@@ -132,12 +132,12 @@ export default function AmenitiesPage() {
             const Icon = meta.icon;
 
             return (
-              <div key={cat} className="glass-card rounded-[20px] p-8">
+              <div key={cat} className="glass-card rounded-[4px] p-8">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
                     <Icon className="h-4 w-4 text-accent-dark" />
                   </div>
-                  <h2 className="text-[17px] font-semibold text-foreground">
+                  <h2 className="text-[17px] font-display font-medium text-hunter">
                     {meta.label}
                   </h2>
                 </div>
@@ -150,7 +150,7 @@ export default function AmenitiesPage() {
                   {Array.from(amenities).map((name) => (
                     <li
                       key={name}
-                      className="flex items-center gap-2 rounded-[12px] bg-black/[0.02] px-3.5 py-2"
+                      className="flex items-center gap-2 rounded-[4px] bg-black/[0.02] px-3.5 py-2"
                     >
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-dark/60" />
                       <span className="text-[14px] text-foreground">

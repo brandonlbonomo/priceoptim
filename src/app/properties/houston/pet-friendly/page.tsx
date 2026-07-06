@@ -36,7 +36,7 @@ export default function PetFriendlyPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Pet-Friendly Houston Rentals",
+    name: "BLB Realty — Pet-Friendly Houston Rentals",
     description:
       "Pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog-friendly breweries, parks, and patios within walking distance. $75/night pet fee.",
     url: `${baseUrl}/properties/houston/pet-friendly`,
@@ -70,11 +70,11 @@ export default function PetFriendlyPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Dog className="h-3 w-3" />
             Pet-Friendly Properties
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Pet-Friendly Vacation Rentals in Houston EaDo
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -114,7 +114,7 @@ export default function PetFriendlyPage() {
           </p>
           <Link
             href="/blog/eado-neighborhood-guide-houston"
-            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent-dark transition-colors hover:text-accent"
+            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-gold-dark transition-colors hover:text-hunter"
           >
             Read our EaDo neighborhood guide
             <ArrowRight className="h-3.5 w-3.5" />

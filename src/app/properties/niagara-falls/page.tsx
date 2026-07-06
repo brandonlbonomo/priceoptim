@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: location.title,
   description: location.metaDescription,
   openGraph: {
-    title: `${location.title} | Experiences by BLB`,
+    title: `${location.title} | BLB Realty`,
     description: location.metaDescription,
   },
 };
@@ -38,7 +38,7 @@ export default function NiagaraFallsPropertiesPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Niagara Falls, NY",
+    name: "BLB Realty — Niagara Falls, NY",
     description: location.description,
     url: `${baseUrl}/properties/niagara-falls`,
     address: {
@@ -71,11 +71,11 @@ export default function NiagaraFallsPropertiesPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <MapPin className="h-3 w-3" />
             Niagara Falls, New York
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             {location.title}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">

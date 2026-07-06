@@ -9,7 +9,7 @@ import { properties } from "@/data/properties";
 export const metadata: Metadata = {
   title: "Guest Reviews",
   description:
-    "Read what guests say about Experiences by BLB vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
+    "Read what guests say about BLB Realty vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
 };
 
 function formatDate(dateStr: string): string {
@@ -41,7 +41,7 @@ export default function ReviewsPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB",
+    name: "BLB Realty",
     description:
       "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates.",
     url: baseUrl,
@@ -79,10 +79,10 @@ export default function ReviewsPage() {
 
         {/* Header */}
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Guest Reviews
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             What Our Guests Say
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -126,7 +126,7 @@ export default function ReviewsPage() {
             <div key={property.id}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-[19px] font-semibold text-foreground">
+                  <h2 className="text-[19px] font-display font-medium text-hunter">
                     {property.name}
                   </h2>
                   <p className="mt-1 text-[13px] text-muted">
@@ -146,7 +146,7 @@ export default function ReviewsPage() {
                 {propertyReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="glass-card rounded-[18px] p-6"
+                    className="glass-card rounded-[4px] p-6"
                   >
                     <Quote className="h-5 w-5 text-accent/40" />
                     <p className="mt-3 text-[14px] leading-relaxed text-primary-light">
@@ -171,7 +171,7 @@ export default function ReviewsPage() {
                       </div>
                     </div>
                     {review.hostResponse && (
-                      <div className="mt-4 rounded-2xl bg-accent/5 p-4">
+                      <div className="mt-4 rounded-[4px] bg-accent/5 p-4">
                         <p className="text-[12px] font-semibold text-accent-dark">Host Response</p>
                         <p className="mt-1 text-[13px] leading-relaxed text-muted">
                           {review.hostResponse}
@@ -186,11 +186,11 @@ export default function ReviewsPage() {
         </div>
 
         {/* Google Review CTA */}
-        <div className="mt-20 glass-card rounded-[18px] p-8 text-center sm:p-10">
-          <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
+        <div className="mt-20 glass-card rounded-[4px] p-8 text-center sm:p-10">
+          <p className="eyebrow">
             Stayed With Us?
           </p>
-          <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <h2 className="mt-4 text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
             Share your experience
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">

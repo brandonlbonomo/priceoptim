@@ -71,9 +71,9 @@ export function TableOfContents({ html }: TableOfContentsProps) {
   if (headings.length < 3) return null;
 
   return (
-    <nav className="glass-card rounded-[20px] p-6" aria-label="Table of contents">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-        <List className="h-4 w-4 text-muted" />
+    <nav className="glass-card rounded-[4px] p-6" aria-label="Table of contents">
+      <div className="flex items-center gap-2 font-display text-[14px] font-medium text-hunter">
+        <List className="h-4 w-4 text-gold" />
         In This Article
       </div>
       <ol className="mt-4 space-y-2">
@@ -89,8 +89,8 @@ export function TableOfContents({ html }: TableOfContentsProps) {
                 heading.level === 3 ? "pl-4" : ""
               } ${
                 activeId === heading.id
-                  ? "font-medium text-accent-dark"
-                  : "text-muted hover:text-foreground"
+                  ? "font-medium text-gold-dark"
+                  : "text-muted hover:text-hunter"
               }`}
             >
               {heading.text}

@@ -18,32 +18,32 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: "Experiences by BLB | Vacation Rentals – Book Direct & Save",
-    template: "%s | Experiences by BLB",
+    default: "BLB Realty | Real Estate Investment, Development & Private Capital",
+    template: "%s | BLB Realty",
   },
   description:
-    "Book vacation rentals in Houston EaDo and Niagara Falls directly with Experiences by BLB. Skip Airbnb fees — best rates near Minute Maid Park, Toyota Center, and Niagara Falls State Park.",
+    "BLB Realty is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston and Niagara Falls.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
-    siteName: "Experiences by BLB",
+    siteName: "BLB Realty",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Experiences by BLB — Vacation Rentals in Houston & Niagara Falls",
+        alt: "BLB Realty — Real Estate Investment & Development",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Experiences by BLB | Vacation Rentals – Book Direct & Save",
+    title: "BLB Realty | Real Estate Investment, Development & Private Capital",
     description:
-      "Book vacation rentals in Houston EaDo and Niagara Falls directly. Skip Airbnb fees — best rates near Minute Maid Park, Toyota Center, and Niagara Falls State Park.",
+      "A real estate investment firm — acquisitions, development, a growing rental portfolio, and private capital. Direct stays in Houston and Niagara Falls.",
     images: ["/og-image.jpg"],
   },
 };
@@ -64,12 +64,12 @@ export default function RootLayout({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Experiences by BLB",
+    name: "BLB Realty",
     legalName: "BLB REALTY LLC",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
-      "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates — no Airbnb or Vrbo fees.",
+      "A real estate investment firm acquiring, building, and redeveloping residential property, holding a growing rental portfolio, and operating in private credit and private equity.",
     foundingDate: "2024",
     telephone: "+1-516-650-6653",
     contactPoint: {
@@ -107,7 +107,7 @@ export default function RootLayout({
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Experiences by BLB",
+    name: "BLB Realty",
     url: baseUrl,
     potentialAction: {
       "@type": "SearchAction",
@@ -122,7 +122,7 @@ export default function RootLayout({
   const localBusinessJsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB",
+    name: "BLB Realty — Direct Stays",
     legalName: "BLB REALTY LLC",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
@@ -161,7 +161,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://hospitable.com" />
-        <link rel="alternate" type="application/rss+xml" title="Experiences by BLB Blog" href="/blog/feed.xml" />
+        <link rel="alternate" type="application/rss+xml" title="BLB Realty Blog" href="/blog/feed.xml" />
         <script id="mcjs" src="https://chimpstatic.com/mcjs-connected/js/users/4b04bf316771ed8107e92913e/db364ec57771e70054ea386ea.js" async />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-FH3EZPNNZ3" />
         <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-FH3EZPNNZ3');` }} />

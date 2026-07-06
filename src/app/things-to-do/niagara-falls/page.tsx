@@ -16,7 +16,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Things to Do in Niagara Falls, NY",
   description:
-    "Plan your Niagara Falls trip — the best attractions, tours, family activities, restaurants, and day trips on the New York side. Local tips from Experiences by BLB.",
+    "Plan your Niagara Falls trip — the best attractions, tours, family activities, restaurants, and day trips on the New York side. Local tips from BLB Realty.",
   alternates: {
     canonical: "/things-to-do/niagara-falls",
   },
@@ -220,11 +220,11 @@ export default function NiagaraFallsThingsToDoPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <MapPin className="h-3 w-3" />
             Niagara Falls, NY
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Things to Do in Niagara Falls
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -241,12 +241,12 @@ export default function NiagaraFallsThingsToDoPage() {
             const Icon = section.icon;
 
             return (
-              <div key={section.title} className="glass-card rounded-[20px] p-8">
+              <div key={section.title} className="glass-card rounded-[4px] p-8">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10">
-                    <Icon className="h-4 w-4 text-accent-dark" />
+                    <Icon className="h-4 w-4 text-gold-dark" />
                   </div>
-                  <h2 className="text-[19px] font-semibold text-foreground">
+                  <h2 className="font-display text-[19px] font-medium text-hunter">
                     {section.title}
                   </h2>
                 </div>
@@ -255,9 +255,9 @@ export default function NiagaraFallsThingsToDoPage() {
                   {section.items.map((item) => (
                     <div
                       key={item.name}
-                      className="rounded-[16px] bg-black/[0.02] px-5 py-4"
+                      className="rounded-[3px] bg-black/[0.02] px-5 py-4"
                     >
-                      <h3 className="text-[15px] font-semibold text-foreground">
+                      <h3 className="font-display text-[15px] font-medium text-hunter">
                         {item.name}
                       </h3>
                       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">

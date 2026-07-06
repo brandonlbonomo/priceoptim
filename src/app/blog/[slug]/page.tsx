@@ -72,7 +72,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     },
     publisher: {
       "@type": "Organization",
-      name: "Experiences by BLB",
+      name: "BLB Realty",
       url: baseUrl,
     },
     mainEntityOfPage: {
@@ -114,7 +114,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               </span>
             ))}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[40px] sm:leading-tight">
+          <h1 className="font-display mt-4 text-3xl font-medium tracking-tight text-hunter sm:text-[40px] sm:leading-tight">
             {post.title}
           </h1>
           <div className="mt-4 flex items-center gap-3 text-[13px] text-muted">
@@ -146,11 +146,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
 
         {/* Cover image */}
-        <div className="mt-8 overflow-hidden rounded-[20px]">
+        <div className="mt-8 overflow-hidden rounded-[4px]">
           <div className="relative aspect-[21/9]">
             <Image
               src={post.coverImage}
-              alt={`Cover image for ${post.title} — Experiences by BLB blog`}
+              alt={`Cover image for ${post.title} — BLB Realty blog`}
               fill
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"
@@ -169,10 +169,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div
             className="
               text-[16px] leading-[1.85] text-primary-light
-              [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-[22px] [&>h2]:font-semibold [&>h2]:tracking-tight [&>h2]:text-foreground
-              [&>h3]:mt-6 [&>h3]:mb-3 [&>h3]:text-[18px] [&>h3]:font-semibold [&>h3]:text-foreground
+              [&>h2]:font-display [&>h2]:mt-10 [&>h2]:mb-4 [&>h2]:text-[22px] [&>h2]:font-medium [&>h2]:tracking-tight [&>h2]:text-hunter
+              [&>h3]:font-display [&>h3]:mt-6 [&>h3]:mb-3 [&>h3]:text-[18px] [&>h3]:font-medium [&>h3]:text-hunter
               [&>p]:mb-5
-              [&>p>a]:font-medium [&>p>a]:text-accent-dark [&>p>a]:underline [&>p>a]:underline-offset-2 [&>p>a]:decoration-accent/30 hover:[&>p>a]:decoration-accent-dark
+              [&>p>a]:font-medium [&>p>a]:text-gold-dark [&>p>a]:underline [&>p>a]:underline-offset-2 [&>p>a]:decoration-gold/30 hover:[&>p>a]:decoration-gold-dark
               [&>p>strong]:font-semibold [&>p>strong]:text-foreground
               [&>ul]:mb-5 [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:space-y-2
               [&>ol]:mb-5 [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:space-y-2
@@ -181,11 +181,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           />
 
           {/* CTA */}
-          <div className="mt-14 glass-card rounded-[20px] p-8 text-center sm:p-10">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <div className="mt-14 glass-card rounded-[4px] p-8 text-center sm:p-10">
+            <p className="eyebrow">
               Plan Your Stay
             </p>
-            <h2 className="mt-3 text-[22px] font-semibold tracking-tight text-foreground">
+            <h2 className="font-display mt-3 text-[22px] font-medium tracking-tight text-hunter">
               Ready to book your next getaway?
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
@@ -208,7 +208,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             if (relatedPosts.length === 0) return null;
             return (
               <div className="mt-14">
-                <h2 className="mb-6 text-[19px] font-semibold text-foreground">
+                <h2 className="font-display mb-6 text-[19px] font-medium text-hunter">
                   Related Posts
                 </h2>
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -216,12 +216,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     <Link
                       key={related.slug}
                       href={`/blog/${related.slug}`}
-                      className="glass-card group block overflow-hidden rounded-[24px]"
+                      className="glass-card group block overflow-hidden rounded-[4px]"
                     >
                       <div className="relative aspect-[16/9] overflow-hidden">
                         <Image
                           src={related.coverImage}
-                          alt={`${related.title} — Experiences by BLB blog`}
+                          alt={`${related.title} — BLB Realty blog`}
                           fill
                           className="object-cover transition-all duration-700 group-hover:scale-110"
                           sizes="(max-width: 768px) 100vw, 50vw"
@@ -235,7 +235,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                             day: "numeric",
                           })}
                         </p>
-                        <h3 className="mt-2 text-[15px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
+                        <h3 className="font-display mt-2 text-[15px] font-medium leading-snug text-hunter transition-colors duration-300 group-hover:text-gold-dark">
                           {related.title}
                         </h3>
                       </div>

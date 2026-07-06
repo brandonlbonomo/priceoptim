@@ -36,7 +36,7 @@ export default function SummerPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Summer Niagara Falls Rentals",
+    name: "BLB Realty — Summer Niagara Falls Rentals",
     description:
       "Summer vacation rentals near Niagara Falls State Park. Maid of the Mist, Cave of the Winds, gorge trails, and outdoor activities all within minutes. Pet-friendly homes with full kitchens.",
     url: `${baseUrl}/properties/niagara-falls/summer`,
@@ -70,11 +70,11 @@ export default function SummerPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Sun className="h-3 w-3" />
             Peak Season: May – October
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Summer Vacation Rentals Near Niagara Falls
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -115,7 +115,7 @@ export default function SummerPage() {
           </p>
           <Link
             href="/blog/maid-of-the-mist-vs-cave-of-the-winds"
-            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent-dark transition-colors hover:text-accent"
+            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-gold-dark transition-colors hover:text-hunter"
           >
             Maid of the Mist vs Cave of the Winds — our honest comparison
             <ArrowRight className="h-3.5 w-3.5" />

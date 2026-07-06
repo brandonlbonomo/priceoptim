@@ -5,12 +5,11 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/layout/Logo";
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/properties", label: "Properties" },
-  { href: "/reviews", label: "Reviews" },
-  { href: "/blog", label: "Blog" },
+  { href: "/portfolio", label: "Portfolio" },
+  { href: "/invest", label: "Invest" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -21,10 +20,9 @@ export function Navbar() {
   return (
     <header className="glass sticky top-0 z-50">
       <Container>
-        <nav className="flex h-16 items-center justify-between">
-          <Link href="/" className="logo-glow text-[20px] font-bold tracking-tight sm:text-[22px]">
-            <span className="text-gradient font-display">Experiences</span>
-            <span className="text-foreground"> by BLB</span>
+        <nav className="flex h-20 items-center justify-between">
+          <Link href="/" aria-label="BLB Realty — home" className="text-[26px]">
+            <Logo tone="dark" />
           </Link>
 
           {/* Desktop nav */}
@@ -33,13 +31,13 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-[13px] font-normal tracking-wide text-muted transition-colors duration-300 hover:text-foreground"
+                className="text-[13px] font-medium uppercase tracking-[0.14em] text-hunter/70 transition-colors duration-300 hover:text-hunter"
               >
                 {link.label}
               </Link>
             ))}
-            <Button href="/properties" size="sm">
-              Book Now
+            <Button href="/book" size="sm">
+              Book a Stay
             </Button>
           </div>
 
@@ -49,27 +47,27 @@ export function Navbar() {
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
-            {mobileOpen ? <X className="h-5 w-5 text-foreground" /> : <Menu className="h-5 w-5 text-foreground" />}
+            {mobileOpen ? <X className="h-5 w-5 text-hunter" /> : <Menu className="h-5 w-5 text-hunter" />}
           </button>
         </nav>
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="border-t border-black/5 pb-5 md:hidden">
+          <div className="border-t border-hunter/10 pb-5 md:hidden">
             <div className="flex flex-col gap-1 pt-3">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-2xl px-4 py-3 text-[15px] text-muted transition-all duration-300 hover:bg-black/[0.03] hover:text-foreground"
+                  className="rounded-lg px-4 py-3 text-[15px] font-medium uppercase tracking-[0.12em] text-hunter/70 transition-all duration-300 hover:bg-hunter/[0.04] hover:text-hunter"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
               <div className="px-4 pt-3">
-                <Button href="/properties" size="sm" className="w-full">
-                  Book Now
+                <Button href="/book" size="sm" className="w-full">
+                  Book a Stay
                 </Button>
               </div>
             </div>

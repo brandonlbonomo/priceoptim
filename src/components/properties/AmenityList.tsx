@@ -46,7 +46,7 @@ export function AmenityList({ amenities }: AmenityListProps) {
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {Object.entries(grouped).map(([category, items]) => (
         <div key={category}>
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+          <h4 className="eyebrow mb-3">
             {categoryLabels[category as AmenityCategory] || category}
           </h4>
           <ul className="space-y-2">

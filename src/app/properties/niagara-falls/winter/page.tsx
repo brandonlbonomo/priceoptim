@@ -36,7 +36,7 @@ export default function NiagaraWinterPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "Experiences by BLB — Niagara Falls Winter Rentals",
+    name: "BLB Realty — Niagara Falls Winter Rentals",
     description:
       "Cozy vacation rentals near Niagara Falls, NY for winter getaways. Enjoy the Winter Festival of Lights, frozen Falls, and indoor attractions.",
     url: `${baseUrl}/properties/niagara-falls/winter`,
@@ -70,11 +70,11 @@ export default function NiagaraWinterPage() {
         />
 
         <div className="text-center">
-          <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-dark">
+          <div className="eyebrow mx-auto inline-flex items-center gap-1.5">
             <Snowflake className="h-3 w-3" />
             Winter Season: Nov – Feb
           </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-5 font-display text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Winter Vacation Rentals Near Niagara Falls
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
@@ -114,7 +114,7 @@ export default function NiagaraWinterPage() {
           </p>
           <Link
             href="/blog/niagara-falls-winter-guide-ice-festivals"
-            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent-dark transition-colors hover:text-accent"
+            className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-medium text-gold-dark transition-colors hover:text-hunter"
           >
             Read our Niagara Falls winter guide
             <ArrowRight className="h-3.5 w-3.5" />

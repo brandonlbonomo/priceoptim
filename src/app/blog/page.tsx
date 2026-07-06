@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description:
     "Travel guides, tips, and local insights for Houston EaDo and Niagara Falls. Discover the best things to do, where to eat, and how to save on vacation rentals.",
   openGraph: {
-    title: "Blog | Experiences by BLB",
+    title: "Blog | BLB Realty",
     description:
       "Travel guides, tips, and local insights for Houston EaDo and Niagara Falls.",
   },
@@ -22,10 +22,10 @@ export default function BlogPage() {
     <section className="py-14 sm:py-20">
       <Container>
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Travel Journal
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="font-display mt-4 text-2xl font-medium tracking-tight text-hunter sm:text-3xl">
             Blog
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -39,12 +39,12 @@ export default function BlogPage() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="glass-card group block overflow-hidden rounded-[20px]"
+              className="glass-card group block overflow-hidden rounded-[4px]"
             >
               <div className="relative aspect-[16/9] overflow-hidden">
                 <Image
                   src={post.coverImage}
-                  alt={`${post.title} — Experiences by BLB travel guide`}
+                  alt={`${post.title} — BLB Realty travel guide`}
                   fill
                   className="object-cover transition-all duration-700 group-hover:scale-110"
                   sizes="(max-width: 768px) 100vw, 50vw"
@@ -70,13 +70,13 @@ export default function BlogPage() {
                     day: "numeric",
                   })}
                 </p>
-                <h2 className="mt-2 text-[17px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
+                <h2 className="font-display mt-2 text-[17px] font-medium leading-snug text-hunter transition-colors duration-300 group-hover:text-gold-dark">
                   {post.title}
                 </h2>
                 <p className="mt-3 text-[14px] leading-relaxed text-muted line-clamp-3">
                   {post.excerpt}
                 </p>
-                <span className="mt-4 inline-block text-[13px] font-semibold text-accent-dark">
+                <span className="mt-4 inline-block text-[13px] font-semibold text-gold-dark">
                   Read More
                 </span>
               </div>

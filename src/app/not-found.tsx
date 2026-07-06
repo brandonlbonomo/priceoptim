@@ -17,8 +17,8 @@ export default function NotFound() {
     <section className="py-24 sm:py-32">
       <Container>
         <div className="mx-auto max-w-lg text-center">
-          <p className="text-[64px] font-semibold tracking-tight text-foreground/10">404</p>
-          <h1 className="mt-2 text-[22px] font-semibold tracking-tight text-foreground">
+          <p className="text-[64px] font-display font-medium tracking-tight text-hunter/10">404</p>
+          <h1 className="mt-2 text-[22px] font-display font-medium tracking-tight text-hunter">
             Page Not Found
           </h1>
           <p className="mt-3 text-[15px] text-muted">
@@ -37,7 +37,7 @@ export default function NotFound() {
               <Link
                 key={href}
                 href={href}
-                className="glass-card flex flex-col items-center gap-2 rounded-2xl p-4 text-center transition-colors duration-200 hover:border-accent/20"
+                className="glass-card flex flex-col items-center gap-2 rounded-[4px] p-4 text-center transition-colors duration-200 hover:border-accent/20"
               >
                 <Icon className="h-5 w-5 text-accent-dark" />
                 <span className="text-[13px] font-medium text-foreground">{label}</span>

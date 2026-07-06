@@ -12,11 +12,11 @@ export function FAQSection({ faqs }: FAQSectionProps) {
       {faqs.map((faq, index) => (
         <details
           key={index}
-          className="glass-card group rounded-[20px] overflow-hidden"
+          className="glass-card group rounded-[4px] overflow-hidden"
         >
-          <summary className="cursor-pointer select-none px-6 py-5 text-[15px] font-semibold text-foreground list-none flex items-center justify-between gap-4">
+          <summary className="cursor-pointer select-none px-6 py-5 font-display text-[15px] font-medium text-hunter list-none flex items-center justify-between gap-4">
             {faq.question}
-            <span className="text-muted transition-transform duration-300 group-open:rotate-45 text-[20px] leading-none shrink-0">
+            <span className="text-gold transition-transform duration-300 group-open:rotate-45 text-[20px] leading-none shrink-0">
               +
             </span>
           </summary>

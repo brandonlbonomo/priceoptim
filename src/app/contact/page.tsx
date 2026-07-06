@@ -8,7 +8,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Get in touch with Experiences by BLB. Questions about our vacation rentals in Houston EaDo or Niagara Falls? We're here to help.",
+    "Get in touch with BLB Realty. Questions about our vacation rentals in Houston EaDo or Niagara Falls? We're here to help.",
   alternates: {
     canonical: "/contact",
   },
@@ -20,7 +20,7 @@ export default function ContactPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: "Experiences by BLB",
+    name: "BLB Realty",
     legalName: "BLB REALTY LLC",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
@@ -61,10 +61,10 @@ export default function ContactPage() {
 
         {/* Header */}
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Contact Us
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Get in Touch
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -77,11 +77,11 @@ export default function ContactPage() {
         {/* Contact method cards */}
         <div className="mt-14 grid gap-6 sm:grid-cols-2 max-w-2xl mx-auto">
           {/* Phone */}
-          <div className="glass-card rounded-[20px] p-8 text-center">
+          <div className="glass-card rounded-[4px] p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
               <Phone className="h-5 w-5 text-accent-dark" />
             </div>
-            <h2 className="mt-5 text-[15px] font-semibold text-foreground">
+            <h2 className="mt-5 text-[15px] font-display font-medium text-hunter">
               Phone
             </h2>
             <p className="mt-2 text-[13px] text-muted">
@@ -96,11 +96,11 @@ export default function ContactPage() {
           </div>
 
           {/* Email */}
-          <div className="glass-card rounded-[20px] p-8 text-center">
+          <div className="glass-card rounded-[4px] p-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full glass-surface">
               <Mail className="h-5 w-5 text-accent-dark" />
             </div>
-            <h2 className="mt-5 text-[15px] font-semibold text-foreground">
+            <h2 className="mt-5 text-[15px] font-display font-medium text-hunter">
               Email
             </h2>
             <p className="mt-2 text-[13px] text-muted">
@@ -128,10 +128,10 @@ export default function ContactPage() {
         {/* Our Locations */}
         <div className="mt-20">
           <div className="text-center">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+            <p className="eyebrow">
               Our Locations
             </p>
-            <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+            <h2 className="mt-4 text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
               Where We Operate
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
@@ -142,11 +142,11 @@ export default function ContactPage() {
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             <Link
               href="/properties/houston"
-              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
-                <h3 className="text-[17px] font-semibold text-foreground">
+                <h3 className="text-[17px] font-display font-medium text-hunter">
                   Houston, TX
                 </h3>
               </div>
@@ -162,11 +162,11 @@ export default function ContactPage() {
 
             <Link
               href="/properties/niagara-falls"
-              className="glass-card rounded-[20px] p-8 transition-all duration-300 hover:scale-[1.01]"
+              className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
                 <Building2 className="h-5 w-5 text-accent-dark" />
-                <h3 className="text-[17px] font-semibold text-foreground">
+                <h3 className="text-[17px] font-display font-medium text-hunter">
                   Niagara Falls, NY
                 </h3>
               </div>
@@ -182,11 +182,11 @@ export default function ContactPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-20 glass-card rounded-[18px] p-8 text-center sm:p-10">
-          <p className="text-gradient text-[13px] font-semibold uppercase tracking-[0.3em]">
+        <div className="mt-20 glass-card rounded-[4px] p-8 text-center sm:p-10">
+          <p className="eyebrow">
             Ready to Book?
           </p>
-          <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-foreground sm:text-[22px]">
+          <h2 className="mt-4 text-[19px] font-display font-medium tracking-tight text-hunter sm:text-[22px]">
             Browse our properties
           </h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">

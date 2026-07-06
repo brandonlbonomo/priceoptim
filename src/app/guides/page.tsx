@@ -10,9 +10,9 @@ import { locations } from "@/data/locations";
 export const metadata: Metadata = {
   title: "Destination Guides",
   description:
-    "Travel guides, neighborhood tips, and local insights for Houston EaDo and Niagara Falls, NY. Plan your perfect trip with Experiences by BLB.",
+    "Travel guides, neighborhood tips, and local insights for Houston EaDo and Niagara Falls, NY. Plan your perfect trip with BLB Realty.",
   openGraph: {
-    title: "Destination Guides | Experiences by BLB",
+    title: "Destination Guides | BLB Realty",
     description:
       "Travel guides, neighborhood tips, and local insights for Houston and Niagara Falls.",
   },
@@ -45,10 +45,10 @@ export default function GuidesPage() {
         />
 
         <div className="text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-accent-dark">
+          <p className="eyebrow">
             Destination Guides
           </p>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-display font-medium tracking-tight text-hunter sm:text-3xl">
             Plan Your Trip
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
@@ -65,14 +65,14 @@ export default function GuidesPage() {
             );
 
             return (
-              <div key={tag} className="glass-card rounded-[20px] p-8">
+              <div key={tag} className="glass-card rounded-[4px] p-8">
                 <div className="flex items-center gap-2 text-accent-dark">
                   <MapPin className="h-4 w-4" />
-                  <span className="text-[12px] font-semibold uppercase tracking-[0.2em]">
+                  <span className="eyebrow">
                     {location.city}, {location.state}
                   </span>
                 </div>
-                <h2 className="mt-3 text-[20px] font-semibold text-foreground">
+                <h2 className="mt-3 text-[20px] font-display font-medium text-hunter">
                   {title}
                 </h2>
                 <p className="mt-2 text-[14px] text-muted line-clamp-2">
@@ -85,7 +85,7 @@ export default function GuidesPage() {
                     <li key={post.slug}>
                       <Link
                         href={`/blog/${post.slug}`}
-                        className="group flex items-center justify-between rounded-[16px] bg-black/[0.02] px-4 py-3 transition-colors duration-200 hover:bg-accent/[0.06]"
+                        className="group flex items-center justify-between rounded-[3px] bg-black/[0.02] px-4 py-3 transition-colors duration-200 hover:bg-accent/[0.06]"
                       >
                         <span className="text-[14px] font-medium text-foreground group-hover:text-accent-dark transition-colors duration-200">
                           {post.title}
@@ -111,7 +111,7 @@ export default function GuidesPage() {
 
         {/* All posts grid */}
         <div className="mt-16">
-          <h2 className="text-center text-[13px] font-semibold uppercase tracking-[0.3em] text-muted">
+          <h2 className="eyebrow text-center">
             All Guides
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -119,12 +119,12 @@ export default function GuidesPage() {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="glass-card group block overflow-hidden rounded-[24px]"
+                className="glass-card group block overflow-hidden rounded-[4px]"
               >
                 <div className="relative aspect-[16/9] overflow-hidden">
                   <Image
                     src={post.coverImage}
-                    alt={`${post.title} — Experiences by BLB travel guide`}
+                    alt={`${post.title} — BLB Realty travel guide`}
                     fill
                     className="object-cover transition-all duration-700 group-hover:scale-110"
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -142,7 +142,7 @@ export default function GuidesPage() {
                       </span>
                     ))}
                   </div>
-                  <h3 className="mt-2 text-[15px] font-semibold leading-snug text-foreground transition-colors duration-300 group-hover:text-accent-dark">
+                  <h3 className="mt-2 text-[15px] font-display font-medium leading-snug text-hunter transition-colors duration-300 group-hover:text-accent-dark">
                     {post.title}
                   </h3>
                   <p className="mt-2 text-[13px] text-muted line-clamp-2">

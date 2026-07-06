@@ -17,7 +17,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
   return (
     <Link
       href={`/properties/${property.slug}`}
-      className="glass-card group block overflow-hidden rounded-[20px]"
+      className="glass-card group block overflow-hidden rounded-[4px]"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
@@ -46,7 +46,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between border-t border-black/[0.04] pt-4">
+        <div className="mt-4 flex items-center justify-between border-t border-hunter/10 pt-4">
           <div className="flex items-center gap-4 text-[13px] text-muted">
             <span className="flex items-center gap-1.5">
               <BedDouble className="h-3.5 w-3.5" />
