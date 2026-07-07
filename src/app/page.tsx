@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
 import { FirmPillars } from "@/components/home/FirmPillars";
 import { PortfolioPreview } from "@/components/home/PortfolioPreview";
-import { InvestCTA } from "@/components/home/InvestCTA";
 import { BookingSection } from "@/components/home/BookingSection";
 import { EmailSignupCTA } from "@/components/home/EmailSignupCTA";
 import { Testimonials } from "@/components/home/Testimonials";
@@ -60,7 +59,6 @@ export default function HomePage() {
       <Hero />
       <FirmPillars />
       <PortfolioPreview />
-      <InvestCTA />
       <BookingSection />
 
       {/* Guest testimonials — social proof for the direct-booking offering */}

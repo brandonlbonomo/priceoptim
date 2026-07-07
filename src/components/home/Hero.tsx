@@ -33,12 +33,12 @@ export function Hero() {
               View the Portfolio
             </Button>
             <Button
-              href="/invest"
+              href="/book"
               size="lg"
               variant="outline"
               className="border-white/25 text-white hover:border-white/50 hover:bg-white/[0.06]"
             >
-              Investor Inquiry
+              Book a Stay
             </Button>
           </div>
 

@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description:
     "BLB Realty operates in private credit and private equity, backed by residential real estate. We work with a select group of investors by introduction. Speak with the firm.",
   alternates: { canonical: "/invest" },
+  // Unlisted: reachable by direct link for investors, hidden from search
+  // engines and not surfaced to guests browsing the site.
+  robots: { index: false, follow: false },
 };
 
 const strategies = [
