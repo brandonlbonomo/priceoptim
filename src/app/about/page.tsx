@@ -225,7 +225,8 @@ export default function AboutPage() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button href="/portfolio">View the Portfolio</Button>
-              <Button href="/book" variant="outline">Book a Stay</Button>
+              <Button href="/invest" variant="outline">Invest With Us</Button>
+              <Button href="/book" variant="ghost">Book a Stay</Button>
             </div>
           </div>
         </Container>

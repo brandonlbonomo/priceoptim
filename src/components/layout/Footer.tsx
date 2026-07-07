@@ -5,6 +5,7 @@ import { Logo } from "@/components/layout/Logo";
 
 const firmLinks = [
   { href: "/portfolio", label: "Portfolio" },
+  { href: "/invest", label: "Invest" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];

@@ -89,7 +89,10 @@ export default function PortfolioPage() {
                   we deploy alongside it.
                 </p>
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                  <Button href="/book">Book a Stay</Button>
+                  <Button href="/invest">Invest With Us</Button>
+                  <Button href="/book" variant="outline">
+                    Book a Stay
+                  </Button>
                 </div>
               </div>
             </ScrollReveal>

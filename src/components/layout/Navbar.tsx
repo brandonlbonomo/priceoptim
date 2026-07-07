@@ -10,6 +10,7 @@ import { Logo } from "@/components/layout/Logo";
 const navLinks = [
   { href: "/properties", label: "Stays" },
   { href: "/portfolio", label: "Portfolio" },
+  { href: "/invest", label: "Invest" },
   { href: "/blog", label: "Journal" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
