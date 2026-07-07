@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { portfolioStats } from "@/data/portfolio";
@@ -11,21 +12,26 @@ export function Hero() {
   ];
 
   return (
-    <section className="hero-gradient noise relative overflow-hidden py-28 sm:py-36 lg:py-44">
+    <section className="hero-gradient noise relative overflow-hidden py-24 sm:py-28 lg:py-32">
       <Container className="relative z-10">
-        <div className="mx-auto max-w-4xl text-center">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-gold-light">
-            Real Estate Investment &amp; Development
-          </p>
-          <div className="mx-auto mt-5 ornament" />
-          <h1 className="mt-8 font-display text-4xl font-medium leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Real estate, acquired
-            <br className="hidden sm:block" /> and held for the long term.
+        <div className="mx-auto max-w-5xl text-center">
+          {/* The logo is the statement — front and center */}
+          <Image
+            src="/bonomo-logo-light.png"
+            alt="Bonomo Capital Group"
+            width={1273}
+            height={849}
+            priority
+            className="mx-auto h-auto w-[300px] sm:w-[500px] lg:w-[660px]"
+          />
+
+          <h1 className="mx-auto mt-10 max-w-3xl font-display text-2xl font-medium leading-[1.18] tracking-tight text-white/90 sm:text-[28px] lg:text-[34px]">
+            Real estate, acquired and held for the long term.
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-[16px] font-light leading-relaxed text-white/60">
-            Bonomo Capital Group acquires, builds, and redevelops residential property —
-            holding a growing portfolio of rental homes with long-term tenants,
-            and operating in private credit and private equity.
+          <p className="mx-auto mt-6 max-w-2xl text-[16px] font-light leading-relaxed text-white/55">
+            Bonomo Capital Group acquires, builds, and redevelops residential
+            property — holding a growing portfolio of rental homes with long-term
+            tenants, and operating in private credit and private equity.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
