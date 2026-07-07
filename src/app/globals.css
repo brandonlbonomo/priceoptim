@@ -9,8 +9,8 @@
 @theme inline {
   /* Navy — the house color, matched to the logo. (Token name kept as
      "hunter" so all existing markup restyles automatically.) */
-  --color-hunter: #172a38;
-  --color-hunter-light: #26384a;
+  --color-hunter: #142430;
+  --color-hunter-light: #22333f;
   --color-hunter-dark: #0d1a24;
 
   /* Muted gold — the accent, pulled back for text and accents on ivory */
@@ -25,8 +25,8 @@
   --color-charcoal: #1b2530;
 
   /* Semantic aliases (kept so existing markup restyles automatically) */
-  --color-primary: #172a38;
-  --color-primary-light: #26384a;
+  --color-primary: #142430;
+  --color-primary-light: #22333f;
   --color-primary-dark: #0d1a24;
   --color-accent: #a9863f;
   --color-accent-light: #c6a25a;
@@ -107,8 +107,8 @@ a, button, select, input,
    Deep hunter green instead of the startup blue-gradient. */
 .hero-gradient {
   background:
-    radial-gradient(140% 120% at 50% 0%, #24384a 0%, rgba(36, 56, 74, 0.16) 40%, transparent 70%),
-    linear-gradient(180deg, #172a38 0%, #10202b 55%, #0d1a24 100%);
+    radial-gradient(140% 120% at 50% 0%, rgba(34, 51, 63, 0.14) 0%, transparent 60%),
+    linear-gradient(180deg, #0f1d27 0%, #0d1a24 55%, #0a1620 100%);
 }
 
 /* Subtle paper grain */
