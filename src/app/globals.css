@@ -57,12 +57,12 @@ body {
   background: rgba(244, 239, 227, 0.88);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-bottom: 1px solid rgba(44, 58, 42, 0.1);
+  border-bottom: 1px solid rgba(29, 43, 74, 0.1);
 }
 
 /* Dark surface over imagery — hunter green wash */
 .glass-dark {
-  background: rgba(30, 40, 28, 0.55);
+  background: rgba(20, 29, 51, 0.55);
   backdrop-filter: blur(24px) saturate(130%);
   -webkit-backdrop-filter: blur(24px) saturate(130%);
   border: 1px solid rgba(198, 162, 90, 0.14);
@@ -71,10 +71,10 @@ body {
 /* Editorial card: warm white, hairline border, restrained shadow */
 .glass-card {
   background: var(--color-surface);
-  border: 1px solid rgba(44, 58, 42, 0.1);
+  border: 1px solid rgba(29, 43, 74, 0.1);
   box-shadow:
-    0 1px 2px rgba(30, 40, 28, 0.03),
-    0 10px 30px rgba(30, 40, 28, 0.05);
+    0 1px 2px rgba(20, 29, 51, 0.03),
+    0 10px 30px rgba(20, 29, 51, 0.05);
   transition:
     box-shadow 0.6s cubic-bezier(0.23, 1, 0.32, 1),
     border-color 0.6s cubic-bezier(0.23, 1, 0.32, 1),
@@ -84,15 +84,15 @@ body {
 .glass-card:hover {
   border-color: rgba(169, 134, 63, 0.4);
   box-shadow:
-    0 2px 4px rgba(30, 40, 28, 0.04),
-    0 18px 44px rgba(30, 40, 28, 0.08);
+    0 2px 4px rgba(20, 29, 51, 0.04),
+    0 18px 44px rgba(20, 29, 51, 0.08);
   transform: translateY(-2px);
 }
 
 .glass-surface {
   background: rgba(251, 248, 240, 0.7);
-  border: 1px solid rgba(44, 58, 42, 0.08);
-  box-shadow: 0 1px 2px rgba(30, 40, 28, 0.03);
+  border: 1px solid rgba(29, 43, 74, 0.08);
+  box-shadow: 0 1px 2px rgba(20, 29, 51, 0.03);
 }
 
 /* Smooth transitions only on interactive elements */
@@ -107,8 +107,8 @@ a, button, select, input,
    Deep hunter green instead of the startup blue-gradient. */
 .hero-gradient {
   background:
-    radial-gradient(140% 120% at 50% 0%, #33422f 0%, rgba(42, 56, 39, 0.16) 40%, transparent 70%),
-    linear-gradient(180deg, #2c3a2a 0%, #253120 55%, #1e281c 100%);
+    radial-gradient(140% 120% at 50% 0%, #2a3c5e 0%, rgba(40, 58, 92, 0.16) 40%, transparent 70%),
+    linear-gradient(180deg, #1d2b4a 0%, #16233d 55%, #141d33 100%);
 }
 
 /* Subtle paper grain */

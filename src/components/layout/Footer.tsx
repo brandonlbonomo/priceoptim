@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "@/components/ui/Container";
 import { EmailForm } from "@/components/ui/EmailForm";
-import { Logo } from "@/components/layout/Logo";
 
 const firmLinks = [
   { href: "/portfolio", label: "Portfolio" },
@@ -34,8 +34,14 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand + NAP */}
           <div>
-            <Link href="/" aria-label="Bonomo Capital Group — home" className="inline-block text-[30px]">
-              <Logo tone="light" />
+            <Link href="/" aria-label="Bonomo Capital Group — home" className="inline-block">
+              <Image
+                src="/bonomo-logo-light.png"
+                alt="Bonomo Capital Group"
+                width={240}
+                height={160}
+                className="h-16 w-auto"
+              />
             </Link>
             <p className="mt-6 text-[13px] leading-relaxed text-white/45">
               A real estate investment firm acquiring, building, and

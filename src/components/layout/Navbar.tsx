@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
-import { Logo } from "@/components/layout/Logo";
 
 const navLinks = [
   { href: "/properties", label: "Stays" },
@@ -23,8 +23,15 @@ export function Navbar() {
     <header className="glass sticky top-0 z-50">
       <Container>
         <nav className="flex h-20 items-center justify-between">
-          <Link href="/" aria-label="Bonomo Capital Group — home" className="text-[26px]">
-            <Logo tone="dark" />
+          <Link href="/" aria-label="Bonomo Capital Group — home" className="flex items-center">
+            <Image
+              src="/bonomo-logo.png"
+              alt="Bonomo Capital Group"
+              width={286}
+              height={191}
+              priority
+              className="h-14 w-auto"
+            />
           </Link>
 
           {/* Desktop nav */}
