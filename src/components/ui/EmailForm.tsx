@@ -46,7 +46,7 @@ export function EmailForm({ source, compact = false, className }: EmailFormProps
 
   if (status === "success") {
     return (
-      <div className={cn("flex items-center justify-center gap-2 text-[15px]", compact ? "text-green-400" : "text-green-600", className)}>
+      <div className={cn("flex items-center justify-center gap-2 text-[15px]", compact ? "text-gold-light" : "text-gold-dark", className)}>
         <CheckCircle className="h-4 w-4" />
         <span>{message}</span>
       </div>

@@ -19,8 +19,8 @@ export const headline = {
   net2027: 85_138,
   stabilizedCoC: 0.22, // projected
   trailingCoC: 0.12, // actual, first 9 months incl. startup
-  units: 15,
-  properties: 4,
+  units: 16,
+  properties: 5,
   markets: 2,
 };
 

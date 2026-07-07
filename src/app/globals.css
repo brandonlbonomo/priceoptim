@@ -9,9 +9,9 @@
 @theme inline {
   /* Navy — the house color, matched to the logo. (Token name kept as
      "hunter" so all existing markup restyles automatically.) */
-  --color-hunter: #1d2b4a;
-  --color-hunter-light: #2d4066;
-  --color-hunter-dark: #141d33;
+  --color-hunter: #172a38;
+  --color-hunter-light: #26384a;
+  --color-hunter-dark: #0d1a24;
 
   /* Muted gold — the accent, pulled back for text and accents on ivory */
   --color-gold: #a9863f;
@@ -22,18 +22,18 @@
   --color-ivory: #f4efe3;
   --color-cream: #efe8d8;
   --color-surface: #fbf8f0;
-  --color-charcoal: #1e2333;
+  --color-charcoal: #1b2530;
 
   /* Semantic aliases (kept so existing markup restyles automatically) */
-  --color-primary: #1d2b4a;
-  --color-primary-light: #2d4066;
-  --color-primary-dark: #141d33;
+  --color-primary: #172a38;
+  --color-primary-light: #26384a;
+  --color-primary-dark: #0d1a24;
   --color-accent: #a9863f;
   --color-accent-light: #c6a25a;
   --color-accent-dark: #856831;
   --color-background: #f4efe3;
-  --color-foreground: #1e2333;
-  --color-muted: #63677a;
+  --color-foreground: #1b2530;
+  --color-muted: #6b6960;
   --color-muted-light: #e7e0cf;
 
   --font-sans: var(--font-inter);
@@ -57,12 +57,12 @@ body {
   background: rgba(244, 239, 227, 0.88);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-bottom: 1px solid rgba(29, 43, 74, 0.1);
+  border-bottom: 1px solid rgba(23, 42, 56, 0.1);
 }
 
 /* Dark surface over imagery — hunter green wash */
 .glass-dark {
-  background: rgba(20, 29, 51, 0.55);
+  background: rgba(13, 26, 36, 0.55);
   backdrop-filter: blur(24px) saturate(130%);
   -webkit-backdrop-filter: blur(24px) saturate(130%);
   border: 1px solid rgba(198, 162, 90, 0.14);
@@ -71,10 +71,10 @@ body {
 /* Editorial card: warm white, hairline border, restrained shadow */
 .glass-card {
   background: var(--color-surface);
-  border: 1px solid rgba(29, 43, 74, 0.1);
+  border: 1px solid rgba(23, 42, 56, 0.1);
   box-shadow:
-    0 1px 2px rgba(20, 29, 51, 0.03),
-    0 10px 30px rgba(20, 29, 51, 0.05);
+    0 1px 2px rgba(13, 26, 36, 0.03),
+    0 10px 30px rgba(13, 26, 36, 0.05);
   transition:
     box-shadow 0.6s cubic-bezier(0.23, 1, 0.32, 1),
     border-color 0.6s cubic-bezier(0.23, 1, 0.32, 1),
@@ -84,15 +84,15 @@ body {
 .glass-card:hover {
   border-color: rgba(169, 134, 63, 0.4);
   box-shadow:
-    0 2px 4px rgba(20, 29, 51, 0.04),
-    0 18px 44px rgba(20, 29, 51, 0.08);
+    0 2px 4px rgba(13, 26, 36, 0.04),
+    0 18px 44px rgba(13, 26, 36, 0.08);
   transform: translateY(-2px);
 }
 
 .glass-surface {
   background: rgba(251, 248, 240, 0.7);
-  border: 1px solid rgba(29, 43, 74, 0.08);
-  box-shadow: 0 1px 2px rgba(20, 29, 51, 0.03);
+  border: 1px solid rgba(23, 42, 56, 0.08);
+  box-shadow: 0 1px 2px rgba(13, 26, 36, 0.03);
 }
 
 /* Smooth transitions only on interactive elements */
@@ -107,8 +107,8 @@ a, button, select, input,
    Deep hunter green instead of the startup blue-gradient. */
 .hero-gradient {
   background:
-    radial-gradient(140% 120% at 50% 0%, #2a3c5e 0%, rgba(40, 58, 92, 0.16) 40%, transparent 70%),
-    linear-gradient(180deg, #1d2b4a 0%, #16233d 55%, #141d33 100%);
+    radial-gradient(140% 120% at 50% 0%, #24384a 0%, rgba(36, 56, 74, 0.16) 40%, transparent 70%),
+    linear-gradient(180deg, #172a38 0%, #10202b 55%, #0d1a24 100%);
 }
 
 /* Subtle paper grain */

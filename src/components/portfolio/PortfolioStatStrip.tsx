@@ -90,8 +90,8 @@ export function PortfolioStatStrip({ stats }: PortfolioStatStripProps) {
       <Container>
         <div className="flex items-center justify-center gap-2 pt-8 sm:justify-start">
           <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-600/50" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-600" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-dark/50" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-gold-dark" />
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
             Portfolio status · Live

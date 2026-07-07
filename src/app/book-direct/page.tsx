@@ -173,7 +173,7 @@ export default function BookDirectPage() {
                     className="rounded-[3px] bg-accent/[0.04] px-5 py-4"
                   >
                     <div className="flex items-center gap-2">
-                      <Check className="h-4 w-4 shrink-0 text-green-500" />
+                      <Check className="h-4 w-4 shrink-0 text-gold-dark" />
                       <span className="text-[14px] font-medium text-foreground">
                         {row.feature}
                       </span>

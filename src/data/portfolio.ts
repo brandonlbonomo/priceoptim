@@ -67,11 +67,22 @@ export const portfolio: PortfolioAsset[] = [
     summary:
       "A single-family Houston residence renovated end-to-end and operated as a design-forward short-term rental.",
   },
+  {
+    id: "omega",
+    name: "Omega",
+    market: "Houston",
+    state: "TX",
+    strategy: "Short-term rental",
+    units: 1,
+    status: "Under construction",
+    summary:
+      "A single-family Houston redevelopment, mid-construction and slated to open as a design-forward short-term rental.",
+  },
 ];
 
 /**
- * Units currently under construction — owned and mid-build, not yet
- * counted in the operating unit total above.
+ * Units currently under construction — owned and mid-build, and now
+ * included in the property and unit totals above.
  */
 export const underConstructionUnits = 1;
 
