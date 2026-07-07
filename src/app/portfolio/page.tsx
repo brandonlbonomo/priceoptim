@@ -10,7 +10,7 @@ import { portfolio, portfolioStats } from "@/data/portfolio";
 export const metadata: Metadata = {
   title: "Portfolio",
   description:
-    "The BLB Realty portfolio — residential property owned, redeveloped, and operated across Houston, TX and Niagara Falls, NY. Short- and long-term rentals held for the long run.",
+    "The Bonomo Capital Group portfolio — residential property owned, redeveloped, and operated across Houston, TX and Niagara Falls, NY. Short- and long-term rentals held for the long run.",
   alternates: { canonical: "/portfolio" },
 };
 
@@ -28,7 +28,7 @@ export default function PortfolioPage() {
         tone="dark"
         eyebrow="The Portfolio"
         title="Property we own, redevelop, and hold."
-        intro="BLB Realty builds a portfolio of residential real estate across Houston and Niagara Falls — acquiring, renovating, and operating homes as income-producing assets under management. We hold for the long term, with tenants and guests in place."
+        intro="Bonomo Capital Group builds a portfolio of residential real estate across Houston and Niagara Falls — acquiring, renovating, and operating homes as income-producing assets under management. We hold for the long term, with tenants and guests in place."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Portfolio" }]}
       />
 

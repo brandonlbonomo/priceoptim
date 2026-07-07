@@ -72,7 +72,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     },
     publisher: {
       "@type": "Organization",
-      name: "BLB Realty",
+      name: "Bonomo Capital Group",
       url: baseUrl,
     },
     mainEntityOfPage: {
@@ -150,7 +150,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="relative aspect-[21/9]">
             <Image
               src={post.coverImage}
-              alt={`Cover image for ${post.title} — BLB Realty blog`}
+              alt={`Cover image for ${post.title} — Bonomo Capital Group blog`}
               fill
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"
@@ -221,7 +221,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                       <div className="relative aspect-[16/9] overflow-hidden">
                         <Image
                           src={related.coverImage}
-                          alt={`${related.title} — BLB Realty blog`}
+                          alt={`${related.title} — Bonomo Capital Group blog`}
                           fill
                           className="object-cover transition-all duration-700 group-hover:scale-110"
                           sizes="(max-width: 768px) 100vw, 50vw"

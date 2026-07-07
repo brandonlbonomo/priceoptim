@@ -34,7 +34,7 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Brand + NAP */}
           <div>
-            <Link href="/" aria-label="BLB Realty — home" className="inline-block text-[30px]">
+            <Link href="/" aria-label="Bonomo Capital Group — home" className="inline-block text-[30px]">
               <Logo tone="light" />
             </Link>
             <p className="mt-6 text-[13px] leading-relaxed text-white/45">
@@ -43,7 +43,7 @@ export function Footer() {
               portfolio across Houston and Niagara Falls.
             </p>
             <div className="mt-6 space-y-1 text-[12px] text-white/35">
-              <p>BLB REALTY LLC</p>
+              <p>Bonomo Capital Group</p>
               <p>Houston, TX &amp; Niagara Falls, NY</p>
               <p>
                 <a href="tel:+15166506653" className="transition-colors duration-200 hover:text-white/70">
@@ -128,7 +128,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 border-t border-white/[0.08] pt-8 text-center text-[12px] text-white/30">
-          <p>&copy; {new Date().getFullYear()} BLB REALTY LLC. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Bonomo Capital Group. All rights reserved.</p>
           <p className="mt-2">
             <Link href="/privacy" className="transition-colors duration-200 hover:text-white/60">Privacy Policy</Link>
             {" "}&middot;{" "}

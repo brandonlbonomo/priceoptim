@@ -11,7 +11,7 @@ import { portfolioStats } from "@/data/portfolio";
 export const metadata: Metadata = {
   title: "About the Firm",
   description:
-    "BLB Realty — a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity.",
+    "Bonomo Capital Group — a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity.",
   alternates: { canonical: "/about" },
 };
 
@@ -47,8 +47,8 @@ export default function AboutPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "BLB Realty",
-    legalName: "BLB REALTY LLC",
+    name: "Bonomo Capital Group",
+    legalName: "Bonomo Capital Group",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
@@ -74,7 +74,7 @@ export default function AboutPage() {
         tone="dark"
         eyebrow="About the Firm"
         title="A real estate firm built to own."
-        intro="BLB Realty (BLB REALTY LLC) acquires, builds, and redevelops residential property; holds a growing portfolio of rental homes with long-term tenants; and operates in private credit and private equity — all anchored to real assets in markets we know."
+        intro="Bonomo Capital Group (Bonomo Capital Group) acquires, builds, and redevelops residential property; holds a growing portfolio of rental homes with long-term tenants; and operates in private credit and private equity — all anchored to real assets in markets we know."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "About" }]}
       />
 
@@ -93,7 +93,7 @@ export default function AboutPage() {
             <ScrollReveal variant="fade-up" delay={120}>
               <div className="space-y-5 text-[16px] leading-relaxed text-muted">
                 <p>
-                  BLB Realty is a privately held real estate investment firm. We
+                  Bonomo Capital Group is a privately held real estate investment firm. We
                   acquire residential property, improve it through renovation and
                   redevelopment, and hold it as a long-term, income-producing
                   portfolio across Houston and Niagara Falls.

@@ -116,7 +116,7 @@ export default function AmenitiesPage() {
             Every Property Feature at a Glance
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
-            Every BLB&nbsp;Realty vacation rental comes fully
+            Every Bonomo Capital Group vacation rental comes fully
             equipped with the amenities you need — from free WiFi and parking to
             full kitchens and streaming TV. No surprises, no hidden fees.
           </p>

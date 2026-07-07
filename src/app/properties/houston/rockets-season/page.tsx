@@ -43,7 +43,7 @@ const rocketsFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
   },
   {
     question: "What's the EaDo neighborhood like?",
@@ -72,7 +72,7 @@ export default function RocketsSeasonPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Rockets Season Rentals",
+    name: "Bonomo Capital Group — Rockets Season Rentals",
     description:
       "Vacation rentals within walking distance of Toyota Center in Houston's EaDo neighborhood. Perfect for Rockets games, concerts, UFC events, and more.",
     url: `${baseUrl}/properties/houston/rockets-season`,
@@ -99,7 +99,7 @@ export default function RocketsSeasonPage() {
     "@type": "Event",
     name: "Houston Rockets Basketball Season 2026–27",
     description:
-      "Houston Rockets home games at Toyota Center in downtown Houston. BLB Realty offers walk-to-the-arena vacation rentals nearby in EaDo.",
+      "Houston Rockets home games at Toyota Center in downtown Houston. Bonomo Capital Group offers walk-to-the-arena vacation rentals nearby in EaDo.",
     location: {
       "@type": "Place",
       name: "Toyota Center",

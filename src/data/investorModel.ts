@@ -1,5 +1,5 @@
 /**
- * Investor dashboard data — sourced from the BLB Realty portfolio model.
+ * Investor dashboard data — sourced from the Bonomo Capital Group portfolio model.
  * Actuals as of June 2026; forward years are model projections.
  *
  * ▼ To refresh: update these values from the spreadsheet. Everything the

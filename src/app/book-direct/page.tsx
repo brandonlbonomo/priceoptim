@@ -20,7 +20,7 @@ import { getAllReviews } from "@/data/reviews";
 export const metadata: Metadata = {
   title: "Book Direct & Save — No Airbnb Fees",
   description:
-    "Save money by booking your vacation rental directly with BLB Realty. No Airbnb service fees, better communication, flexible cancellations, and the lowest price guaranteed.",
+    "Save money by booking your vacation rental directly with Bonomo Capital Group. No Airbnb service fees, better communication, flexible cancellations, and the lowest price guaranteed.",
   alternates: {
     canonical: "/book-direct",
   },
@@ -114,7 +114,7 @@ export default function BookDirectPage() {
           <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">
             When you book through Airbnb or VRBO, you pay platform service fees
             that can add hundreds to your trip. Book directly with
-            BLB&nbsp;Realty and keep that money in your pocket —
+            Bonomo Capital Group and keep that money in your pocket —
             same properties, same host, better price.
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function BookDirectPage() {
                   Book Direct
                 </span>
                 <p className="mt-1 text-[13px] text-muted">
-                  BLB Realty
+                  Bonomo Capital Group
                 </p>
               </div>
               <div className="mt-6 space-y-4">

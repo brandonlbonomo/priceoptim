@@ -157,7 +157,7 @@ export function UnlockGate({
               />
               <span className="text-[12px] leading-relaxed text-muted">
                 I&apos;m a prospective or accredited investor interested in
-                partnering with BLB Realty.
+                partnering with Bonomo Capital Group.
               </span>
             </label>
             <button

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description:
     "Travel guides, tips, and local insights for Houston EaDo and Niagara Falls. Discover the best things to do, where to eat, and how to save on vacation rentals.",
   openGraph: {
-    title: "Blog | BLB Realty",
+    title: "Blog | Bonomo Capital Group",
     description:
       "Travel guides, tips, and local insights for Houston EaDo and Niagara Falls.",
   },
@@ -45,7 +45,7 @@ export default function BlogPage() {
               <div className="relative aspect-[16/9] overflow-hidden">
                 <Image
                   src={post.coverImage}
-                  alt={`${post.title} — BLB Realty travel guide`}
+                  alt={`${post.title} — Bonomo Capital Group travel guide`}
                   fill
                   className="object-cover transition-all duration-700 group-hover:scale-110"
                   sizes="(max-width: 768px) 100vw, 50vw"

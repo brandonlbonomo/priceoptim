@@ -1,5 +1,5 @@
 /**
- * BLB Realty portfolio — residential assets owned, redeveloped, and operated
+ * Bonomo Capital Group portfolio — residential assets owned, redeveloped, and operated
  * by the firm across Houston, TX and Niagara Falls, NY.
  *
  * We describe strategy and standing only; we do not publish acquisition

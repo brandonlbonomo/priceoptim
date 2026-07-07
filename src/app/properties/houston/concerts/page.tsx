@@ -48,7 +48,7 @@ const concertsFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function ConcertsPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Concert Night Rentals",
+    name: "Bonomo Capital Group — Concert Night Rentals",
     description:
       "Vacation rentals within walking distance of 713 Music Hall and Toyota Center in Houston's EaDo neighborhood. Perfect for concerts and live music events.",
     url: `${baseUrl}/properties/houston/concerts`,

@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for BLB Realty vacation rentals operated by BLB REALTY LLC.",
+    "Terms of Service for Bonomo Capital Group vacation rentals operated by Bonomo Capital Group.",
   alternates: {
     canonical: "/terms",
   },
@@ -33,7 +33,7 @@ export default function TermsPage() {
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
             Please read these terms carefully before using our website or booking
-            a vacation rental through BLB Realty.
+            a vacation rental through Bonomo Capital Group.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export default function TermsPage() {
                   www.byblb.com
                 </a>{" "}
                 (the &ldquo;Site&rdquo;) or booking a vacation rental through
-                BLB Realty, operated by BLB REALTY LLC
+                Bonomo Capital Group, operated by Bonomo Capital Group
                 (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), you
                 agree to be bound by these Terms of Service
                 (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you
@@ -148,7 +148,7 @@ export default function TermsPage() {
                 6. Limitation of Liability
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
-                To the fullest extent permitted by law, BLB REALTY LLC, its
+                To the fullest extent permitted by law, Bonomo Capital Group, its
                 owners, officers, employees, and agents shall not be liable for
                 any indirect, incidental, special, consequential, or punitive
                 damages arising out of or related to your use of the Site, any
@@ -172,8 +172,8 @@ export default function TermsPage() {
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted">
                 All content on this Site, including but not limited to text,
-                images, graphics, logos, and software, is the property of BLB
-                REALTY LLC or its content suppliers and is protected by United
+                images, graphics, logos, and software, is the property of
+                Bonomo Capital Group or its content suppliers and is protected by United
                 States and international copyright, trademark, and other
                 intellectual property laws. You may not reproduce, distribute,
                 modify, or create derivative works from any content on this Site
@@ -221,7 +221,7 @@ export default function TermsPage() {
               <div className="mt-4 space-y-2 text-[15px] leading-relaxed text-muted">
                 <p>
                   <span className="font-medium text-foreground">Company:</span>{" "}
-                  BLB REALTY LLC
+                  Bonomo Capital Group
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Website:</span>{" "}

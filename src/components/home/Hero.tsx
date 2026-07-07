@@ -23,7 +23,7 @@ export function Hero() {
             <br className="hidden sm:block" /> and held for the long term.
           </h1>
           <p className="mx-auto mt-7 max-w-2xl text-[16px] font-light leading-relaxed text-white/60">
-            BLB Realty acquires, builds, and redevelops residential property —
+            Bonomo Capital Group acquires, builds, and redevelops residential property —
             holding a growing portfolio of rental homes with long-term tenants,
             and operating in private credit and private equity.
           </p>

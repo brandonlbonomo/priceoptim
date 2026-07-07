@@ -33,7 +33,7 @@ export function FirmPillars() {
               A vertically integrated real estate investment firm.
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted">
-              BLB Realty owns what it operates. We source and improve residential
+              Bonomo Capital Group owns what it operates. We source and improve residential
               property, hold it as a long-term rental portfolio, and put private
               capital to work behind real assets.
             </p>

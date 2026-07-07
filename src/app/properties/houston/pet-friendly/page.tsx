@@ -48,7 +48,7 @@ const petFriendlyFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function PetFriendlyPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Pet-Friendly Houston Rentals",
+    name: "Bonomo Capital Group — Pet-Friendly Houston Rentals",
     description:
       "Pet-friendly vacation rentals in Houston's EaDo neighborhood. Dog-friendly breweries, parks, and patios within walking distance. $75/night pet fee.",
     url: `${baseUrl}/properties/houston/pet-friendly`,

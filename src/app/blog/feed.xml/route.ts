@@ -21,7 +21,7 @@ export function GET() {
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>BLB Realty — Blog</title>
+    <title>Bonomo Capital Group — Blog</title>
     <link>${baseUrl}/blog</link>
     <description>Travel guides, tips, and local insights for Houston EaDo and Niagara Falls, NY.</description>
     <language>en-us</language>

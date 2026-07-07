@@ -48,7 +48,7 @@ const familyFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which adds up quickly on a family-length stay.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which adds up quickly on a family-length stay.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function FamilyPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Family Niagara Falls Rentals",
+    name: "Bonomo Capital Group — Family Niagara Falls Rentals",
     description:
       "Family-friendly vacation rentals near Niagara Falls State Park. Multiple bedrooms, full kitchens, washer/dryer, and space for the whole family. Minutes from kid-friendly attractions.",
     url: `${baseUrl}/properties/niagara-falls/family`,

@@ -43,7 +43,7 @@ const rodeoFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
   },
   {
     question: "What else is nearby besides the Rodeo?",
@@ -72,7 +72,7 @@ export default function RodeoPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — RodeoHouston Rentals",
+    name: "Bonomo Capital Group — RodeoHouston Rentals",
     description:
       "Vacation rentals in Houston's EaDo neighborhood with METRORail access to NRG Stadium for RodeoHouston. Full kitchens, free parking, and no platform fees.",
     url: `${baseUrl}/properties/houston/rodeo`,
@@ -99,7 +99,7 @@ export default function RodeoPage() {
     "@type": "Event",
     name: "Houston Livestock Show and Rodeo (RodeoHouston) 2027",
     description:
-      "RodeoHouston at NRG Stadium — rodeo events and headliner concerts. BLB Realty offers vacation rentals in East Downtown, a rideshare or METRORail ride from the grounds.",
+      "RodeoHouston at NRG Stadium — rodeo events and headliner concerts. Bonomo Capital Group offers vacation rentals in East Downtown, a rideshare or METRORail ride from the grounds.",
     location: {
       "@type": "Place",
       name: "NRG Stadium",

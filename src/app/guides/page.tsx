@@ -11,9 +11,9 @@ export const metadata: Metadata = {
   title: "Destination Guides",
   alternates: { canonical: "/guides" },
   description:
-    "Travel guides, neighborhood tips, and local insights for Houston EaDo and Niagara Falls, NY. Plan your perfect trip with BLB Realty.",
+    "Travel guides, neighborhood tips, and local insights for Houston EaDo and Niagara Falls, NY. Plan your perfect trip with Bonomo Capital Group.",
   openGraph: {
-    title: "Destination Guides | BLB Realty",
+    title: "Destination Guides | Bonomo Capital Group",
     description:
       "Travel guides, neighborhood tips, and local insights for Houston and Niagara Falls.",
   },
@@ -125,7 +125,7 @@ export default function GuidesPage() {
                 <div className="relative aspect-[16/9] overflow-hidden">
                   <Image
                     src={post.coverImage}
-                    alt={`${post.title} — BLB Realty travel guide`}
+                    alt={`${post.title} — Bonomo Capital Group travel guide`}
                     fill
                     className="object-cover transition-all duration-700 group-hover:scale-110"
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"

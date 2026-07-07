@@ -43,7 +43,7 @@ const astrosFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout.",
   },
   {
     question: "What's the EaDo neighborhood like?",
@@ -72,7 +72,7 @@ export default function AstrosSeasonPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Astros Season Rentals",
+    name: "Bonomo Capital Group — Astros Season Rentals",
     description:
       "Vacation rentals within walking distance of Minute Maid Park in Houston's EaDo neighborhood. Perfect for Astros games, concerts, and events.",
     url: `${baseUrl}/properties/houston/astros-season`,
@@ -99,7 +99,7 @@ export default function AstrosSeasonPage() {
     "@type": "Event",
     name: "Houston Astros Baseball Season 2026",
     description:
-      "Houston Astros home games at Minute Maid Park in East Downtown. BLB Realty offers walk-to-the-ballpark vacation rentals nearby.",
+      "Houston Astros home games at Minute Maid Park in East Downtown. Bonomo Capital Group offers walk-to-the-ballpark vacation rentals nearby.",
     location: {
       "@type": "Place",
       name: "Minute Maid Park",

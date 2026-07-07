@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   description: location.metaDescription,
   alternates: { canonical: "/properties/houston" },
   openGraph: {
-    title: `${location.title} | BLB Realty`,
+    title: `${location.title} | Bonomo Capital Group`,
     description: location.metaDescription,
   },
 };
@@ -48,7 +48,7 @@ export default function HoustonPropertiesPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Houston, TX",
+    name: "Bonomo Capital Group — Houston, TX",
     description: location.description,
     url: `${baseUrl}/properties/houston`,
     address: {

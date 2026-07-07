@@ -167,11 +167,11 @@ export function EquityByPropertyChart() {
           const w = (p.equity / max) * barMax;
           return (
             <g key={p.name}>
-              <text x={padL} y={cy - 3} fontSize="13" fontWeight="600" fill="#23271f">{p.name}</text>
+              <text x={padL} y={cy - 3} fontSize="13" fontWeight="600" fill="#1e2333">{p.name}</text>
               <text x={padL} y={cy + 13} fontSize="10.5" fill={INK}>{p.market}</text>
               <rect x={barLeft} y={cy - 12} width={barMax} height={24} rx="4" fill={AXIS} opacity="0.22" />
               <rect x={barLeft} y={cy - 12} width={Math.max(w, 2)} height={24} rx="4" fill={p.color} />
-              <text x={barLeft + Math.max(w, 2) + 10} y={cy + 4} fontSize="12.5" fontWeight="700" fill="#23271f">{fmtCompactUSD(p.equity)}</text>
+              <text x={barLeft + Math.max(w, 2) + 10} y={cy + 4} fontSize="12.5" fontWeight="700" fill="#1e2333">{fmtCompactUSD(p.equity)}</text>
             </g>
           );
         })}
@@ -217,7 +217,7 @@ export function RevenueByYearChart() {
               onPointerLeave={hide}>
               <rect x={padL + i * band} y={padT} width={band} height={plotH} fill="transparent" />
               <rect x={x} y={y(d.value)} width={barW} height={plotH - (y(d.value) - padT)} rx="4" fill={SERIES_COLORS.green} />
-              <text x={x + barW / 2} y={y(d.value) - 8} textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#23271f">{fmtCompactUSD(d.value)}</text>
+              <text x={x + barW / 2} y={y(d.value) - 8} textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#1e2333">{fmtCompactUSD(d.value)}</text>
               <text x={x + barW / 2} y={H - 9} textAnchor="middle" fontSize="11.5" fill={INK}>{d.year}</text>
             </g>
           );

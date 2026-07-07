@@ -12,7 +12,7 @@ import { getAllReviews } from "@/data/reviews";
 export const metadata: Metadata = {
   title: "Book a Stay",
   description:
-    "Book a short-term stay in a BLB Realty home — direct in Houston, TX and Niagara Falls, NY. No platform fees, professionally operated, the best rate every time.",
+    "Book a short-term stay in a Bonomo Capital Group home — direct in Houston, TX and Niagara Falls, NY. No platform fees, professionally operated, the best rate every time.",
   alternates: { canonical: "/book" },
 };
 
@@ -62,7 +62,7 @@ export default function BookPage() {
         tone="dark"
         eyebrow="Book a Stay · Direct"
         title="Stay in a home from our portfolio."
-        intro={`A number of the properties BLB Realty owns operate as short-term rentals in Houston and Niagara Falls. Book with us directly — ${avgRating}★ across ${reviews.length}+ guest reviews, no platform fees.`}
+        intro={`A number of the properties Bonomo Capital Group owns operate as short-term rentals in Houston and Niagara Falls. Book with us directly — ${avgRating}★ across ${reviews.length}+ guest reviews, no platform fees.`}
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Book a Stay" }]}
       />
 

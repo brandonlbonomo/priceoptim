@@ -17,7 +17,7 @@ export function InvestCTA() {
                 Private credit and private equity, backed by real assets.
               </h2>
               <p className="mt-6 max-w-xl text-[16px] font-light leading-relaxed text-white/60">
-                Beyond the property we own directly, BLB Realty invests in private
+                Beyond the property we own directly, Bonomo Capital Group invests in private
                 credit and private equity — deploying patient capital alongside
                 partners who value discretion and a long-term horizon. We work
                 with a select group of investors by introduction.

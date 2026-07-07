@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description: location.metaDescription,
   alternates: { canonical: "/properties/niagara-falls" },
   openGraph: {
-    title: `${location.title} | BLB Realty`,
+    title: `${location.title} | Bonomo Capital Group`,
     description: location.metaDescription,
   },
 };
@@ -46,7 +46,7 @@ export default function NiagaraFallsPropertiesPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Niagara Falls, NY",
+    name: "Bonomo Capital Group — Niagara Falls, NY",
     description: location.description,
     url: `${baseUrl}/properties/niagara-falls`,
     address: {

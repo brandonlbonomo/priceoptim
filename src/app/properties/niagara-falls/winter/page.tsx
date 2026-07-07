@@ -48,7 +48,7 @@ const winterFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which matters even more when off-season rates are already lower.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout — which matters even more when off-season rates are already lower.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function NiagaraWinterPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Niagara Falls Winter Rentals",
+    name: "Bonomo Capital Group — Niagara Falls Winter Rentals",
     description:
       "Cozy vacation rentals near Niagara Falls, NY for winter getaways. Enjoy the Winter Festival of Lights, frozen Falls, and indoor attractions.",
     url: `${baseUrl}/properties/niagara-falls/winter`,

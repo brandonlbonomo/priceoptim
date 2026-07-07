@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 /*
-  BLB REALTY — design system
-  Ralph Lauren luxury: old-money, understated, editorial.
-  Hunter green pulled from the logo, built out with ivory, charcoal, and muted gold.
+  BONOMO CAPITAL GROUP — design system
+  Old-money, understated, editorial.
+  Deep navy pulled from the logo, built out with ivory, charcoal, and muted gold.
 */
 
 @theme inline {
-  /* Hunter green — the house color, matched to the logo */
-  --color-hunter: #2c3a2a;
-  --color-hunter-light: #3c4d38;
-  --color-hunter-dark: #1e281c;
+  /* Navy — the house color, matched to the logo. (Token name kept as
+     "hunter" so all existing markup restyles automatically.) */
+  --color-hunter: #1d2b4a;
+  --color-hunter-light: #2d4066;
+  --color-hunter-dark: #141d33;
 
-  /* Muted gold — the swoosh, pulled back for text and accents on ivory */
+  /* Muted gold — the accent, pulled back for text and accents on ivory */
   --color-gold: #a9863f;
   --color-gold-light: #c6a25a;
   --color-gold-dark: #856831;
@@ -21,18 +22,18 @@
   --color-ivory: #f4efe3;
   --color-cream: #efe8d8;
   --color-surface: #fbf8f0;
-  --color-charcoal: #23271f;
+  --color-charcoal: #1e2333;
 
   /* Semantic aliases (kept so existing markup restyles automatically) */
-  --color-primary: #2c3a2a;
-  --color-primary-light: #3c4d38;
-  --color-primary-dark: #1e281c;
+  --color-primary: #1d2b4a;
+  --color-primary-light: #2d4066;
+  --color-primary-dark: #141d33;
   --color-accent: #a9863f;
   --color-accent-light: #c6a25a;
   --color-accent-dark: #856831;
   --color-background: #f4efe3;
-  --color-foreground: #23271f;
-  --color-muted: #6d6a5b;
+  --color-foreground: #1e2333;
+  --color-muted: #63677a;
   --color-muted-light: #e7e0cf;
 
   --font-sans: var(--font-inter);

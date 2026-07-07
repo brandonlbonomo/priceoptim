@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for BLB Realty vacation rentals. Learn how we collect, use, and protect your personal information.",
+    "Privacy Policy for Bonomo Capital Group vacation rentals. Learn how we collect, use, and protect your personal information.",
   alternates: {
     canonical: "/privacy",
   },
@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
             Privacy Policy
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-muted">
-            Your privacy matters to us. This policy explains how BLB Realty
+            Your privacy matters to us. This policy explains how Bonomo Capital Group
             collects, uses, and protects your personal information.
           </p>
           <p className="mt-3 text-[13px] text-muted">
@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
               Introduction
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted">
-              BLB REALTY LLC (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or
+              Bonomo Capital Group (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or
               &ldquo;our&rdquo;) operates the website{" "}
               <a
                 href="https://www.byblb.com"
@@ -56,7 +56,7 @@ export default function PrivacyPolicyPage() {
               >
                 www.byblb.com
               </a>{" "}
-              and the vacation rental brand &ldquo;BLB Realty.&rdquo;
+              and the vacation rental brand &ldquo;Bonomo Capital Group.&rdquo;
               This Privacy Policy describes how we collect, use, disclose, and
               safeguard your information when you visit our website or book a
               stay with us. By using our services, you consent to the practices
@@ -299,7 +299,7 @@ export default function PrivacyPolicyPage() {
             <div className="mt-4 space-y-2 text-[15px] leading-relaxed text-muted">
               <p>
                 <span className="font-medium text-foreground">Company:</span>{" "}
-                BLB REALTY LLC
+                Bonomo Capital Group
               </p>
               <p>
                 <span className="font-medium text-foreground">Email:</span>{" "}

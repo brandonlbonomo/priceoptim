@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Guest Reviews",
   alternates: { canonical: "/reviews" },
   description:
-    "Read what guests say about BLB Realty vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
+    "Read what guests say about Bonomo Capital Group vacation rentals in Houston EaDo and Niagara Falls. Real reviews from real stays.",
 };
 
 function formatDate(dateStr: string): string {
@@ -42,7 +42,7 @@ export default function ReviewsPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty",
+    name: "Bonomo Capital Group",
     description:
       "Premium vacation rentals in Houston, TX and Niagara Falls, NY. Book direct for the best rates.",
     url: baseUrl,

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "All Properties",
   alternates: { canonical: "/properties" },
   description:
-    "Browse all BLB Realty vacation rentals. Find your perfect getaway and book directly for the best rates.",
+    "Browse all Bonomo Capital Group vacation rentals. Find your perfect getaway and book directly for the best rates.",
 };
 
 interface PropertiesPageProps {

@@ -23,7 +23,7 @@ export function Navbar() {
     <header className="glass sticky top-0 z-50">
       <Container>
         <nav className="flex h-20 items-center justify-between">
-          <Link href="/" aria-label="BLB Realty — home" className="text-[26px]">
+          <Link href="/" aria-label="Bonomo Capital Group — home" className="text-[26px]">
             <Logo tone="dark" />
           </Link>
 

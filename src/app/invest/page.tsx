@@ -10,7 +10,7 @@ import { InvestorDashboard } from "@/components/invest/InvestorDashboard";
 export const metadata: Metadata = {
   title: "Invest — Private Capital",
   description:
-    "BLB Realty operates in private credit and private equity, backed by residential real estate. We work with a select group of investors by introduction. Speak with the firm.",
+    "Bonomo Capital Group operates in private credit and private equity, backed by residential real estate. We work with a select group of investors by introduction. Speak with the firm.",
   alternates: { canonical: "/invest" },
 };
 
@@ -49,7 +49,7 @@ export default function InvestPage() {
         tone="dark"
         eyebrow="Private Capital"
         title="Patient capital, backed by real assets."
-        intro="Alongside the property we own directly, BLB Realty operates in private credit and private equity — deploying capital behind residential real estate for investors who value a long horizon and quiet discipline."
+        intro="Alongside the property we own directly, Bonomo Capital Group operates in private credit and private equity — deploying capital behind residential real estate for investors who value a long horizon and quiet discipline."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Invest" }]}
       />
 
@@ -167,7 +167,7 @@ export default function InvestPage() {
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-muted">
                 If you are a qualified investor interested in private credit or
-                private equity opportunities with BLB Realty, we would welcome a
+                private equity opportunities with Bonomo Capital Group, we would welcome a
                 conversation. Introductions are personal and confidential.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

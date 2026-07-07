@@ -18,33 +18,33 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: "BLB Realty | Real Estate Investment, Development & Private Capital",
-    template: "%s | BLB Realty",
+    default: "Bonomo Capital Group | Real Estate Investment, Development & Private Capital",
+    template: "%s | Bonomo Capital Group",
   },
   description:
-    "BLB Realty is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston and Niagara Falls.",
+    "Bonomo Capital Group is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston and Niagara Falls.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
-    siteName: "BLB Realty",
+    siteName: "Bonomo Capital Group",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/bonomo-logo-horizontal.png",
         width: 1200,
         height: 630,
-        alt: "BLB Realty — Real Estate Investment & Development",
+        alt: "Bonomo Capital Group — Real Estate Investment & Development",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BLB Realty | Real Estate Investment, Development & Private Capital",
+    title: "Bonomo Capital Group | Real Estate Investment, Development & Private Capital",
     description:
       "A real estate investment firm — acquisitions, development, a growing rental portfolio, and private capital. Direct stays in Houston and Niagara Falls.",
-    images: ["/og-image.jpg"],
+    images: ["/bonomo-logo-horizontal.png"],
   },
 };
 
@@ -64,10 +64,10 @@ export default function RootLayout({
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "BLB Realty",
-    legalName: "BLB REALTY LLC",
+    name: "Bonomo Capital Group",
+    legalName: "Bonomo Capital Group",
     url: baseUrl,
-    logo: `${baseUrl}/logo.png`,
+    logo: `${baseUrl}/bonomo-logo-square.png`,
     description:
       "A real estate investment firm acquiring, building, and redeveloping residential property, holding a growing rental portfolio, and operating in private credit and private equity.",
     foundingDate: "2024",
@@ -107,7 +107,7 @@ export default function RootLayout({
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "BLB Realty",
+    name: "Bonomo Capital Group",
     url: baseUrl,
     potentialAction: {
       "@type": "SearchAction",
@@ -122,11 +122,11 @@ export default function RootLayout({
   const localBusinessJsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Direct Stays",
-    legalName: "BLB REALTY LLC",
+    name: "Bonomo Capital Group — Direct Stays",
+    legalName: "Bonomo Capital Group",
     url: baseUrl,
-    logo: `${baseUrl}/logo.png`,
-    image: `${baseUrl}/logo.png`,
+    logo: `${baseUrl}/bonomo-logo-square.png`,
+    image: `${baseUrl}/bonomo-logo-square.png`,
     telephone: "+1-516-650-6653",
     email: "blbrealtyllc@gmail.com",
     geo: {
@@ -161,7 +161,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://hospitable.com" />
-        <link rel="alternate" type="application/rss+xml" title="BLB Realty Blog" href="/blog/feed.xml" />
+        <link rel="alternate" type="application/rss+xml" title="Bonomo Capital Group Blog" href="/blog/feed.xml" />
         <script id="mcjs" src="https://chimpstatic.com/mcjs-connected/js/users/4b04bf316771ed8107e92913e/db364ec57771e70054ea386ea.js" async />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-FH3EZPNNZ3" />
         <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-FH3EZPNNZ3');` }} />

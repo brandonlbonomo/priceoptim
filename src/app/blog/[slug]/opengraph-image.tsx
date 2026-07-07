@@ -46,7 +46,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
               color: "#bf9b30",
             }}
           >
-            EXPERIENCES BY BLB
+            BONOMO CAPITAL GROUP
           </div>
           <div
             style={{

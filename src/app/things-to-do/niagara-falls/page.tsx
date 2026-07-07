@@ -16,7 +16,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Things to Do in Niagara Falls, NY",
   description:
-    "Plan your Niagara Falls trip — the best attractions, tours, family activities, restaurants, and day trips on the New York side. Local tips from BLB Realty.",
+    "Plan your Niagara Falls trip — the best attractions, tours, family activities, restaurants, and day trips on the New York side. Local tips from Bonomo Capital Group.",
   alternates: {
     canonical: "/things-to-do/niagara-falls",
   },

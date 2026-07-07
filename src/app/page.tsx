@@ -15,13 +15,13 @@ import { properties } from "@/data/properties";
 export const metadata: Metadata = {
   title: {
     absolute:
-      "BLB Realty | Direct Stays in Houston & Niagara Falls + Real Estate Investment",
+      "Bonomo Capital Group | Direct Stays in Houston & Niagara Falls + Real Estate Investment",
   },
   description:
-    "Book direct and save on 5-star short-term rentals in Houston, TX and Niagara Falls, NY — no platform fees. BLB Realty is a real estate investment firm operating a growing rental portfolio alongside private credit and private equity.",
+    "Book direct and save on 5-star short-term rentals in Houston, TX and Niagara Falls, NY — no platform fees. Bonomo Capital Group is a real estate investment firm operating a growing rental portfolio alongside private credit and private equity.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "BLB Realty | Direct Stays in Houston & Niagara Falls",
+    title: "Bonomo Capital Group | Direct Stays in Houston & Niagara Falls",
     description:
       "Book direct and save on 5-star short-term rentals in Houston and Niagara Falls. A real estate investment firm with a growing rental portfolio and private capital.",
     url: "/",
@@ -89,8 +89,8 @@ export default function HomePage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "RealEstateAgent",
-            name: "BLB Realty",
-            legalName: "BLB REALTY LLC",
+            name: "Bonomo Capital Group",
+            legalName: "Bonomo Capital Group",
             description:
               "A real estate investment firm acquiring, building, and redeveloping residential property, holding a growing rental portfolio, and operating in private credit and private equity.",
             url: process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com",

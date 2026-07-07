@@ -8,7 +8,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Get in touch with BLB Realty. Questions about our vacation rentals in Houston EaDo or Niagara Falls? We're here to help.",
+    "Get in touch with Bonomo Capital Group. Questions about our vacation rentals in Houston EaDo or Niagara Falls? We're here to help.",
   alternates: {
     canonical: "/contact",
   },
@@ -20,8 +20,8 @@ export default function ContactPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    name: "BLB Realty",
-    legalName: "BLB REALTY LLC",
+    name: "Bonomo Capital Group",
+    legalName: "Bonomo Capital Group",
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     image: `${baseUrl}/logo.png`,

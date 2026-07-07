@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Get Exclusive Deals",
   alternates: { canonical: "/subscribe" },
   description:
-    "Sign up for special rates, last-minute openings, and seasonal promotions from BLB Realty.",
+    "Sign up for special rates, last-minute openings, and seasonal promotions from Bonomo Capital Group.",
 };
 
 const perks = [

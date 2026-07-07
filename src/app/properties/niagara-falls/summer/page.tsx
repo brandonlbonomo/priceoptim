@@ -48,7 +48,7 @@ const summerFaqs = [
   {
     question: "Is it cheaper to book direct than on Airbnb?",
     answer:
-      "Booking direct with BLB Realty is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout, and self check-in means you arrive on your own schedule.",
+      "Booking direct with Bonomo Capital Group is always the lowest price for the same home. You skip the service fees Airbnb, VRBO, and Booking.com add at checkout, and self check-in means you arrive on your own schedule.",
   },
 ];
 
@@ -72,7 +72,7 @@ export default function SummerPage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: "BLB Realty — Summer Niagara Falls Rentals",
+    name: "Bonomo Capital Group — Summer Niagara Falls Rentals",
     description:
       "Summer vacation rentals near Niagara Falls State Park. Maid of the Mist, Cave of the Winds, gorge trails, and outdoor activities all within minutes. Pet-friendly homes with full kitchens.",
     url: `${baseUrl}/properties/niagara-falls/summer`,

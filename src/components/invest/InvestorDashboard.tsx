@@ -95,7 +95,7 @@ export function InvestorDashboard() {
       <RequestPacket />
 
       <p className="border-t border-hunter/10 pt-6 text-center text-[12px] leading-relaxed text-muted/70">
-        Figures from BLB Realty&apos;s internal portfolio model, as of {AS_OF}.
+        Figures from Bonomo Capital Group&apos;s internal portfolio model, as of {AS_OF}.
         Actuals are unaudited; *projected and forward-year values are
         model forecasts, not guarantees of future results or an offer. Full
         underwriting is shared with qualified investors under definitive
