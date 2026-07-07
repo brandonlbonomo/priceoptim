@@ -131,14 +131,15 @@ export default function InvestPage() {
         <Container>
           <ScrollReveal>
             <div className="mx-auto max-w-2xl text-center">
-              <p className="eyebrow">The Numbers</p>
+              <p className="eyebrow">The Investor Room</p>
               <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-hunter sm:text-4xl">
                 See the performance and the math.
               </h2>
               <p className="mt-4 text-[16px] leading-relaxed text-muted">
                 Portfolio performance, target returns, and the underwriting we
-                run on every deal — shared with prospective partners. Enter your
-                email and phone to unlock the figures.
+                run on every deal — reserved for prospective partners. Introduce
+                yourself to unlock the full dashboard; serious partners can then
+                request the complete underwriting model.
               </p>
             </div>
           </ScrollReveal>

@@ -13,32 +13,34 @@ interface UnlockGateProps {
   blurb?: string;
 }
 
-const STORAGE_PREFIX = "blb-unlocked:";
+const UNLOCK_PREFIX = "blb-unlocked:";
+const LEAD_PREFIX = "blb-lead:";
 
 export function UnlockGate({
   source,
   children,
   eyebrow = "Investor access",
-  title = "Unlock the numbers",
-  blurb = "Enter your email and phone to view portfolio performance and the underwriting math. We'll be in touch about partnering.",
+  title = "Enter the investor room",
+  blurb = "Portfolio performance, target returns, and the underwriting behind every deal. Tell us who you are to unlock the figures — we'll follow up personally about partnering.",
 }: UnlockGateProps) {
   const [unlocked, setUnlocked] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [intent, setIntent] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState("");
 
-  // Remember visitors who already unlocked.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (localStorage.getItem(STORAGE_PREFIX + source) === "true") {
+    if (localStorage.getItem(UNLOCK_PREFIX + source) === "true") {
       setUnlocked(true);
     }
   }, [source]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !phone) return;
+    if (!name || !email || !phone || !intent) return;
     setStatus("loading");
     setMessage("");
 
@@ -46,12 +48,24 @@ export function UnlockGate({
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, phone, source, requirePhone: true }),
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          source,
+          intent,
+          requirePhone: true,
+        }),
       });
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem(STORAGE_PREFIX + source, "true");
+        localStorage.setItem(UNLOCK_PREFIX + source, "true");
+        // Remember the lead so higher-intent follow-ups (tier 2) can reuse it.
+        localStorage.setItem(
+          LEAD_PREFIX + source,
+          JSON.stringify({ email, name }),
+        );
         setUnlocked(true);
       } else {
         setStatus("error");
@@ -67,23 +81,26 @@ export function UnlockGate({
     return <>{children}</>;
   }
 
+  const inputClass =
+    "w-full rounded-[4px] border border-hunter/15 bg-white px-4 py-3 text-[14px] text-foreground placeholder-muted transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gold/30";
+
   return (
     <div className="relative overflow-hidden rounded-[6px] border border-hunter/10">
       {/* Blurred preview of the real content behind the gate */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none blur-md saturate-[0.85]"
+        className="pointer-events-none max-h-[520px] select-none overflow-hidden blur-md saturate-[0.85]"
       >
         {children}
       </div>
 
       {/* Lock overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-cream/70 backdrop-blur-[2px]">
+      <div className="absolute inset-0 flex items-center justify-center bg-cream/80 backdrop-blur-[3px]">
         <div className="mx-auto w-full max-w-md px-6 py-10 text-center">
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-hunter/[0.06]">
             <Lock className="h-4 w-4 text-hunter" />
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-dark">
             {eyebrow}
           </p>
           <h3 className="mt-2 font-display text-2xl font-medium tracking-tight text-hunter">
@@ -95,6 +112,18 @@ export function UnlockGate({
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-3 text-left">
             <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (status === "error") setStatus("idle");
+              }}
+              placeholder="Full name"
+              required
+              autoComplete="name"
+              className={inputClass}
+            />
+            <input
               type="email"
               value={email}
               onChange={(e) => {
@@ -104,7 +133,7 @@ export function UnlockGate({
               placeholder="you@email.com"
               required
               autoComplete="email"
-              className="w-full rounded-[4px] border border-hunter/15 bg-white px-4 py-3 text-[14px] text-foreground placeholder-muted transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gold/30"
+              className={inputClass}
             />
             <input
               type="tel"
@@ -116,8 +145,21 @@ export function UnlockGate({
               placeholder="(555) 123-4567"
               required
               autoComplete="tel"
-              className="w-full rounded-[4px] border border-hunter/15 bg-white px-4 py-3 text-[14px] text-foreground placeholder-muted transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gold/30"
+              className={inputClass}
             />
+            <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-left">
+              <input
+                type="checkbox"
+                checked={intent}
+                onChange={(e) => setIntent(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#856831]"
+              />
+              <span className="text-[12px] leading-relaxed text-muted">
+                I&apos;m a prospective or accredited investor interested in
+                partnering with BLB Realty.
+              </span>
+            </label>
             <button
               type="submit"
               disabled={status === "loading"}
@@ -130,7 +172,7 @@ export function UnlockGate({
                 </>
               ) : (
                 <>
-                  View the numbers
+                  Unlock the numbers
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -139,8 +181,8 @@ export function UnlockGate({
               <p className="text-[13px] text-red-600">{message}</p>
             )}
             <p className="text-center text-[11px] leading-relaxed text-muted">
-              We respect your privacy. No spam — we&apos;ll only reach out about
-              partnering.
+              Private and confidential. We&apos;ll only reach out about
+              partnering — never shared or sold.
             </p>
           </form>
         </div>

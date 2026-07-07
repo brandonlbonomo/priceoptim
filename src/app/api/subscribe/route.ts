@@ -67,10 +67,20 @@ export async function POST(request: NextRequest) {
       normalizedPhone = phone.trim();
     }
 
+    const firstName =
+      typeof body.name === "string" && body.name.trim()
+        ? body.name.trim()
+        : body.firstName;
+
+    // Extra CRM tags: accept explicit tags, plus a qualifier tag when the
+    // visitor acknowledged they're a prospective/accredited investor.
+    const tags: string[] = Array.isArray(body.tags) ? body.tags.slice(0, 5) : [];
+    if (body.intent) tags.push("prospective-investor");
+
     const result = addSubscriber(
       email,
       source || "unknown",
-      body.firstName,
+      firstName,
       normalizedPhone,
     );
 
@@ -80,7 +90,8 @@ export async function POST(request: NextRequest) {
       email,
       phone: normalizedPhone,
       source: source || "unknown",
-      firstName: body.firstName,
+      firstName,
+      tags,
     });
 
     return NextResponse.json({ message: result.message }, { status: 200 });

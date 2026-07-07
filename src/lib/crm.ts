@@ -5,6 +5,8 @@ export interface Lead {
   phone?: string;
   source: string;
   firstName?: string;
+  /** Extra Mailchimp tags beyond the source (e.g. "prospective-investor"). */
+  tags?: string[];
 }
 
 /**
@@ -38,32 +40,43 @@ async function syncToMailchimp(lead: Lead): Promise<void> {
 
   const email = lead.email.toLowerCase().trim();
   const subscriberHash = crypto.createHash("md5").update(email).digest("hex");
-  const url = `https://${dc}.api.mailchimp.com/3.0/lists/${audienceId}/members/${subscriberHash}`;
+  const base = `https://${dc}.api.mailchimp.com/3.0/lists/${audienceId}/members/${subscriberHash}`;
+  const auth = `Basic ${Buffer.from(`any:${apiKey}`).toString("base64")}`;
 
   const mergeFields: Record<string, string> = {};
   if (lead.phone) mergeFields.PHONE = lead.phone;
   if (lead.firstName) mergeFields.FNAME = lead.firstName;
 
-  const body = {
-    email_address: email,
-    status_if_new: "subscribed",
-    merge_fields: mergeFields,
-    tags: [lead.source],
-  };
+  const allTags = [lead.source, ...(lead.tags ?? [])];
 
   try {
-    // PUT upserts by subscriber hash — handles new and returning leads.
-    const res = await fetch(url, {
+    // 1) PUT upserts the member (create or update) by subscriber hash.
+    const res = await fetch(base, {
       method: "PUT",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`any:${apiKey}`).toString("base64")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email_address: email,
+        status_if_new: "subscribed",
+        merge_fields: mergeFields,
+      }),
     });
     if (!res.ok) {
       const detail = await res.text();
-      console.error(`[crm] Mailchimp sync failed (${res.status}): ${detail}`);
+      console.error(`[crm] Mailchimp upsert failed (${res.status}): ${detail}`);
+      return;
+    }
+
+    // 2) Apply tags via the tags endpoint — this works for BOTH new and
+    //    existing members (tags in the PUT body only apply on create).
+    const tagRes = await fetch(`${base}/tags`, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tags: allTags.map((name) => ({ name, status: "active" })),
+      }),
+    });
+    if (!tagRes.ok) {
+      console.error(`[crm] Mailchimp tagging failed (${tagRes.status})`);
     }
   } catch (err) {
     console.error("[crm] Mailchimp sync error:", err);

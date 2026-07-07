@@ -5,6 +5,7 @@ import {
   EquityByPropertyChart,
   RevenueByYearChart,
 } from "./charts";
+import { RequestPacket } from "./RequestPacket";
 
 const tiles: { value: string; label: string; projected?: boolean }[] = [
   { value: "$1.63M", label: "Portfolio value" },
@@ -89,6 +90,9 @@ export function InvestorDashboard() {
       >
         <EquityByPropertyChart />
       </ChartCard>
+
+      {/* Tier 2 — higher-intent ask, shown now that they've unlocked */}
+      <RequestPacket />
 
       <p className="border-t border-hunter/10 pt-6 text-center text-[12px] leading-relaxed text-muted/70">
         Figures from BLB Realty&apos;s internal portfolio model, as of {AS_OF}.
