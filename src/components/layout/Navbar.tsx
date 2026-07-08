@@ -25,10 +25,10 @@ export function Navbar() {
         <nav className="flex h-20 items-center justify-between">
           <Link href="/" aria-label="Bonomo Capital Group — home" className="flex items-center">
             <Image
-              src="/bonomo-logo.png"
+              src="/bonomo-mark.png"
               alt="Bonomo Capital Group"
-              width={286}
-              height={191}
+              width={1162}
+              height={706}
               priority
               className="h-14 w-auto"
             />

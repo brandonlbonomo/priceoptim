@@ -36,10 +36,10 @@ export function Footer() {
           <div>
             <Link href="/" aria-label="Bonomo Capital Group — home" className="inline-block">
               <Image
-                src="/bonomo-logo-light.png"
+                src="/bonomo-mark-light.png"
                 alt="Bonomo Capital Group"
-                width={240}
-                height={160}
+                width={1162}
+                height={706}
                 className="h-16 w-auto"
               />
             </Link>
