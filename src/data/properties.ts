@@ -239,7 +239,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-5", 8, 37, [], [1, 2, 3, 4]),
+    images: buildImageArray("unit-7", 8, 33, [], [1, 2]),
     details: {
       bedrooms: 1,
       bathrooms: 1,
@@ -342,7 +342,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-7", 8, 33, [], [1, 2]),
+    images: buildImageArray("unit-8", 8, 34, [3], [1, 2]),
     details: {
       bedrooms: 1,
       bathrooms: 1,
@@ -393,7 +393,7 @@ export const properties: Property[] = [
       state: "TX",
       area: "EaDo (East Downtown)",
     },
-    images: buildImageArray("unit-8", 8, 34, [3], [1, 2]),
+    images: buildImageArray("unit-5", 8, 37, [], [1, 2, 3, 4]),
     details: {
       bedrooms: 1,
       bathrooms: 1,
