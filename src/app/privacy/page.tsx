@@ -304,10 +304,10 @@ export default function PrivacyPolicyPage() {
               <p>
                 <span className="font-medium text-foreground">Email:</span>{" "}
                 <a
-                  href="mailto:blbrealtyllc@gmail.com"
+                  href="mailto:info@bonomocapital.com"
                   className="font-medium text-accent-dark transition-colors duration-200 hover:text-foreground"
                 >
-                  blbrealtyllc@gmail.com
+                  info@bonomocapital.com
                 </a>
               </p>
               <p>

@@ -53,8 +53,8 @@ export function Footer() {
                 </a>
               </p>
               <p>
-                <a href="mailto:blbrealtyllc@gmail.com" className="transition-colors duration-200 hover:text-white/70">
-                  blbrealtyllc@gmail.com
+                <a href="mailto:info@bonomocapital.com" className="transition-colors duration-200 hover:text-white/70">
+                  info@bonomocapital.com
                 </a>
               </p>
             </div>

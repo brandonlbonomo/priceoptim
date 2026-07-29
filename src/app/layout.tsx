@@ -76,7 +76,7 @@ export default function RootLayout({
       "@type": "ContactPoint",
       telephone: "+1-516-650-6653",
       contactType: "customer service",
-      email: "blbrealtyllc@gmail.com",
+      email: "info@bonomocapital.com",
       availableLanguage: "English",
     },
     areaServed: [
@@ -128,7 +128,7 @@ export default function RootLayout({
     logo: `${baseUrl}/bonomo-logo-square.png`,
     image: `${baseUrl}/bonomo-logo-square.png`,
     telephone: "+1-516-650-6653",
-    email: "blbrealtyllc@gmail.com",
+    email: "info@bonomocapital.com",
     geo: {
       "@type": "GeoCoordinates",
       latitude: 29.7544,

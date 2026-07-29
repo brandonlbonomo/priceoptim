@@ -26,7 +26,7 @@ export default function ContactPage() {
     logo: `${baseUrl}/logo.png`,
     image: `${baseUrl}/logo.png`,
     telephone: "+1-516-650-6653",
-    email: "blbrealtyllc@gmail.com",
+    email: "info@bonomocapital.com",
     geo: {
       "@type": "GeoCoordinates",
       latitude: 29.7544,
@@ -107,10 +107,10 @@ export default function ContactPage() {
               We reply within a few hours
             </p>
             <a
-              href="mailto:blbrealtyllc@gmail.com"
+              href="mailto:info@bonomocapital.com"
               className="mt-3 inline-block text-[15px] font-medium text-accent-dark transition-colors duration-200 hover:text-foreground"
             >
-              blbrealtyllc@gmail.com
+              info@bonomocapital.com
             </a>
           </div>
 

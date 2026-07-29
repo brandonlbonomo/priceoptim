@@ -171,7 +171,7 @@ export default function InvestPage() {
                 conversation. Introductions are personal and confidential.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Button href="mailto:blbrealtyllc@gmail.com" size="lg">
+                <Button href="mailto:info@bonomocapital.com" size="lg">
                   Email the Firm
                 </Button>
                 <Button href="/contact" size="lg" variant="outline">
@@ -183,8 +183,8 @@ export default function InvestPage() {
                   (516) 650-6653
                 </a>
                 <span className="mx-2 text-muted/40">·</span>
-                <a href="mailto:blbrealtyllc@gmail.com" className="hover:text-hunter">
-                  blbrealtyllc@gmail.com
+                <a href="mailto:info@bonomocapital.com" className="hover:text-hunter">
+                  info@bonomocapital.com
                 </a>
               </p>
             </div>

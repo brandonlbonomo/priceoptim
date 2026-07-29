@@ -59,7 +59,7 @@ export default function AboutPage() {
       "@type": "ContactPoint",
       telephone: "+1-516-650-6653",
       contactType: "customer service",
-      email: "blbrealtyllc@gmail.com",
+      email: "info@bonomocapital.com",
       availableLanguage: "English",
     },
     areaServed: [
