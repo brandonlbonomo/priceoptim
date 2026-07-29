@@ -171,7 +171,7 @@ export default function AmenitiesPage() {
             {properties.length} properties.
           </p>
           <div className="mt-5">
-            <Button href="/properties">Browse All Properties</Button>
+            <Button href="/nomo-collection">Browse All Properties</Button>
           </div>
         </div>
       </Container>

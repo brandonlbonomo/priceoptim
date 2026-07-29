@@ -141,7 +141,7 @@ export default function ContactPage() {
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             <Link
-              href="/properties/houston"
+              href="/nomo-collection"
               className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
@@ -161,7 +161,7 @@ export default function ContactPage() {
             </Link>
 
             <Link
-              href="/properties/niagara-falls"
+              href="/nomo-collection"
               className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-3">
@@ -194,7 +194,7 @@ export default function ContactPage() {
             on every stay.
           </p>
           <div className="mt-8">
-            <Button href="/properties" size="lg" variant="secondary">
+            <Button href="/nomo-collection" size="lg" variant="secondary">
               Browse Properties
             </Button>
           </div>

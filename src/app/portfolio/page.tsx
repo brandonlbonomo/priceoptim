@@ -90,7 +90,7 @@ export default function PortfolioPage() {
                 </p>
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                   <Button href="/invest">Invest With Us</Button>
-                  <Button href="/book" variant="outline">
+                  <Button href="/nomo-collection" variant="outline">
                     Book a Stay
                   </Button>
                 </div>

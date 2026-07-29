@@ -11,11 +11,7 @@ const firmLinks = [
 ];
 
 const stayLinks = [
-  { href: "/book", label: "Book a Stay" },
-  { href: "/book-direct", label: "Why Book Direct" },
-  { href: "/properties", label: "All Properties" },
-  { href: "/properties/houston", label: "Houston, TX" },
-  { href: "/properties/niagara-falls", label: "Niagara Falls, NY" },
+  { href: "/nomo-collection", label: "The Nomo Collection" },
   { href: "/reviews", label: "Guest Reviews" },
 ];
 

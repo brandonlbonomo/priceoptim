@@ -288,7 +288,7 @@ export default function NiagaraFallsThingsToDoPage() {
             you close to every attraction on this list.
           </p>
           <div className="mt-5">
-            <Button href="/properties/niagara-falls">
+            <Button href="/nomo-collection">
               Browse Niagara Falls Properties
             </Button>
           </div>

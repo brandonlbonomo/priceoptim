@@ -135,7 +135,7 @@ export default function ReviewsPage() {
                   </p>
                 </div>
                 <Button
-                  href={`/properties/${property.slug}`}
+                  href="/nomo-collection"
                   variant="outline"
                   size="sm"
                 >
@@ -208,7 +208,7 @@ export default function ReviewsPage() {
               <ExternalLink className="h-4 w-4" />
               Leave a Google Review
             </a>
-            <Button href="/properties" size="lg" variant="outline">
+            <Button href="/nomo-collection" size="lg" variant="outline">
               Browse Properties
             </Button>
           </div>

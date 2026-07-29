@@ -6,9 +6,9 @@ import { Home, Building2, Star, BookOpen, Map } from "lucide-react";
 export default function NotFound() {
   const links = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/properties", label: "All Properties", icon: Building2 },
-    { href: "/properties/houston", label: "Houston Rentals", icon: Map },
-    { href: "/properties/niagara-falls", label: "Niagara Falls Rentals", icon: Map },
+    { href: "/nomo-collection", label: "All Properties", icon: Building2 },
+    { href: "/nomo-collection", label: "Houston Rentals", icon: Map },
+    { href: "/nomo-collection", label: "Niagara Falls Rentals", icon: Map },
     { href: "/reviews", label: "Guest Reviews", icon: Star },
     { href: "/blog", label: "Travel Blog", icon: BookOpen },
   ];
@@ -27,7 +27,7 @@ export default function NotFound() {
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button href="/">Back to Home</Button>
-            <Button href="/properties" variant="outline">
+            <Button href="/nomo-collection" variant="outline">
               Browse Properties
             </Button>
           </div>

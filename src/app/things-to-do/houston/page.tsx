@@ -280,7 +280,7 @@ export default function HoustonThingsToDoPage() {
             within walking distance of everything on this list.
           </p>
           <div className="mt-5">
-            <Button href="/properties/houston">
+            <Button href="/nomo-collection">
               Browse Houston Properties
             </Button>
           </div>

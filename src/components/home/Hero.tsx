@@ -50,7 +50,7 @@ export function Hero() {
 
           <p className="mt-6 text-[13px] text-white/45">
             Visiting Houston or Niagara Falls?{" "}
-            <Link href="/book" className="text-gold-light underline-offset-4 hover:underline">
+            <Link href="/nomo-collection" className="text-gold-light underline-offset-4 hover:underline">
               Book a stay direct →
             </Link>
           </p>

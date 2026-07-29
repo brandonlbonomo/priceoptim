@@ -99,7 +99,7 @@ export default function GuidesPage() {
 
                 {/* Link to location properties */}
                 <Link
-                  href={`/properties/${location.slug}`}
+                  href="/nomo-collection"
                   className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent-dark transition-colors duration-200 hover:text-accent"
                 >
                   Browse {location.city} rentals

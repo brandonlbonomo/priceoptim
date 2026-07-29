@@ -178,14 +178,14 @@ export default function AboutPage() {
             <div className="mt-12 grid gap-6 sm:grid-cols-2">
               {[
                 {
-                  href: "/properties/houston",
+                  href: "/nomo-collection",
                   city: "Houston, TX",
                   body:
                     "East Downtown and the East End — a growing residential base near the Medical Center, downtown, and the city's sports and entertainment district.",
                   cta: "Explore Houston",
                 },
                 {
-                  href: "/properties/niagara-falls",
+                  href: "/nomo-collection",
                   city: "Niagara Falls, NY",
                   body:
                     "Steps from one of the country's most-visited destinations — residential property redeveloped for both long-term tenants and visitors.",
@@ -226,7 +226,7 @@ export default function AboutPage() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button href="/portfolio">View the Portfolio</Button>
               <Button href="/invest" variant="outline">Invest With Us</Button>
-              <Button href="/book" variant="ghost">Book a Stay</Button>
+              <Button href="/nomo-collection" variant="ghost">Book a Stay</Button>
             </div>
           </div>
         </Container>

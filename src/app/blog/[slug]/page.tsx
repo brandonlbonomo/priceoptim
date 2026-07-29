@@ -193,7 +193,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               direct for the best rates — no platform fees.
             </p>
             <div className="mt-6">
-              <Button href="/properties" size="md">
+              <Button href="/nomo-collection" size="md">
                 Browse Properties
               </Button>
             </div>

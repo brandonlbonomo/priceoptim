@@ -8,7 +8,7 @@ import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 
 const navLinks = [
-  { href: "/properties", label: "Stays" },
+  { href: "/nomo-collection", label: "The Nomo Collection" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/invest", label: "Invest" },
   { href: "/blog", label: "Journal" },
@@ -45,7 +45,7 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Button href="/book" size="sm">
+            <Button href="/nomo-collection" size="sm">
               Book a Stay
             </Button>
           </div>
@@ -75,7 +75,7 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="px-4 pt-3">
-                <Button href="/book" size="sm" className="w-full">
+                <Button href="/nomo-collection" size="sm" className="w-full">
                   Book a Stay
                 </Button>
               </div>
