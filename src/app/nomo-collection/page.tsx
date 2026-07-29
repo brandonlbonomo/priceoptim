@@ -119,11 +119,11 @@ export default function NomoCollectionPage() {
           ))}
         </div>
         {/* Gentle wash so the montage reads as one field */}
-        <div className="absolute inset-0 bg-hunter/15" />
+        <div className="absolute inset-0 bg-hunter/10" />
 
         <Container className="relative z-10">
-          {/* Liquid glass panel */}
-          <div className="mx-auto max-w-2xl rounded-2xl border border-white/45 bg-ivory/55 px-8 py-14 text-center shadow-[0_18px_50px_rgba(13,26,36,0.22)] backdrop-blur-2xl backdrop-saturate-150 sm:px-14">
+          {/* Liquid glass panel — transparent so the offerings show through */}
+          <div className="mx-auto max-w-2xl rounded-2xl border border-white/60 bg-ivory/30 px-8 py-14 text-center shadow-[0_18px_50px_rgba(13,26,36,0.28)] backdrop-blur-md backdrop-saturate-150 sm:px-14">
             <p className="eyebrow">Why The Nomo Collection</p>
             <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-hunter sm:text-4xl">
               Elevated stays, booked direct
