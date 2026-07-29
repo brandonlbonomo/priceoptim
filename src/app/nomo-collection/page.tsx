@@ -1,31 +1,28 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Sparkles, KeyRound, Palette, Heart, ArrowUpRight } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 
 /**
  * The Nomo Collection — branded interstitial / launchpad.
  *
- * Direct booking has moved off this site to its own home:
- *   https://thenomocollection.com
- *
- * This page is the on-site pitch + gateway. It is intentionally built with
- * neutral placeholder branding (styled wordmark, existing design tokens).
- * When the real logo + design land, swap:
- *   1. The <WordmarkPlaceholder /> block for the <Image src="/nomo-collection-logo.png" ... />
- *   2. Colors / copy for the final BOHO-chic brand direction.
+ * Direct booking lives on its own home: https://thenomocollection.com
+ * This page is the on-site pitch + gateway, using the NoMo boutique brand.
  */
 
 const EXTERNAL_URL = "https://thenomocollection.com";
+// Matches the logo artwork's background so the mark sits seamlessly.
+const LOGO_CREAM = "#f9f5f0";
 
 export const metadata: Metadata = {
-  title: "The Nomo Collection — Book Direct",
+  title: "The Nomo Collection — Boutique Stays, Book Direct",
   description:
-    "The Nomo Collection — elevated, BOHO-chic short-term stays. Book directly with us for the best rate, thoughtful design, and personal hospitality.",
+    "The Nomo Collection — elevated, boutique short-term stays. Book directly with us for the best rate, thoughtful design, and personal hospitality.",
   alternates: { canonical: "/nomo-collection" },
   openGraph: {
-    title: "The Nomo Collection — Book Direct",
+    title: "The Nomo Collection — Boutique Stays",
     description:
-      "Elevated, BOHO-chic short-term stays. Book directly for the best rate and personal hospitality.",
+      "Elevated, boutique short-term stays. Book directly for the best rate and personal hospitality.",
     url: "/nomo-collection",
   },
 };
@@ -38,8 +35,8 @@ const pillars = [
   },
   {
     icon: Palette,
-    title: "BOHO-chic design",
-    body: "Warm textures, natural light, and a collected, artful sensibility in every room.",
+    title: "Boutique design",
+    body: "Warm textures, natural light, and a collected, considered sensibility in every room.",
   },
   {
     icon: KeyRound,
@@ -56,45 +53,36 @@ const pillars = [
 export default function NomoCollectionPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="hero-gradient noise relative overflow-hidden">
-        <Container className="relative z-10">
-          <div className="mx-auto max-w-3xl py-24 text-center sm:py-32">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-gold-light">
-              Book Direct
-            </p>
+      {/* Hero — light, to suit the NoMo mark */}
+      <section style={{ backgroundColor: LOGO_CREAM }}>
+        <Container>
+          <div className="mx-auto max-w-3xl py-20 text-center sm:py-24">
+            <Image
+              src="/nomo-logo.png"
+              alt="The Nomo Collection — Boutique Stays"
+              width={1254}
+              height={1254}
+              priority
+              className="mx-auto h-auto w-[260px] sm:w-[360px]"
+            />
 
-            {/* ── LOGO GOES HERE ──────────────────────────────
-                Replace this wordmark block with the real logo, e.g.:
-                <Image src="/nomo-collection-logo.png" alt="The Nomo Collection"
-                       width={880} height={280} priority className="mx-auto h-24 w-auto" />
-            */}
-            <div className="mt-7">
-              <h1 className="font-display text-5xl font-medium leading-[1.05] tracking-tight text-white sm:text-6xl">
-                The Nomo
-                <br />
-                Collection
-              </h1>
-              <div className="mx-auto mt-6 h-px w-24 bg-gold-light/50" />
-            </div>
-
-            <p className="mx-auto mt-8 max-w-xl text-[17px] font-light leading-relaxed text-white/70">
-              A curated collection of elevated, BOHO-chic stays. Our vacation
+            <p className="mx-auto -mt-2 max-w-xl text-[17px] font-light leading-relaxed text-charcoal/75">
+              A curated collection of elevated, boutique stays. Our vacation
               rentals now live on their own — book directly for the best rate,
               thoughtful design, and hospitality that actually shows up.
             </p>
 
-            <div className="mt-10 flex flex-col items-center gap-4">
+            <div className="mt-9 flex flex-col items-center gap-4">
               <a
                 href={EXTERNAL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-2 rounded-[2px] bg-gold px-10 py-4 text-[12px] font-semibold uppercase tracking-[0.16em] text-hunter-dark transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-gold-light active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-hunter-dark"
+                className="group inline-flex items-center justify-center gap-2 rounded-[2px] bg-hunter px-10 py-4 text-[12px] font-semibold uppercase tracking-[0.16em] text-ivory transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-hunter-light active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-hunter/30"
               >
                 Explore &amp; book at thenomocollection.com
                 <ArrowUpRight className="h-4 w-4 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
-              <span className="text-[11px] uppercase tracking-[0.2em] text-white/40">
+              <span className="text-[11px] uppercase tracking-[0.2em] text-charcoal/40">
                 Opens thenomocollection.com
               </span>
             </div>

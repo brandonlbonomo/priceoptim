@@ -14,7 +14,7 @@ export function BookingSection() {
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted">
               Our short-term rentals in Houston and Niagara Falls now live under
-              The Nomo Collection — a curated set of elevated, BOHO-chic stays you
+              The Nomo Collection — a curated set of elevated, boutique stays you
               can book directly, with no platform fees.
             </p>
           </div>
