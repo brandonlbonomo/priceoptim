@@ -50,6 +50,18 @@ const pillars = [
   },
 ];
 
+// One photo from every offering — the montage behind the glass panel.
+const offerings = [
+  "/images/properties/unit-7/airbnb-1.jpg", // Premium EaDo (Lockwood 1)
+  "/images/properties/unit-6/airbnb-1.jpg", // Modern EaDo (Lockwood 2)
+  "/images/properties/unit-8/airbnb-1.jpg", // Stylish EaDo (Lockwood 3)
+  "/images/properties/unit-5/airbnb-1.jpg", // EaDo Close (Lockwood 4)
+  "/images/properties/unit-4/airbnb-1.jpg", // Everton
+  "/images/properties/unit-1/1.jpg", // Riverstone Retreat
+  "/images/properties/unit-2/airbnb-1.jpg", // Niagara Falls Retreat
+  "/images/properties/unit-3/airbnb-1.jpg", // Gorge Getaway
+];
+
 export default function NomoCollectionPage() {
   return (
     <>
@@ -90,21 +102,44 @@ export default function NomoCollectionPage() {
         </Container>
       </section>
 
-      {/* Pitch pillars */}
-      <section className="bg-cream py-20 sm:py-24">
-        <Container>
-          <div className="mx-auto max-w-2xl text-center">
+      {/* Offerings montage behind a liquid-glass panel */}
+      <section className="relative overflow-hidden py-20 sm:py-28">
+        {/* Every offering, tiled edge to edge */}
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-4 sm:grid-cols-4 sm:grid-rows-2">
+          {offerings.map((src, i) => (
+            <div key={i} className="relative">
+              <Image
+                src={src}
+                alt=""
+                fill
+                sizes="(min-width: 640px) 25vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          ))}
+        </div>
+        {/* Gentle wash so the montage reads as one field */}
+        <div className="absolute inset-0 bg-hunter/15" />
+
+        <Container className="relative z-10">
+          {/* Liquid glass panel */}
+          <div className="mx-auto max-w-2xl rounded-2xl border border-white/45 bg-ivory/55 px-8 py-14 text-center shadow-[0_18px_50px_rgba(13,26,36,0.22)] backdrop-blur-2xl backdrop-saturate-150 sm:px-14">
             <p className="eyebrow">Why The Nomo Collection</p>
             <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-hunter sm:text-4xl">
               Elevated stays, booked direct
             </h2>
-            <p className="mx-auto mt-5 text-[16px] leading-relaxed text-muted">
+            <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-charcoal/75">
               The same homes and hosts you trust — now with their own home online.
               Skip the platform fees and book straight with us.
             </p>
           </div>
+        </Container>
+      </section>
 
-          <div className="mx-auto mt-14 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Pitch pillars */}
+      <section className="bg-cream py-20 sm:py-24">
+        <Container>
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {pillars.map((p) => (
               <div key={p.title} className="glass-card rounded-[3px] p-7">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-hunter/[0.06]">
