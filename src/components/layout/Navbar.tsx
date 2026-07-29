@@ -76,7 +76,7 @@ export function Navbar() {
                 </Link>
               ),
             )}
-            <Button href="/nomo-collection" size="sm">
+            <Button href="https://thenomocollection.com" size="sm">
               Book a Stay
             </Button>
           </div>
@@ -121,7 +121,7 @@ export function Navbar() {
                 </div>
               ))}
               <div className="px-4 pt-3">
-                <Button href="/nomo-collection" size="sm" className="w-full">
+                <Button href="https://thenomocollection.com" size="sm" className="w-full">
                   Book a Stay
                 </Button>
               </div>
