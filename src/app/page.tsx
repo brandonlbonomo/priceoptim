@@ -15,15 +15,15 @@ import { properties } from "@/data/properties";
 export const metadata: Metadata = {
   title: {
     absolute:
-      "Bonomo Capital Group | Direct Stays in Houston & Niagara Falls + Real Estate Investment",
+      "Bonomo Capital Group | Direct Stays in Houston, Niagara Falls & 30A + Real Estate Investment",
   },
   description:
     "Book direct and save on 5-star short-term rentals in Houston, TX and Niagara Falls, NY — no platform fees. Bonomo Capital Group is a real estate investment firm operating a growing rental portfolio alongside private credit and private equity.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Bonomo Capital Group | Direct Stays in Houston & Niagara Falls",
+    title: "Bonomo Capital Group | Direct Stays in Houston, Niagara Falls & 30A",
     description:
-      "Book direct and save on 5-star short-term rentals in Houston and Niagara Falls. A real estate investment firm with a growing rental portfolio and private capital.",
+      "Book direct and save on 5-star short-term rentals in Houston, Niagara Falls, and 30A. A real estate investment firm with a growing rental portfolio and private capital.",
     url: "/",
   },
 };
@@ -69,7 +69,7 @@ export default function HomePage() {
           <ScrollReveal>
             <SectionHeading
               title="What our guests say"
-              subtitle="Reviews from recent stays across Houston and Niagara Falls."
+              subtitle="Reviews from recent stays across our destinations."
             />
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={100}>

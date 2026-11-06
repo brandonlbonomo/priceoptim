@@ -135,11 +135,11 @@ export default function ContactPage() {
               Where We Operate
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] text-muted">
-              We offer premium vacation rentals in two incredible destinations
+              We offer premium vacation rentals in three incredible destinations
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          <div className="mt-10 grid gap-6 sm:grid-cols-3">
             <Link
               href="/nomo-collection"
               className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
@@ -176,6 +176,26 @@ export default function ContactPage() {
               </p>
               <p className="mt-4 text-[13px] font-medium text-accent-dark">
                 View Niagara Falls properties &rarr;
+              </p>
+            </Link>
+
+            <Link
+              href="/nomo-collection"
+              className="glass-card rounded-[4px] p-8 transition-all duration-300 hover:scale-[1.01]"
+            >
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-accent-dark" />
+                <h3 className="text-[17px] font-display font-medium text-hunter">
+                  30A, FL
+                </h3>
+              </div>
+              <p className="mt-3 text-[14px] leading-relaxed text-muted">
+                Florida&apos;s Scenic 30A — a design-forward beach residence in
+                Inlet Beach, a short walk from sugar-white sand and the shops of
+                Rosemary Beach.
+              </p>
+              <p className="mt-4 text-[13px] font-medium text-accent-dark">
+                Explore 30A &rarr;
               </p>
             </Link>
           </div>

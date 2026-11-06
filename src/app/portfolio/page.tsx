@@ -28,7 +28,7 @@ export default function PortfolioPage() {
         tone="dark"
         eyebrow="The Portfolio"
         title="Property we own, redevelop, and hold."
-        intro="Bonomo Capital Group builds a portfolio of residential real estate across Houston and Niagara Falls — acquiring, renovating, and operating homes as income-producing assets under management. We hold for the long term, with tenants and guests in place."
+        intro="Bonomo Capital Group builds a portfolio of residential real estate across Houston, Niagara Falls, and Florida's Scenic 30A — acquiring, renovating, and operating homes as income-producing assets under management. We hold for the long term, with tenants and guests in place."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Portfolio" }]}
       />
 

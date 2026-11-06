@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Destination Guides | Bonomo Capital Group",
     description:
-      "Travel guides, neighborhood tips, and local insights for Houston and Niagara Falls.",
+      "Travel guides, neighborhood tips, and local insights for Houston, Niagara Falls, and 30A.",
   },
 };
 

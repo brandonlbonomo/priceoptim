@@ -16,7 +16,7 @@ export function PortfolioPreview() {
                 Property we own and operate.
               </h2>
               <p className="mt-4 text-[16px] leading-relaxed text-muted">
-                Residential assets across Houston and Niagara Falls — acquired,
+                Residential assets across Houston, Niagara Falls, and 30A — acquired,
                 redeveloped, and held for the long term.
               </p>
             </div>

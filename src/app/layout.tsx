@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | Bonomo Capital Group",
   },
   description:
-    "Bonomo Capital Group is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston and Niagara Falls.",
+    "Bonomo Capital Group is a real estate investment firm that acquires, builds, and redevelops residential property, holds a growing rental portfolio, and operates in private credit and private equity. Direct stays available in Houston, Niagara Falls, and 30A.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://byblb.com"),
   alternates: {
     canonical: "/",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Bonomo Capital Group | Real Estate Investment, Development & Private Capital",
     description:
-      "A real estate investment firm — acquisitions, development, a growing rental portfolio, and private capital. Direct stays in Houston and Niagara Falls.",
+      "A real estate investment firm — acquisitions, development, a growing rental portfolio, and private capital. Direct stays in Houston, Niagara Falls & 30A.",
     images: ["/bonomo-logo-horizontal.png"],
   },
 };

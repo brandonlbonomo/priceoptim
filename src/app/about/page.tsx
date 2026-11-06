@@ -96,7 +96,7 @@ export default function AboutPage() {
                   Bonomo Capital Group is a privately held real estate investment firm. We
                   acquire residential property, improve it through renovation and
                   redevelopment, and hold it as a long-term, income-producing
-                  portfolio across Houston and Niagara Falls.
+                  portfolio across Houston, Niagara Falls, and Florida's Scenic 30A.
                 </p>
                 <p>
                   Some of our homes serve long-term tenants — including
@@ -170,12 +170,12 @@ export default function AboutPage() {
             <div className="mx-auto max-w-2xl text-center">
               <p className="eyebrow">Where We Operate</p>
               <h2 className="mt-5 font-display text-3xl font-medium tracking-tight text-hunter sm:text-4xl">
-                Two markets we know well
+                Three markets we know well
               </h2>
             </div>
           </ScrollReveal>
           <ScrollReveal variant="fade-up" delay={120} stagger={120}>
-            <div className="mt-12 grid gap-6 sm:grid-cols-2">
+            <div className="mt-12 grid gap-6 sm:grid-cols-3">
               {[
                 {
                   href: "/nomo-collection",
@@ -191,8 +191,15 @@ export default function AboutPage() {
                     "Steps from one of the country's most-visited destinations — residential property redeveloped for both long-term tenants and visitors.",
                   cta: "Explore Niagara Falls",
                 },
+                {
+                  href: "/nomo-collection",
+                  city: "30A, FL",
+                  body:
+                    "Florida's Scenic 30A — a design-forward beach residence in Inlet Beach, a short walk from sugar-white sand and the shops of Rosemary Beach.",
+                  cta: "Explore 30A",
+                },
               ].map((loc) => (
-                <Link key={loc.href} href={loc.href} className="glass-card group rounded-[4px] p-8">
+                <Link key={loc.city} href={loc.href} className="glass-card group rounded-[4px] p-8">
                   <div className="flex items-center gap-3">
                     <Building2 className="h-5 w-5 text-gold-dark" />
                     <h3 className="font-display text-[20px] font-medium text-hunter">

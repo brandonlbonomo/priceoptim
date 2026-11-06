@@ -13,7 +13,7 @@ export function BookingSection() {
               Looking for a place to stay?
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted">
-              Our short-term rentals in Houston and Niagara Falls now live under
+              Our short-term rentals in Houston, Niagara Falls, and 30A now live under
               The Nomo Collection — a curated set of elevated, boutique stays you
               can book directly, with no platform fees.
             </p>
