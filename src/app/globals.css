@@ -3,7 +3,7 @@
 /*
   BONOMO CAPITAL GROUP — design system
   Old-money, understated, editorial.
-  Deep navy pulled from the logo, built out with ivory, charcoal, and muted gold.
+  Deep navy pulled from the logo, built out with white, charcoal, and muted gold.
 */
 
 @theme inline {
@@ -13,15 +13,15 @@
   --color-hunter-light: #22333f;
   --color-hunter-dark: #0d1a24;
 
-  /* Muted gold — the accent, pulled back for text and accents on ivory */
+  /* Muted gold — the accent, pulled back for text and accents on white */
   --color-gold: #a9863f;
   --color-gold-light: #c6a25a;
   --color-gold-dark: #856831;
 
-  /* Warm neutrals */
-  --color-ivory: #f4efe3;
-  --color-cream: #efe8d8;
-  --color-surface: #fbf8f0;
+  /* Clean neutrals — white with cool, near-white layering */
+  --color-ivory: #ffffff;
+  --color-cream: #f3f5f7;
+  --color-surface: #ffffff;
   --color-charcoal: #1b2530;
 
   /* Semantic aliases (kept so existing markup restyles automatically) */
@@ -31,10 +31,10 @@
   --color-accent: #a9863f;
   --color-accent-light: #c6a25a;
   --color-accent-dark: #856831;
-  --color-background: #f4efe3;
+  --color-background: #ffffff;
   --color-foreground: #1b2530;
-  --color-muted: #6b6960;
-  --color-muted-light: #e7e0cf;
+  --color-muted: #5f6b74;
+  --color-muted-light: #e6e9ed;
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
@@ -52,9 +52,9 @@ body {
    Retired the liquid-glass look for flat editorial surfaces.
    Class names are preserved so existing markup restyles cleanly. */
 
-/* Sticky navbar: warm ivory with a hairline rule */
+/* Sticky navbar: white with a hairline rule */
 .glass {
-  background: rgba(244, 239, 227, 0.88);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border-bottom: 1px solid rgba(23, 42, 56, 0.1);
@@ -90,7 +90,7 @@ body {
 }
 
 .glass-surface {
-  background: rgba(251, 248, 240, 0.7);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(23, 42, 56, 0.08);
   box-shadow: 0 1px 2px rgba(13, 26, 36, 0.03);
 }

@@ -73,10 +73,21 @@ export const portfolio: PortfolioAsset[] = [
     market: "Houston",
     state: "TX",
     strategy: "Short-term rental",
-    units: 1,
-    status: "Under construction",
+    units: 2,
+    status: "Operating · 1 unit under construction",
     summary:
-      "A single-family Houston redevelopment, mid-construction and slated to open as a design-forward short-term rental.",
+      "A two-unit Houston Heights redevelopment — one unit operating as a design-forward short-term rental, with the second mid-construction.",
+  },
+  {
+    id: "beachview",
+    name: "Beach View",
+    market: "30A",
+    state: "FL",
+    strategy: "Short-term rental",
+    units: 1,
+    status: "Operating",
+    summary:
+      "A design-forward beach residence on Scenic 30A in Inlet Beach, Florida — operated as a short-term rental a short walk from sugar-white sand and the shops of Rosemary Beach.",
   },
 ];
 
