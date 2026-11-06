@@ -103,3 +103,10 @@ export const portfolioStats = {
   markets: Array.from(new Set(portfolio.map((a) => a.market))).length,
   underConstruction: underConstructionUnits,
 };
+
+/**
+ * Operating revenue, annualized from the current monthly run-rate across the
+ * operating portfolio — an operating-business figure, in $K. Not a return,
+ * valuation, or projection (those stay in the gated investor model).
+ */
+export const operatingRevenueRunRateAnnualK = 340;

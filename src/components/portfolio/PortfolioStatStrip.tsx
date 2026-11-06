@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/Container";
 interface Stat {
   value: number;
   label: string;
+  prefix?: string;
   suffix?: string;
   live?: boolean;
 }
@@ -48,6 +49,7 @@ function StatCell({ stat, active }: { stat: Stat; active: boolean }) {
     <div className="group px-4 py-8 text-center transition-colors duration-300 hover:bg-hunter/[0.02]">
       <div className="flex items-center justify-center gap-2">
         <div className="font-display text-3xl font-medium tabular-nums text-hunter transition-transform duration-300 group-hover:-translate-y-0.5 sm:text-4xl">
+          {stat.prefix}
           {value}
           {stat.suffix}
         </div>
@@ -99,7 +101,7 @@ export function PortfolioStatStrip({ stats }: PortfolioStatStripProps) {
         </div>
         <div
           ref={ref}
-          className="grid grid-cols-2 divide-x divide-y divide-hunter/10 sm:grid-cols-4 sm:divide-y-0"
+          className="grid grid-cols-2 divide-x divide-y divide-hunter/10 sm:grid-cols-5 sm:divide-y-0"
         >
           {stats.map((stat) => (
             <StatCell key={stat.label} stat={stat} active={active} />

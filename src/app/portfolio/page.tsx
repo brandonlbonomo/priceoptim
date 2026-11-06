@@ -5,7 +5,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { AssetCard } from "@/components/portfolio/AssetCard";
 import { PortfolioStatStrip } from "@/components/portfolio/PortfolioStatStrip";
-import { portfolio, portfolioStats } from "@/data/portfolio";
+import {
+  portfolio,
+  portfolioStats,
+  operatingRevenueRunRateAnnualK,
+} from "@/data/portfolio";
 
 export const metadata: Metadata = {
   title: "Portfolio",
@@ -18,6 +22,12 @@ const stats = [
   { value: portfolioStats.assets, label: "Properties owned" },
   { value: portfolioStats.units, label: "Residential units" },
   { value: portfolioStats.markets, label: "Markets" },
+  {
+    value: operatingRevenueRunRateAnnualK,
+    prefix: "$",
+    suffix: "K",
+    label: "Revenue run-rate",
+  },
   { value: portfolioStats.underConstruction, label: "Under construction", live: true },
 ];
 
