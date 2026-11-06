@@ -106,8 +106,8 @@ export default function NomoCollectionPage() {
           </div>
           <div className="mx-auto mt-14 grid max-w-3xl items-center gap-12 sm:grid-cols-2">
             {[
-              { src: "/nomo/houston-navy.png", label: "NoMo Houston", w: 704, h: 469 },
-              { src: "/nomo/beachhouse-navy.png", label: "NoMo Beach House", w: 726, h: 438 },
+              { src: "/nomo/houston-navy.png", label: "NoMo Houston", w: 886, h: 886 },
+              { src: "/nomo/beachhouse-navy.png", label: "NoMo Beach House", w: 886, h: 886 },
             ].map((b) => (
               <a
                 key={b.label}
