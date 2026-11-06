@@ -86,16 +86,17 @@ export function UnlockGate({
 
   return (
     <div className="relative overflow-hidden rounded-[6px] border border-hunter/10">
-      {/* Blurred preview of the real content behind the gate */}
+      {/* Blurred preview of the real content — absolute background so the
+          form below drives the card height (no clipping of the overlay) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none max-h-[520px] select-none overflow-hidden blur-md saturate-[0.85]"
+        className="pointer-events-none absolute inset-0 select-none overflow-hidden blur-md saturate-[0.85]"
       >
         {children}
       </div>
 
-      {/* Lock overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-cream/80 backdrop-blur-[3px]">
+      {/* Lock overlay — in normal flow so the card grows to fit it */}
+      <div className="relative flex items-center justify-center bg-cream/80 backdrop-blur-[3px]">
         <div className="mx-auto w-full max-w-md px-6 py-10 text-center">
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-hunter/[0.06]">
             <Lock className="h-4 w-4 text-hunter" />
