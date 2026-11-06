@@ -104,24 +104,24 @@ export default function NomoCollectionPage() {
               30A. Skip the platform fees and book straight with us.
             </p>
           </div>
-          <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2">
+          <div className="mx-auto mt-14 grid max-w-3xl items-center gap-12 sm:grid-cols-2">
             {[
-              { src: "/nomo/houston.jpg", label: "NoMo Houston" },
-              { src: "/nomo/beachhouse.jpg", label: "NoMo Beach House" },
+              { src: "/nomo/houston-navy.png", label: "NoMo Houston", w: 704, h: 469 },
+              { src: "/nomo/beachhouse-navy.png", label: "NoMo Beach House", w: 726, h: 438 },
             ].map((b) => (
               <a
                 key={b.label}
                 href={EXTERNAL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block overflow-hidden rounded-[3px] border border-hunter/10 shadow-sm transition-shadow duration-500 hover:shadow-lg"
+                className="group block transition-opacity duration-500 hover:opacity-70"
               >
                 <Image
                   src={b.src}
                   alt={b.label}
-                  width={886}
-                  height={886}
-                  className="h-auto w-full"
+                  width={b.w}
+                  height={b.h}
+                  className="mx-auto h-auto w-full max-w-[340px]"
                 />
               </a>
             ))}
