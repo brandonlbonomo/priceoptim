@@ -42,11 +42,11 @@ export function Footer() {
             <p className="mt-6 text-[13px] leading-relaxed text-white/45">
               A real estate investment firm acquiring, building, and
               redeveloping residential property — and holding a growing rental
-              portfolio across Houston and Niagara Falls.
+              portfolio across Houston, Niagara Falls, and Florida's Scenic 30A.
             </p>
             <div className="mt-6 space-y-1 text-[12px] text-white/35">
               <p>Bonomo Capital Group</p>
-              <p>Houston, TX &amp; Niagara Falls, NY</p>
+              <p>Houston, TX &middot; Niagara Falls, NY &middot; 30A, FL</p>
               <p>
                 <a href="tel:+15166506653" className="transition-colors duration-200 hover:text-white/70">
                   (516) 650-6653
