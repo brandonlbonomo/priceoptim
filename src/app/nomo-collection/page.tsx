@@ -63,7 +63,7 @@ export default function NomoCollectionPage() {
               width={886}
               height={886}
               priority
-              className="mx-auto h-auto w-[300px] sm:w-[420px]"
+              className="mx-auto h-auto w-[380px] sm:w-[560px]"
             />
 
             <p className="mx-auto -mt-2 max-w-xl text-[17px] font-light leading-relaxed text-charcoal/75">
