@@ -38,6 +38,7 @@ const strategies = [
 const principles = [
   { k: "Horizon", v: "Long-term. We hold and compound rather than trade." },
   { k: "Alignment", v: "The firm invests its own capital beside its partners." },
+  { k: "Operating", v: "On select short-term assets we design, furnish, and run — including master-lease partnerships with aligned investors." },
   { k: "Access", v: "By introduction, for qualified and accredited investors." },
   { k: "Discretion", v: "Relationships are handled privately and personally." },
 ];

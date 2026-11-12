@@ -19,7 +19,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/invest`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${baseUrl}/nomo-collection`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${baseUrl}/reviews`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${baseUrl}/guides`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${baseUrl}/things-to-do/houston`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/things-to-do/niagara-falls`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },

@@ -20,7 +20,6 @@ const exploreLinks = [
   { href: "/things-to-do/houston", label: "Things to Do in Houston" },
   { href: "/things-to-do/niagara-falls", label: "Things to Do in Niagara Falls" },
   { href: "/amenities", label: "Amenities" },
-  { href: "/blog", label: "Blog" },
 ];
 
 export function Footer() {

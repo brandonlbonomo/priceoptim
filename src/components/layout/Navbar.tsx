@@ -11,14 +11,7 @@ type NavChild = { href: string; label: string };
 type NavItem = { href: string; label: string; children?: NavChild[] };
 
 const navLinks: NavItem[] = [
-  {
-    href: "/nomo-collection",
-    label: "The Nomo Collection",
-    children: [
-      { href: "/nomo-collection", label: "Book Direct" },
-      { href: "/blog", label: "Journal" },
-    ],
-  },
+  { href: "/nomo-collection", label: "The Nomo Collection" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/invest", label: "Invest" },
   { href: "/about", label: "About" },
@@ -59,7 +52,7 @@ export function Navbar() {
 
           <div className="hidden justify-self-end sm:block">
             <Button href="https://thenomocollection.com" size="sm">
-              Book a Stay
+              View Holdings
             </Button>
           </div>
         </nav>
@@ -99,7 +92,7 @@ export function Navbar() {
                   size="sm"
                   className="w-full"
                 >
-                  Book a Stay
+                  View Holdings
                 </Button>
               </div>
             </div>

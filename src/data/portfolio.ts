@@ -89,13 +89,24 @@ export const portfolio: PortfolioAsset[] = [
     summary:
       "A design-forward beach residence on Scenic 30A in Inlet Beach, Florida — operated as a short-term rental a short walk from sugar-white sand and the shops of Rosemary Beach.",
   },
+  {
+    id: "independence-heights",
+    name: "Independence Heights",
+    market: "Houston",
+    state: "TX",
+    strategy: "Redevelopment",
+    units: 5,
+    status: "Under construction",
+    summary:
+      "A ground-up build in Houston's Independence Heights — a boutique-hotel-style residence of five rentable rooms, with a main suite and full kitchen on the first floor. Designed and furnished in-house for short-term stays.",
+  },
 ];
 
 /**
  * Units currently under construction — owned and mid-build, included in the
- * property and unit totals above. Zero now that Omega's studio is complete.
+ * property and unit totals above. The Independence Heights boutique build.
  */
-export const underConstructionUnits = 0;
+export const underConstructionUnits = 5;
 
 export const portfolioStats = {
   assets: portfolio.length,
@@ -109,4 +120,5 @@ export const portfolioStats = {
  * operating portfolio — an operating-business figure, in $K. Not a return,
  * valuation, or projection (those stay in the gated investor model).
  */
-export const operatingRevenueRunRateAnnualK = 340;
+// Trailing-6-month actual revenue (QuickBooks, as of Nov 2026), annualized.
+export const operatingRevenueRunRateAnnualK = 325;

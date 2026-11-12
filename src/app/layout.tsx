@@ -161,7 +161,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://hospitable.com" />
-        <link rel="alternate" type="application/rss+xml" title="Bonomo Capital Group Blog" href="/blog/feed.xml" />
         <script id="mcjs" src="https://chimpstatic.com/mcjs-connected/js/users/4b04bf316771ed8107e92913e/db364ec57771e70054ea386ea.js" async />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-FH3EZPNNZ3" />
         <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-FH3EZPNNZ3');` }} />

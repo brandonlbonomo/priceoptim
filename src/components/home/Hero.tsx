@@ -29,13 +29,14 @@ export function Hero() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-[16px] font-light leading-relaxed text-white/55">
             Bonomo Capital Group acquires, builds, and redevelops residential
-            property — holding a growing portfolio of rental homes with long-term
-            tenants, and operating in private credit and private equity.
+            property — holding a growing portfolio of rental homes, including
+            short-term rentals we design and furnish in-house, and operating in
+            private credit and private equity.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button href="/portfolio" size="lg" variant="secondary">
-              View the Portfolio
+              View Holdings
             </Button>
             <Button
               href="/invest"
