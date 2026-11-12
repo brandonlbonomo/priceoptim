@@ -22,14 +22,14 @@ export function AssetCard({ asset }: { asset: PortfolioAsset }) {
         {asset.summary}
       </p>
 
-      <div className="mt-6 flex items-center justify-between border-t border-hunter/10 pt-4">
-        <span className="text-[13px] text-hunter">
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-hunter/10 pt-4">
+        <span className="shrink-0 whitespace-nowrap text-[13px] text-hunter">
           <span className="font-display text-[18px] font-medium">{asset.units}</span>
           <span className="ml-1.5 text-[12px] text-muted">
             {asset.units === 1 ? "unit" : "units"}
           </span>
         </span>
-        <span className="text-[11px] uppercase tracking-[0.14em] text-gold-dark">
+        <span className="text-right text-[11px] uppercase leading-tight tracking-[0.14em] text-gold-dark">
           {asset.status}
         </span>
       </div>
