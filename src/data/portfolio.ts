@@ -9,7 +9,8 @@
 export type AssetStrategy =
   | "Short-term rental"
   | "Long-term residential"
-  | "Redevelopment";
+  | "Redevelopment"
+  | "Development";
 
 export interface PortfolioAsset {
   id: string;
@@ -94,7 +95,7 @@ export const portfolio: PortfolioAsset[] = [
     name: "Independence Heights",
     market: "Houston",
     state: "TX",
-    strategy: "Redevelopment",
+    strategy: "Development",
     units: 5,
     status: "Under construction",
     summary:
