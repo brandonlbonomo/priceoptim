@@ -74,9 +74,9 @@ export const portfolio: PortfolioAsset[] = [
     state: "TX",
     strategy: "Short-term rental",
     units: 2,
-    status: "Operating · 1 unit under construction",
+    status: "Operating",
     summary:
-      "A two-unit Houston Heights redevelopment — one unit operating as a design-forward short-term rental, with the second mid-construction.",
+      "A Houston Heights redevelopment — a main house with a separate studio apartment, both complete and operating as design-forward short-term rentals.",
   },
   {
     id: "beachview",
@@ -92,10 +92,10 @@ export const portfolio: PortfolioAsset[] = [
 ];
 
 /**
- * Units currently under construction — owned and mid-build, and now
- * included in the property and unit totals above.
+ * Units currently under construction — owned and mid-build, included in the
+ * property and unit totals above. Zero now that Omega's studio is complete.
  */
-export const underConstructionUnits = 1;
+export const underConstructionUnits = 0;
 
 export const portfolioStats = {
   assets: portfolio.length,

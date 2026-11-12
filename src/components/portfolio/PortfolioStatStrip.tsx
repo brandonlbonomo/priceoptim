@@ -101,7 +101,9 @@ export function PortfolioStatStrip({ stats }: PortfolioStatStripProps) {
         </div>
         <div
           ref={ref}
-          className="grid grid-cols-2 divide-x divide-y divide-hunter/10 sm:grid-cols-5 sm:divide-y-0"
+          className={`grid grid-cols-2 divide-x divide-y divide-hunter/10 sm:divide-y-0 ${
+            stats.length >= 5 ? "sm:grid-cols-5" : "sm:grid-cols-4"
+          }`}
         >
           {stats.map((stat) => (
             <StatCell key={stat.label} stat={stat} active={active} />

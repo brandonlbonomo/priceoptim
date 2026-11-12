@@ -28,7 +28,10 @@ const stats = [
     suffix: "K",
     label: "Revenue run-rate",
   },
-  { value: portfolioStats.underConstruction, label: "Under construction", live: true },
+  // Only surface the under-construction tile when something is actually mid-build.
+  ...(portfolioStats.underConstruction > 0
+    ? [{ value: portfolioStats.underConstruction, label: "Under construction", live: true }]
+    : []),
 ];
 
 export default function PortfolioPage() {
