@@ -60,6 +60,15 @@ body {
   border-bottom: 1px solid rgba(23, 42, 56, 0.1);
 }
 
+/* The blur reads as translucent on desktop, but many mobile in-app browsers
+   (Instagram, etc.) drop backdrop-filter, leaving the header looking opaque.
+   Lower the white veil on small screens so it stays translucent there too. */
+@media (max-width: 767px) {
+  .glass {
+    background: rgba(255, 255, 255, 0.6);
+  }
+}
+
 /* Dark surface over imagery — hunter green wash */
 .glass-dark {
   background: rgba(13, 26, 36, 0.55);
