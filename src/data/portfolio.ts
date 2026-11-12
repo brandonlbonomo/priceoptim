@@ -86,9 +86,9 @@ export const portfolio: PortfolioAsset[] = [
     state: "FL",
     strategy: "Short-term rental",
     units: 1,
-    status: "Operating",
+    status: "Operating · Flagship",
     summary:
-      "A design-forward beach residence on Scenic 30A in Inlet Beach, Florida — operated as a short-term rental a short walk from sugar-white sand and the shops of Rosemary Beach.",
+      "The firm's flagship luxury residence — a design-forward beach home on Scenic 30A in Inlet Beach, Florida, a short walk from sugar-white sand and the shops of Rosemary Beach.",
   },
   {
     id: "independence-heights",
