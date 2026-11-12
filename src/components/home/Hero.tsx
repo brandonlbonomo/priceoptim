@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
@@ -47,13 +46,6 @@ export function Hero() {
               Investor Inquiry
             </Button>
           </div>
-
-          <p className="mt-6 text-[13px] text-white/45">
-            Visiting Houston or Niagara Falls?{" "}
-            <Link href="/nomo-collection" className="text-gold-light underline-offset-4 hover:underline">
-              Book a stay direct →
-            </Link>
-          </p>
 
           {/* Firm stat strip */}
           <div className="mx-auto mt-14 grid max-w-2xl grid-cols-3 divide-x divide-white/10 border-y border-white/10 py-6">
