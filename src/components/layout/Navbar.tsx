@@ -41,7 +41,7 @@ export function Navbar() {
             className="flex items-center justify-self-center"
           >
             <Image
-              src="/bonomo-mark.png"
+              src="/bonomo-logo-gold.png"
               alt="Bonomo Capital Group"
               width={1060}
               height={720}

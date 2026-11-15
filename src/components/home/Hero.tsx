@@ -16,7 +16,7 @@ export function Hero() {
         <div className="mx-auto max-w-5xl text-center">
           {/* The logo is the statement — front and center */}
           <Image
-            src="/bonomo-mark-light.png"
+            src="/bonomo-logo-gold.png"
             alt="Bonomo Capital Group"
             width={1060}
             height={720}
