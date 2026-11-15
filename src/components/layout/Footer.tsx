@@ -33,8 +33,8 @@ export function Footer() {
               <Image
                 src="/bonomo-mark-light.png"
                 alt="Bonomo Capital Group"
-                width={1500}
-                height={1000}
+                width={1060}
+                height={720}
                 className="h-16 w-auto"
               />
             </Link>

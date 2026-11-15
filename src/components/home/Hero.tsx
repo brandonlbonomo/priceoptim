@@ -18,8 +18,8 @@ export function Hero() {
           <Image
             src="/bonomo-mark-light.png"
             alt="Bonomo Capital Group"
-            width={1500}
-            height={1000}
+            width={1060}
+            height={720}
             priority
             className="mx-auto h-auto w-[300px] sm:w-[500px] lg:w-[660px]"
           />

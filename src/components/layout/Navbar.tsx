@@ -43,8 +43,8 @@ export function Navbar() {
             <Image
               src="/bonomo-mark.png"
               alt="Bonomo Capital Group"
-              width={1500}
-              height={1000}
+              width={1060}
+              height={720}
               priority
               className="h-16 w-auto sm:h-20 lg:h-24"
             />
